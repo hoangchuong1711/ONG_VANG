@@ -1,0 +1,33 @@
+# Environment
+.env
+
+# IntelliJ
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Maven
+target/
+**/target/
+
+# Node
+node_modules/
+**/node_modules/
+
+# Next.js
+.next/
+**/.next/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker local volumes
+*.pid
+# Local backup created while folding frontend into the root repository
+.git-migration-backup/
