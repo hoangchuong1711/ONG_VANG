@@ -31,6 +31,11 @@ Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đ�
 
 Nếu chạy toàn bộ bằng Docker, không cần cài Java, Maven hay Node.js trên máy. Bạn cần Docker Desktop đang mở và có quyền chạy Docker.
 
+## Development workflow
+
+Quy tắc branch, commit, Pull Request và merge:
+xem [CONTRIBUTING.md](./CONTRIBUTING.md)
+
 ## Lấy mã nguồn nhánh `develop`
 
 ```bash
