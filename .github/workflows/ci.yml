@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend lint and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_API_URL: http://localhost:18081
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  backend:
+    name: Backend tests and API smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: mini-ong-vang-ci
+      TEST_DB_URL: jdbc:postgresql://127.0.0.1:15433/mini_ong_vang_test
+      TEST_DB_USER: mini_ong_vang_test
+      TEST_DB_PASSWORD: ci-only-password
+      REQUIRE_TEST_DB: 'true'
+      API_BASE_URL: http://127.0.0.1:18081
+      API_EXPECTED_DATABASE: mini_ong_vang_test
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: src/backend/pom.xml
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/api/package-lock.json
+      - name: Install API tools without rewriting committed vendor files
+        run: npm ci --ignore-scripts --prefix tools/api
+      - name: Validate contract, examples, Postman and CSRF tests
+        run: npm run check --prefix tools/api
+      - name: Validate isolated Compose configuration
+        run: docker compose -f docker-compose.ci.yml config --quiet
+      - name: Start isolated PostgreSQL and backend
+        run: docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120
+      - name: Build WAR and run Java tests against test database
+        run: mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml verify
+      - name: Smoke test deployed API and documentation
+        run: npm run smoke --prefix tools/api
+      - name: Collect container logs
+        if: always()
+        run: |
+          mkdir -p test-results
+          docker compose -f docker-compose.ci.yml logs --no-color > test-results/compose.log 2>&1
+      - name: Upload test reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: |
+            src/backend/target/surefire-reports/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Stop isolated environment
+        if: always()
+        run: docker compose -f docker-compose.ci.yml down --volumes --remove-orphans

@@ -54,21 +54,10 @@ Docker Compose đọc thông tin database từ file `.env` ở thư mục gốc.
 Copy-Item .env.example .env
 ```
 
-**macOS / Linux / Git Bash:**
-
-```bash
-cp .env.example .env
-```
-
-Mở `.env` và kiểm tra có đủ ba dòng sau. Đây là thông tin mẫu dùng cho máy phát triển; không dùng mật khẩu mẫu trên hệ thống thật và không đưa `.env` lên GitHub.
-
-```dotenv
-POSTGRES_DB=mini_ong_vang
-POSTGRES_USER=mini_ong_vang_app
-POSTGRES_PASSWORD=doi_mat_khau_mau_khi_can
-```
-
 ## Chạy toàn bộ hệ thống bằng Docker
+
+`docker-compose.yml` là môi trường **phát triển**, dùng volume giữ dữ liệu.
+Môi trường test T05 nằm riêng trong `docker-compose.ci.yml`; xem phần CI bên dưới.
 
 Mở terminal tại thư mục gốc dự án, nơi có `docker-compose.yml`, rồi chạy:
 
@@ -88,11 +77,6 @@ Mở các địa chỉ sau trong trình duyệt:
 
 FE và BE hiển thị cổng khác nhau trong log vì ứng dụng lắng nghe bên trong container ở `3000` và `8080`. Docker chuyển cổng máy bạn `3001 → 3000` và `8081 → 8080`; vì vậy hãy mở FE ở cổng `3001` và gọi BE ở cổng `8081`.
 
-Trang trạng thái tự kiểm tra mỗi 10 giây. Khi mọi thứ chạy đúng, backend trả HTTP `200` với `"database":"connected"`. Nếu database chưa kết nối, xem log bằng:
-
-```bash
-docker compose logs -f db backend frontend
-```
 
 Để dừng các container, nhấn `Ctrl+C` trong terminal đang chạy Compose. Nếu chạy nền với `-d`, dùng:
 
@@ -112,15 +96,6 @@ docker compose up --build backend
 
 Kiểm tra backend tại [http://localhost:8081/api/health](http://localhost:8081/api/health). Nếu muốn chạy nền, thêm `-d`:
 
-```bash
-docker compose up --build -d backend
-```
-
-Xem log backend:
-
-```bash
-docker compose logs -f backend
-```
 
 ## Chỉ chạy frontend
 
@@ -128,10 +103,10 @@ docker compose logs -f backend
 tại thư mục gốc:
 ```bash
 cd src/frontend
-npm i
-npm rundev
+npm ci
+npm run dev
 ```
-Mở [http://localhost:3000]
+Mở [http://localhost:3000](http://localhost:3000).
 ### Chạy FE bằng Docker Compose
 
 ```bash
@@ -140,13 +115,72 @@ docker compose up --build frontend
 
 Compose sẽ chạy thêm backend và database vì frontend cần các dịch vụ đó để kiểm tra trạng thái. Mở [http://localhost:3001](http://localhost:3001).
 
-## Chỉ chạy database
 
-```bash
-docker compose up -d db
+## CI và môi trường kiểm thử (T05)
+
+[GitHub Actions CI](.github/workflows/ci.yml) chạy khi mở/cập nhật PR, push vào
+`main`/`develop`, hoặc chạy thủ công qua `workflow_dispatch` khi workflow có trên nhánh mặc định.
+
+| Job | Kiểm tra |
+| --- | --- |
+| Frontend lint and build | Node 22, `npm ci`, ESLint, Next.js production build và kiểm tra TypeScript trong build |
+| Backend tests and API smoke | Java 21, kiểm tra OpenAPI/Postman/CSRF, build WAR, JUnit với PostgreSQL test, smoke HTTP BE/Swagger |
+
+Pipeline không cần secret của dự án hoặc VNPay. Database test là `mini_ong_vang_test`,
+chạy trên tmpfs, cổng `15433`; backend test dùng cổng `18081`. Nó không dùng `.env`
+để cấu hình DB và không mount volume dữ liệu phát triển. Credential trong file CI chỉ dùng cho DB test tạm thời.
+Không ghép hai file Compose bằng nhiều cờ `-f`.
+
+Để chạy tương đương job BE trên máy, cần Java 21, Maven 3.9, Node 22 và Docker Compose v2 có `--wait`.
+Từ gốc repo, PowerShell:
+
+```powershell
+npm.cmd ci --ignore-scripts --prefix tools/api
+npm.cmd run check --prefix tools/api
+docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120
+
+$env:TEST_DB_URL = 'jdbc:postgresql://127.0.0.1:15433/mini_ong_vang_test'
+$env:TEST_DB_USER = 'mini_ong_vang_test'
+$env:TEST_DB_PASSWORD = 'ci-only-password'
+$env:REQUIRE_TEST_DB = 'true'
+$env:API_BASE_URL = 'http://127.0.0.1:18081'
+$env:API_EXPECTED_DATABASE = 'mini_ong_vang_test'
+mvn.cmd --batch-mode --no-transfer-progress -f src/backend/pom.xml verify
+npm.cmd run smoke --prefix tools/api
 ```
 
-PostgreSQL có thể được truy cập từ máy host tại `localhost:5433`. Backend trong Docker kết nối tới tên dịch vụ `db` ở cổng `5432`; không đổi URL này thành `localhost` trong cấu hình backend.
+Mỗi lệnh phải thành công trước khi tiếp tục. Chạy xong, kể cả khi test lỗi:
+
+```powershell
+docker compose -f docker-compose.ci.yml down --volumes --remove-orphans
+Remove-Item Env:TEST_DB_URL, Env:TEST_DB_USER, Env:TEST_DB_PASSWORD, Env:REQUIRE_TEST_DB, Env:API_BASE_URL, Env:API_EXPECTED_DATABASE -ErrorAction SilentlyContinue
+```
+
+Lệnh dọn trên chỉ dành cho **Compose test**. Dữ liệu test là tạm thời và mất khi container DB dừng.
+Nếu chạy nhiều bản test đồng thời trên cùng máy, cần dùng project name và host ports khác nhau.
+
+FE: chạy `npm ci`, `npm run lint`, `npm run build` trong `src/frontend`.
+Build hiện tải font Google bằng `next/font`; cần mạng khi cài dependency/build.
+FE hiện chưa có bộ test UI, không ghi lint/build là test chức năng đã PASS.
+
+Test Java hiện kiểm tra kết nối đúng DB test và commit/rollback khi có lỗi unique constraint,
+chỉ tạo bảng tạm trong connection. Chạy Maven không có `TEST_DB_URL` thì integration test skip;
+CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. Các test này kiểm tra nền PostgreSQL,
+không thay test Hibernate/nghiệp vụ sẽ bổ sung ở T03/T06–T18.
+
+Trên GitHub, xem tab **Actions → CI** hoặc checks của PR. Job BE lưu Surefire reports và
+container logs vào artifact `backend-test-results` trong 7 ngày, kể cả test thất bại;
+luôn dọn stack test sau chạy. File workflow ở local chưa phải bằng chứng GitHub run thành công:
+cần push/mở PR để có run thực tế.
+
+Khi nhóm muốn chặn merge nếu CI lỗi, quản trị repo cấu hình branch rules cho `main`/`develop`
+và yêu cầu hai check tên trong bảng trên. Workflow không tự thay đổi branch protection.
+Khi có nghiệp vụ mới, thêm JUnit vào `src/backend/src/test/java`; bổ sung test FE khi có UI nghiệp vụ.
+VNPay unit/integration mặc định dùng adapter giả lập; test sandbox thật chạy riêng theo T15/T18,
+không thêm credential sandbox hay callback thật vào pipeline PR.
+
+Tham khảo: [GitHub Actions workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax),
+[Docker Compose up/wait](https://docs.docker.com/reference/cli/docker/compose/up/).
 
 ## Sơ lược cấu trúc thư mục
 

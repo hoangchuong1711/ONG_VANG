@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type HealthResult = {
@@ -40,9 +41,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    void checkHealth();
+    const initialCheck = window.setTimeout(() => void checkHealth(), 0);
     const interval = window.setInterval(() => void checkHealth(), 10000);
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialCheck);
+      window.clearInterval(interval);
+    };
   }, [checkHealth]);
 
   const overallOnline = backendState === "online" && databaseState === "online";
@@ -51,10 +55,10 @@ export default function Home() {
     <main className="status-page">
       <div className="status-shell">
         <header className="topbar">
-          <a className="brand" href="/" aria-label="Mini Ong Vang home">
+          <Link className="brand" href="/" aria-label="Mini Ong Vang home">
             <span className="brand-mark">M</span>
             <span>Mini Ong Vang</span>
-          </a>
+          </Link>
           <span className="environment"><span className="environment-dot" /> LOCAL DOCKER</span>
         </header>
 
