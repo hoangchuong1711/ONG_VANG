@@ -13,7 +13,7 @@ Tạo branch riêng cho task
   ↓
 Code + Test + Docs
   ↓
-Push + tạo Pull Request vào develop
+Push(lên nhánh riêng của mình) + tạo Pull Request vào develop
   ↓
 In Review
   ↓

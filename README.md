@@ -119,7 +119,7 @@ docker compose up --build frontend
 ```
 
 Compose sẽ chạy thêm backend và database vì frontend cần các dịch vụ đó để kiểm tra trạng thái. Mở [http://localhost:3001](http://localhost:3001).
-
+aloo
 
 ## CI và môi trường kiểm thử (T05)
 
