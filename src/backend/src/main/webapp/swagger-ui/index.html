@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mini Ong Vàng — API T04</title>
+  <link rel="stylesheet" href="./vendor/swagger-ui.css">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="contract-notice">
+    <h1>Mini Ong Vàng · Hợp đồng API T04</h1>
+    <p>Hiện chỉ <strong>GET /api/health</strong> có implementation. Các API nghiệp vụ còn chờ T06–T18; ví dụ không phải dữ liệu seed thật.</p>
+    <p>Sau khi có T06: gọi <strong>getCsrf → login → getCsrf → getCurrentUser</strong>. Cookie do trình duyệt quản lý; CSRF được giữ trong bộ nhớ trang.</p>
+    <p><a href="../openapi.json">Tải OpenAPI 3.1 (JSON)</a> · <span id="csrf-status" role="status">Chưa có CSRF token.</span></p>
+  </header>
+  <main id="swagger-ui"></main>
+  <script src="./vendor/swagger-ui-bundle.js"></script>
+  <script src="./swagger-config.js"></script>
+</body>
+</html>

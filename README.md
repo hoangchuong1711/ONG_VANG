@@ -1,5 +1,15 @@
 # Mini Ong Vang
 
+## Tài liệu và kiểm thử API (T04)
+
+Chạy `docker compose up --build backend`, sau đó mở [Swagger UI](http://localhost:8081/swagger-ui/)
+hoặc [OpenAPI JSON](http://localhost:8081/openapi.json). Swagger UI được đóng gói cùng BE, không cần chạy FE.
+Hiện chỉ `/api/health` có implementation; các API nghiệp vụ là hợp đồng cho T06–T18.
+
+Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ SQL v0 và phần cần bổ sung](docs/api/schema-mapping.md)
+và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
+SQL v0 là tài liệu tham chiếu MySQL, không được tự động chạy vào PostgreSQL.
+
 Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống được định hướng xây theo ba phần: giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu PostgreSQL. Hiện tại repo đã có khung Docker cho FE/BE/DB và một trang trạng thái để kiểm tra kết nối; các chức năng giao hàng sẽ được phát triển tiếp theo kế hoạch của nhóm.
 
 ## Công nghệ và phiên bản
@@ -172,4 +182,3 @@ Controller → Service → Repository → Hibernate/JPA → PostgreSQL
 ```
 
 Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, Repository làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi Repository trực tiếp. Các package nghiệp vụ hiện mới là khung; endpoint `/api/health` là công cụ kiểm tra hạ tầng, chưa đại diện cho chức năng giao hàng hoàn chỉnh.
-

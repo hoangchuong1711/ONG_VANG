@@ -1,0 +1,18 @@
+{
+  "name": "mini-ong-vang-api-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "node copy-swagger.mjs",
+    "generate": "node generate-postman.mjs",
+    "smoke": "node smoke.mjs",
+    "check": "node validate.mjs && node generate-postman.mjs --check && node --test swagger-config.test.mjs"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "12.1.0",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "swagger-ui-dist": "5.33.1"
+  }
+}

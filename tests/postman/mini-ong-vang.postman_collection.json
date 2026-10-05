@@ -1,0 +1,2640 @@
+{
+  "info": {
+    "name": "Mini Ong Vang — T04",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Generated from openapi.json. Smoke runs now; planned requests are skipped unless runPlanned=true. Read tests/postman/README.md. Do not run all folders as one business scenario; switch roles and fixtures explicitly."
+  },
+  "item": [
+    {
+      "name": "01 - Implemented smoke",
+      "item": [
+        {
+          "name": "getOpenApi",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/openapi.json"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('OpenAPI served', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().openapi).to.eql('3.1.0'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getSwaggerUi",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/swagger-ui/"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Swagger HTML served', () => { pm.response.to.have.status(200); pm.expect(pm.response.text()).to.include('swagger-ui-bundle.js'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getHealth",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ],
+              "query": []
+            },
+            "description": "Kiểm tra BE và DB\n\nKiểm tra BE và DB\n\nStatus: implemented; UC: infrastructure; roles: PUBLIC"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has status', () => pm.expect(body).to.have.property('status'));",
+                  "  pm.test('Response has service', () => pm.expect(body).to.have.property('service'));",
+                  "  pm.test('Response has database', () => pm.expect(body).to.have.property('database'));",
+                  "  pm.test('Database is connected', () => pm.expect(body.database).to.eql('connected'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - Contract reference (planned)",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "getCsrf",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/csrf",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "csrf"
+                  ],
+                  "query": []
+                },
+                "description": "Lấy CSRF token\n\nTạo anonymous session nếu chưa có; không cache. Sau login lấy lại token vì session/token được xoay.\n\nStatus: planned; UC: UC-01; roles: PUBLIC"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has csrfToken', () => pm.expect(body).to.have.property('csrfToken'));",
+                      "  pm.test('Response has headerName', () => pm.expect(body).to.have.property('headerName'));",
+                      "  pm.environment.set('csrfToken', body.csrfToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ],
+                  "query": []
+                },
+                "description": "Đăng nhập\n\nKhách/tài xế dùng SĐT làm username; nhân viên dùng username. Đổi session ID, xoay CSRF token; gọi lại getCsrf. Credential sai trả chung INVALID_CREDENTIALS.\n\nStatus: planned; UC: UC-01; roles: PUBLIC",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maNguoiDung', () => pm.expect(body).to.have.property('maNguoiDung'));",
+                      "  pm.test('Response has hoTen', () => pm.expect(body).to.have.property('hoTen'));",
+                      "  pm.test('Response has vaiTro', () => pm.expect(body).to.have.property('vaiTro'));",
+                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                      "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                      "}",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) pm.environment.unset('csrfToken');"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "getCurrentUser",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "me"
+                  ],
+                  "query": []
+                },
+                "description": "Thông tin phiên hiện tại\n\nThông tin phiên hiện tại\n\nStatus: planned; UC: UC-01; roles: ALL"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maNguoiDung', () => pm.expect(body).to.have.property('maNguoiDung'));",
+                      "  pm.test('Response has hoTen', () => pm.expect(body).to.have.property('hoTen'));",
+                      "  pm.test('Response has vaiTro', () => pm.expect(body).to.have.property('vaiTro'));",
+                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                      "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "logout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/logout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "logout"
+                  ],
+                  "query": []
+                },
+                "description": "Đăng xuất\n\nVô hiệu session, xóa cookie và CSRF. Session đã hết trả 401.\n\nStatus: planned; UC: UC-01; roles: ALL"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 204', () => pm.response.to.have.status(204));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) pm.environment.unset('csrfToken');"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Customers",
+          "item": [
+            {
+              "name": "listCustomers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/customers?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "customers"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": false,
+                      "description": "Trang bắt đầu từ 0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": false,
+                      "description": "Số bản ghi mỗi trang"
+                    },
+                    {
+                      "key": "q",
+                      "value": "",
+                      "disabled": true,
+                      "description": "Tên hoặc số điện thoại; truy vấn có tham số; sort hoTen,maKh"
+                    }
+                  ]
+                },
+                "description": "Tìm khách để tổng đài tạo đơn\n\nChỉ tìm khách có sẵn; không có đăng ký hoặc CRUD khách ngoài phạm vi.\n\nStatus: planned; UC: UC-02; roles: TONG_DAI"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                      "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
+                      "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
+                      "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
+                      "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
+                      "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Routes",
+          "item": [
+            {
+              "name": "estimateRoute",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/routes/estimate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "routes",
+                    "estimate"
+                  ],
+                  "query": []
+                },
+                "description": "Chuẩn hóa địa chỉ và ước tính lộ trình\n\nBộ tuyến giả lập cố định T07; địa chỉ ví dụ phải thay bằng fixture T03/T07. Không đổi sang dữ liệu giả khi provider thật lỗi.\n\nStatus: planned; UC: UC-04; roles: KHACH_HANG, TONG_DAI",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                      "  pm.test('Response has thoiGianDuKienGiay', () => pm.expect(body).to.have.property('thoiGianDuKienGiay'));",
+                      "  pm.test('Response has trongPhamVi', () => pm.expect(body).to.have.property('trongPhamVi'));",
+                      "  pm.test('Response has nguon', () => pm.expect(body).to.have.property('nguon'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Quotes",
+          "item": [
+            {
+              "name": "createQuote",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/quotes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "quotes"
+                  ],
+                  "query": []
+                },
+                "description": "Báo giá và giảm VIP\n\nKhách lấy maKh từ session, không được báo giá cho người khác; tổng đài bắt buộc maKh. VIP hết hạn/không hợp lệ: giảm 0. Tổng=max(0,gốc+phụ thu-giảm), HALF_UP nguyên VND. Báo giá có hạn 300 giây; BE kiểm tra lại khi tạo đơn.\n\nStatus: planned; UC: UC-03, UC-04, UC-05; roles: KHACH_HANG, TONG_DAI",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\",\n  \"kienHang\": [\n    {\n      \"loaiHangHoa\": \"Hoa\",\n      \"ghiChuBaoQuan\": \"Tránh đè nén\",\n      \"khoiLuongKg\": \"1.00\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maBaoGia', () => pm.expect(body).to.have.property('maBaoGia'));",
+                      "  pm.test('Response has hetHanLuc', () => pm.expect(body).to.have.property('hetHanLuc'));",
+                      "  pm.test('Response has loTrinh', () => pm.expect(body).to.have.property('loTrinh'));",
+                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                      "  pm.test('Response has hangThanhVien', () => pm.expect(body).to.have.property('hangThanhVien'));",
+                      "  pm.environment.set('quoteId', body.maBaoGia);",
+                      "  pm.environment.set('amount', body.cuoc.tongCuoc);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Orders",
+          "item": [
+            {
+              "name": "createOrder",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{orderIdempotencyKey}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders"
+                  ],
+                  "query": []
+                },
+                "description": "Tạo đơn với cước snapshot\n\nTổng đài bắt buộc maKh; khách chỉ được dùng chính maKh của session. Lưu người tạo, kiện hàng, snapshot và nhật ký cùng transaction. Báo giá phải khớp đầu vào và chưa hết hạn; giá đổi trả 409 để xác nhận lại.\n\nStatus: planned; UC: UC-02; roles: KHACH_HANG, TONG_DAI",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\",\n  \"kienHang\": [\n    {\n      \"loaiHangHoa\": \"Hoa\",\n      \"ghiChuBaoQuan\": \"Tránh đè nén\",\n      \"khoiLuongKg\": \"1.00\"\n    }\n  ],\n  \"maBaoGia\": \"{{quoteId}}\",\n  \"sdtNguoiNhan\": \"{{recipientPhone}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}",
+                      "if (!pm.environment.get('orderIdempotencyKey')) pm.environment.set('orderIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 201', () => pm.response.to.have.status(201));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
+                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                      "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
+                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                      "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                      "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                      "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
+                      "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
+                      "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
+                      "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                      "  pm.environment.set('orderId', body.maDon);",
+                      "  pm.test('New order waits for assignment', () => pm.expect(body.trangThai).to.eql('CHO_GAN'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "listOrders",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": false,
+                      "description": "Trang bắt đầu từ 0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": false,
+                      "description": "Số bản ghi mỗi trang"
+                    },
+                    {
+                      "key": "tuNgay",
+                      "value": "{{fromDate}}",
+                      "disabled": true,
+                      "description": "Ngày đầu bao gồm, Asia/Ho_Chi_Minh"
+                    },
+                    {
+                      "key": "denNgay",
+                      "value": "{{toDate}}",
+                      "disabled": true,
+                      "description": "Ngày cuối không bao gồm; phải lớn hơn tuNgay"
+                    },
+                    {
+                      "key": "trangThai",
+                      "value": "",
+                      "disabled": true,
+                      "description": "Lọc trạng thái"
+                    }
+                  ]
+                },
+                "description": "Danh sách và lịch sử đơn theo quyền\n\nKhách chỉ đơn của mình; tổng đài xem đơn điều phối; tài xế xem đơn được giao và đơn đã thực hiện được phép xem (cần lịch sử gán). Sort thoiGianTao DESC,maDon ASC. summary tính toàn bộ tập lọc, kể cả đơn hủy; đây là tổng cước snapshot, không phải doanh thu.\n\nStatus: planned; UC: UC-12, UC-19; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                      "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
+                      "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
+                      "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
+                      "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
+                      "  pm.test('Response has summary', () => pm.expect(body).to.have.property('summary'));",
+                      "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "getOrder",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}"
+                  ],
+                  "query": []
+                },
+                "description": "Chi tiết đơn và trạng thái thanh toán\n\nKhách sở hữu, tổng đài hoặc tài xế có liên quan được phép. Sai chủ đơn trả 404 để tránh lộ tài nguyên.\n\nStatus: planned; UC: UC-19, UC-13, UC-08; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
+                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                      "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
+                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                      "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                      "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                      "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
+                      "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
+                      "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
+                      "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "listOrderEvents",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/events?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "events"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": false,
+                      "description": "Trang bắt đầu từ 0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": false,
+                      "description": "Số bản ghi mỗi trang"
+                    }
+                  ]
+                },
+                "description": "Nhật ký đơn\n\nCùng quyền getOrder. Sort thoiGianGhiNhan ASC,maNhatKy ASC.\n\nStatus: planned; UC: UC-13, UC-19; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                      "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
+                      "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
+                      "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
+                      "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
+                      "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "cancelOrder",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "cancel"
+                  ],
+                  "query": []
+                },
+                "description": "Hủy đơn trước 5 phút\n\nKhách sở hữu hoặc tổng đài; tuổi đơn từ giờ server <300 giây, chỉ CHO_GAN/DA_GAN. Đúng 300 giây từ chối. Cập nhật đơn, giải phóng tài xế, nhật ký trong transaction.\n\nStatus: planned; UC: UC-14; roles: KHACH_HANG, TONG_DAI",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lyDo\": \"Khách thay đổi kế hoạch\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
+                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                      "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
+                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                      "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                      "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                      "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
+                      "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
+                      "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
+                      "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                      "  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('DA_HUY'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Dispatch",
+          "item": [
+            {
+              "name": "listDrivers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/drivers?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "drivers"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": false,
+                      "description": "Trang bắt đầu từ 0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": false,
+                      "description": "Số bản ghi mỗi trang"
+                    },
+                    {
+                      "key": "trangThaiHoatDong",
+                      "value": "ONLINE",
+                      "disabled": true,
+                      "description": "Trạng thái làm việc"
+                    },
+                    {
+                      "key": "dangBanChuyen",
+                      "value": "",
+                      "disabled": true,
+                      "description": "Lọc tài xế bận/rảnh"
+                    }
+                  ]
+                },
+                "description": "Danh sách tài xế\n\nKhông trả CCCD. Sort hoTen,maTx; danh sách rỗng trả 200.\n\nStatus: planned; UC: UC-12; roles: TONG_DAI"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                      "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
+                      "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
+                      "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
+                      "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
+                      "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "suggestDrivers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/driver-suggestions?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "driver-suggestions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": false,
+                      "description": "Trang bắt đầu từ 0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": false,
+                      "description": "Số bản ghi mỗi trang"
+                    }
+                  ]
+                },
+                "description": "Gợi ý tài xế rảnh\n\nChỉ đơn CHO_GAN. ONLINE, không bận, tài khoản không khóa; rảnh lâu nhất rồi maTx. Loại tài xế vừa từ chối đơn. Không có tài xế: items=[]; không phải lỗi.\n\nStatus: planned; UC: UC-12; roles: TONG_DAI"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                      "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
+                      "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
+                      "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
+                      "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
+                      "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "assignDriver",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/assignments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "assignments"
+                  ],
+                  "query": []
+                },
+                "description": "Gán tài xế\n\nChỉ CHO_GAN; khóa/cập nhật có điều kiện để một tài xế chỉ có một đơn hoạt động. Cạnh tranh gán/hủy trả 409.\n\nStatus: planned; UC: UC-12; roles: TONG_DAI",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"maTx\": \"{{driverId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
+                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                      "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
+                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                      "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                      "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                      "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
+                      "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
+                      "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
+                      "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                      "  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('DA_GAN'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Driver",
+          "item": [
+            {
+              "name": "rejectOrder",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "reject"
+                  ],
+                  "query": []
+                },
+                "description": "Tài xế từ chối trước lấy hàng\n\nChỉ tài xế đang được gán, trạng thái DA_GAN. Về CHO_GAN, giải phóng tài xế, lưu lịch sử và lý do.\n\nStatus: planned; UC: UC-12; roles: TAI_XE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lyDo\": \"Khách thay đổi kế hoạch\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
+                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                      "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
+                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                      "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                      "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                      "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
+                      "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
+                      "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
+                      "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                      "  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('CHO_GAN'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "transitionOrder",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/transitions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "transitions"
+                  ],
+                  "query": []
+                },
+                "description": "Cập nhật tiến trình\n\nChỉ tài xế được gán: DA_GAN → DA_LAY_HANG → DANG_GIAO → HOAN_TAT. Không nhảy bước; lặp cùng đích đã đạt trả hiện trạng, không ghi nhật ký lần hai. Hoàn tất giải phóng tài xế, không tự tất toán.\n\nStatus: planned; UC: UC-13; roles: TAI_XE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"trangThai\": \"DA_LAY_HANG\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
+                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                      "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
+                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                      "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                      "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                      "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
+                      "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
+                      "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
+                      "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                      "  pm.test('Requested state reached', () => pm.expect(body.trangThai).to.eql(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).trangThai));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "recordIncident",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/incidents",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "incidents"
+                  ],
+                  "query": []
+                },
+                "description": "Ghi sự cố giao hàng\n\nChỉ tài xế đang phụ trách ở DANG_GIAO. Giữ nguyên trạng thái và tài xế bận; ghi thời điểm server.\n\nStatus: planned; UC: UC-13; roles: TAI_XE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"loaiSuCo\": \"KHONG_LIEN_LAC_DUOC\",\n  \"lyDo\": \"Đã gọi nhưng người nhận chưa trả lời\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 201', () => pm.response.to.have.status(201));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maNhatKy', () => pm.expect(body).to.have.property('maNhatKy'));",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has tenTrangThai', () => pm.expect(body).to.have.property('tenTrangThai'));",
+                      "  pm.test('Response has thoiGianGhiNhan', () => pm.expect(body).to.have.property('thoiGianGhiNhan'));",
+                      "  pm.test('Response has nguoiThucHien', () => pm.expect(body).to.have.property('nguoiThucHien'));",
+                      "  pm.test('Response has ghiChuSuCo', () => pm.expect(body).to.have.property('ghiChuSuCo'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Payments",
+          "item": [
+            {
+              "name": "createPayment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{paymentIdempotencyKey}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "payments"
+                  ],
+                  "query": []
+                },
+                "description": "Tạo yêu cầu thanh toán\n\nChỉ chủ đơn HOAN_TAT. BE lấy số tiền từ snapshot; VNPAY_QR là tên legacy cho luồng redirect VNPay Sandbox, không hứa QR riêng. TIEN_MAT tạo yêu cầu chờ xác nhận. Miễn cước không tạo giao dịch: trả 422 PAYMENT_NOT_REQUIRED, đọc order.thanhToan=MIEN_CUOC. Chỉ một online attempt còn hiệu lực.\n\nStatus: planned; UC: UC-08, UC-10; roles: KHACH_HANG",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phuongThuc\": \"VNPAY_QR\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}",
+                      "if (!pm.environment.get('paymentIdempotencyKey')) pm.environment.set('paymentIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 201', () => pm.response.to.have.status(201));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maGiaoDich', () => pm.expect(body).to.have.property('maGiaoDich'));",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has soTien', () => pm.expect(body).to.have.property('soTien'));",
+                      "  pm.test('Response has phuongThuc', () => pm.expect(body).to.have.property('phuongThuc'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maGiaoDichDoiTac', () => pm.expect(body).to.have.property('maGiaoDichDoiTac'));",
+                      "  pm.test('Response has taoLuc', () => pm.expect(body).to.have.property('taoLuc'));",
+                      "  pm.test('Response has thoiGianThanhToan', () => pm.expect(body).to.have.property('thoiGianThanhToan'));",
+                      "  pm.test('Response has paymentUrl', () => pm.expect(body).to.have.property('paymentUrl'));",
+                      "  pm.environment.set('paymentId', body.maGiaoDich);",
+                      "  if (body.paymentUrl) pm.environment.set('paymentUrl', body.paymentUrl);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "listPayments",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/payments?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "payments"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": false,
+                      "description": "Trang bắt đầu từ 0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": false,
+                      "description": "Số bản ghi mỗi trang"
+                    }
+                  ]
+                },
+                "description": "Lịch sử các lần thanh toán\n\nCùng quyền chi tiết đơn; sort taoLuc DESC,maGiaoDich ASC. Cần bỏ UNIQUE ma_don của SQL v0 trước hiện thực.\n\nStatus: planned; UC: UC-08, UC-10; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                      "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
+                      "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
+                      "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
+                      "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
+                      "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "getPayment",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments/{{paymentId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    "{{paymentId}}"
+                  ],
+                  "query": []
+                },
+                "description": "Đọc kết quả thanh toán\n\nKiểm tra quyền trên đơn tương ứng; timeout còn CHO_XU_LY, không tự coi thất bại. Poll tối thiểu 5 giây, dừng khi rời màn hình.\n\nStatus: planned; UC: UC-08, UC-10; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maGiaoDich', () => pm.expect(body).to.have.property('maGiaoDich'));",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has soTien', () => pm.expect(body).to.have.property('soTien'));",
+                      "  pm.test('Response has phuongThuc', () => pm.expect(body).to.have.property('phuongThuc'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maGiaoDichDoiTac', () => pm.expect(body).to.have.property('maGiaoDichDoiTac'));",
+                      "  pm.test('Response has taoLuc', () => pm.expect(body).to.have.property('taoLuc'));",
+                      "  pm.test('Response has thoiGianThanhToan', () => pm.expect(body).to.have.property('thoiGianThanhToan'));",
+                      "  pm.test('Response has paymentUrl', () => pm.expect(body).to.have.property('paymentUrl'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "confirmCash",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments/{{paymentId}}/confirm-cash",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    "{{paymentId}}",
+                    "confirm-cash"
+                  ],
+                  "query": []
+                },
+                "description": "Xác nhận đã thu tiền mặt\n\nChỉ TIEN_MAT, đơn HOAN_TAT; tài xế đã thực hiện đơn hoặc tổng đài. Chặn khách tự xác nhận. Số tiền đúng snapshot. Lặp giao dịch đã xác nhận với cùng số tiền trả kết quả cũ; không thu/ghi lần hai.\n\nStatus: planned; UC: UC-08; roles: TAI_XE, TONG_DAI",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"soTienDaThu\": \"{{amount}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maGiaoDich', () => pm.expect(body).to.have.property('maGiaoDich'));",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has soTien', () => pm.expect(body).to.have.property('soTien'));",
+                      "  pm.test('Response has phuongThuc', () => pm.expect(body).to.have.property('phuongThuc'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maGiaoDichDoiTac', () => pm.expect(body).to.have.property('maGiaoDichDoiTac'));",
+                      "  pm.test('Response has taoLuc', () => pm.expect(body).to.have.property('taoLuc'));",
+                      "  pm.test('Response has thoiGianThanhToan', () => pm.expect(body).to.have.property('thoiGianThanhToan'));",
+                      "  pm.test('Response has paymentUrl', () => pm.expect(body).to.have.property('paymentUrl'));",
+                      "  pm.test('Cash recorded once', () => { pm.expect(body.phuongThuc).to.eql('TIEN_MAT'); pm.expect(body.trangThai).to.eql('THANH_CONG'); pm.expect(body.thoiGianThanhToan).to.be.a('string'); });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "reconcilePayment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments/{{paymentId}}/reconcile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    "{{paymentId}}",
+                    "reconcile"
+                  ],
+                  "query": []
+                },
+                "description": "Kiểm tra lại kết quả VNPay\n\nChủ đơn hoặc tổng đài. BE gọi đối soát; không nhận trạng thái thành công từ client. Trước retry/chuyển tiền mặt phải giải quyết attempt chưa xác định.\n\nStatus: planned; UC: UC-10; roles: KHACH_HANG, TONG_DAI"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maGiaoDich', () => pm.expect(body).to.have.property('maGiaoDich'));",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has soTien', () => pm.expect(body).to.have.property('soTien'));",
+                      "  pm.test('Response has phuongThuc', () => pm.expect(body).to.have.property('phuongThuc'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maGiaoDichDoiTac', () => pm.expect(body).to.have.property('maGiaoDichDoiTac'));",
+                      "  pm.test('Response has taoLuc', () => pm.expect(body).to.have.property('taoLuc'));",
+                      "  pm.test('Response has thoiGianThanhToan', () => pm.expect(body).to.have.property('thoiGianThanhToan'));",
+                      "  pm.test('Response has paymentUrl', () => pm.expect(body).to.have.property('paymentUrl'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "VNPay",
+          "item": [
+            {
+              "name": "vnpayIpn",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments/vnpay/ipn?vnp_TmnCode={{vnp_TmnCode}}&vnp_Amount={{vnp_Amount}}&vnp_OrderInfo={{vnp_OrderInfo}}&vnp_TransactionNo={{vnp_TransactionNo}}&vnp_ResponseCode={{vnp_ResponseCode}}&vnp_TransactionStatus={{vnp_TransactionStatus}}&vnp_TxnRef={{vnp_TxnRef}}&vnp_SecureHash={{vnp_SecureHash}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    "vnpay",
+                    "ipn"
+                  ],
+                  "query": [
+                    {
+                      "key": "vnp_TmnCode",
+                      "value": "{{vnp_TmnCode}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_Amount",
+                      "value": "{{vnp_Amount}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_BankCode",
+                      "value": "{{vnp_BankCode}}",
+                      "disabled": true,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_BankTranNo",
+                      "value": "{{vnp_BankTranNo}}",
+                      "disabled": true,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_CardType",
+                      "value": "{{vnp_CardType}}",
+                      "disabled": true,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_PayDate",
+                      "value": "{{vnp_PayDate}}",
+                      "disabled": true,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_OrderInfo",
+                      "value": "{{vnp_OrderInfo}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_TransactionNo",
+                      "value": "{{vnp_TransactionNo}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_ResponseCode",
+                      "value": "{{vnp_ResponseCode}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_TransactionStatus",
+                      "value": "{{vnp_TransactionStatus}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_TxnRef",
+                      "value": "{{vnp_TxnRef}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_SecureHash",
+                      "value": "{{vnp_SecureHash}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    }
+                  ]
+                },
+                "description": "VNPay gọi IPN\n\nServer-to-server GET query theo VNPay 2.1.0. Không session/CSRF; xác minh chữ ký, merchant, reference, amount×100, trạng thái. ACK 00 thành công, 01 không tìm thấy, 02 đã xác nhận, 04 sai tiền, 97 sai chữ ký, 99 lỗi khác. Callback lặp/đến muộn không ghi nhận hai lần hay hạ thành công. HTTP 200 kèm ACK cho kết quả xử lý giao thức.\n\nStatus: planned; UC: UC-10; roles: VNPAY"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has RspCode', () => pm.expect(body).to.have.property('RspCode'));",
+                      "  pm.test('Response has Message', () => pm.expect(body).to.have.property('Message'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "vnpayReturn",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "text/html"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments/vnpay/return?vnp_TmnCode={{vnp_TmnCode}}&vnp_Amount={{vnp_Amount}}&vnp_OrderInfo={{vnp_OrderInfo}}&vnp_TransactionNo={{vnp_TransactionNo}}&vnp_ResponseCode={{vnp_ResponseCode}}&vnp_TransactionStatus={{vnp_TransactionStatus}}&vnp_TxnRef={{vnp_TxnRef}}&vnp_SecureHash={{vnp_SecureHash}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    "vnpay",
+                    "return"
+                  ],
+                  "query": [
+                    {
+                      "key": "vnp_TmnCode",
+                      "value": "{{vnp_TmnCode}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_Amount",
+                      "value": "{{vnp_Amount}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_BankCode",
+                      "value": "{{vnp_BankCode}}",
+                      "disabled": true,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_BankTranNo",
+                      "value": "{{vnp_BankTranNo}}",
+                      "disabled": true,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_CardType",
+                      "value": "{{vnp_CardType}}",
+                      "disabled": true,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_PayDate",
+                      "value": "{{vnp_PayDate}}",
+                      "disabled": true,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_OrderInfo",
+                      "value": "{{vnp_OrderInfo}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_TransactionNo",
+                      "value": "{{vnp_TransactionNo}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_ResponseCode",
+                      "value": "{{vnp_ResponseCode}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_TransactionStatus",
+                      "value": "{{vnp_TransactionStatus}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_TxnRef",
+                      "value": "{{vnp_TxnRef}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    },
+                    {
+                      "key": "vnp_SecureHash",
+                      "value": "{{vnp_SecureHash}}",
+                      "disabled": false,
+                      "description": "Giá trị nguyên bản từ VNPay; không sửa query trước xác minh chữ ký."
+                    }
+                  ]
+                },
+                "description": "Trang quay về từ VNPay\n\nTrả trang HTML tối giản cho test BE trước FE: hiển thị đã nhận kết quả/chờ xác minh, không thay đổi trạng thái thu tiền từ query. Không lộ chi tiết riêng tư khi chưa đăng nhập. Không đòi cookie/CSRF khi cổng redirect.\n\nStatus: planned; UC: UC-10; roles: PUBLIC"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Reports",
+          "item": [
+            {
+              "name": "getRevenueReport",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/reports/revenue?tuNgay={{fromDate}}&denNgay={{toDate}}&nhomTheo=NGAY",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "reports",
+                    "revenue"
+                  ],
+                  "query": [
+                    {
+                      "key": "tuNgay",
+                      "value": "{{fromDate}}",
+                      "disabled": false,
+                      "description": "Ngày đầu bao gồm, Asia/Ho_Chi_Minh"
+                    },
+                    {
+                      "key": "denNgay",
+                      "value": "{{toDate}}",
+                      "disabled": false,
+                      "description": "Ngày cuối không bao gồm; phải lớn hơn tuNgay"
+                    },
+                    {
+                      "key": "nhomTheo",
+                      "value": "NGAY",
+                      "disabled": false,
+                      "description": "Tuần bắt đầu thứ Hai"
+                    }
+                  ]
+                },
+                "description": "Báo cáo giá trị hoàn tất và thực thu\n\nKhoảng [tuNgay,denNgay), Asia/Ho_Chi_Minh. Giá trị theo hoanTatLuc, thực thu theo thoiGianThanhToan thành công, còn phải thu tính đến cuối kỳ trên tất cả đơn hoàn tất trước cuối kỳ (gồm trước đầu kỳ). Không cộng giá trị và thực thu. Không có dữ liệu trả các số 0.\n\nStatus: planned; UC: UC-15; roles: CHU_DOI_XE"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has tuNgay', () => pm.expect(body).to.have.property('tuNgay'));",
+                      "  pm.test('Response has denNgay', () => pm.expect(body).to.have.property('denNgay'));",
+                      "  pm.test('Response has muiGio', () => pm.expect(body).to.have.property('muiGio'));",
+                      "  pm.test('Response has nhomTheo', () => pm.expect(body).to.have.property('nhomTheo'));",
+                      "  pm.test('Response has tong', () => pm.expect(body).to.have.property('tong'));",
+                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "exportRevenueReport",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/reports/revenue/export?tuNgay={{fromDate}}&denNgay={{toDate}}&nhomTheo=NGAY",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "reports",
+                    "revenue",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "tuNgay",
+                      "value": "{{fromDate}}",
+                      "disabled": false,
+                      "description": "Ngày đầu bao gồm, Asia/Ho_Chi_Minh"
+                    },
+                    {
+                      "key": "denNgay",
+                      "value": "{{toDate}}",
+                      "disabled": false,
+                      "description": "Ngày cuối không bao gồm; phải lớn hơn tuNgay"
+                    },
+                    {
+                      "key": "nhomTheo",
+                      "value": "NGAY",
+                      "disabled": false,
+                      "description": "Tuần bắt đầu thứ Hai"
+                    }
+                  ]
+                },
+                "description": "Xuất báo cáo Excel\n\nCùng quyền, bộ lọc và phép tính báo cáo JSON. Lỗi xuất không làm thay đổi báo cáo.\n\nStatus: planned; UC: UC-15; roles: CHU_DOI_XE"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Negative fixtures (planned)",
+      "item": [
+        {
+          "name": "TC-01-02 - invalid credentials (getCsrf first)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Đăng nhập\n\nKhách/tài xế dùng SĐT làm username; nhân viên dùng username. Đổi session ID, xoay CSRF token; gọi lại getCsrf. Credential sai trả chung INVALID_CREDENTIALS.\n\nStatus: planned; UC: UC-01; roles: PUBLIC",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{username}}\",\"password\":\"intentionally-invalid-password\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runPlanned') !== 'true') {",
+                  "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Expected INVALID_CREDENTIALS', () => pm.expect(pm.response.json().code).to.eql('INVALID_CREDENTIALS'));",
+                  "pm.test('Traceable error', () => { const body = pm.response.json(); pm.expect(body.fieldErrors).to.be.an('array'); pm.expect(body.traceId).to.be.a('string').and.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "TC-01-03 - missing CSRF",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Đăng nhập\n\nKhách/tài xế dùng SĐT làm username; nhân viên dùng username. Đổi session ID, xoay CSRF token; gọi lại getCsrf. Credential sai trả chung INVALID_CREDENTIALS.\n\nStatus: planned; UC: UC-01; roles: PUBLIC",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runPlanned') !== 'true') {",
+                  "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Expected CSRF_INVALID', () => pm.expect(pm.response.json().code).to.eql('CSRF_INVALID'));",
+                  "pm.test('Traceable error', () => { const body = pm.response.json(); pm.expect(body.fieldErrors).to.be.an('array'); pm.expect(body.traceId).to.be.a('string').and.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "TC-19-02 - invalid page (login first)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders?page=-1&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "-1",
+                  "disabled": false,
+                  "description": "Trang bắt đầu từ 0"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": false,
+                  "description": "Số bản ghi mỗi trang"
+                },
+                {
+                  "key": "tuNgay",
+                  "value": "{{fromDate}}",
+                  "disabled": true,
+                  "description": "Ngày đầu bao gồm, Asia/Ho_Chi_Minh"
+                },
+                {
+                  "key": "denNgay",
+                  "value": "{{toDate}}",
+                  "disabled": true,
+                  "description": "Ngày cuối không bao gồm; phải lớn hơn tuNgay"
+                },
+                {
+                  "key": "trangThai",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Lọc trạng thái"
+                }
+              ]
+            },
+            "description": "Danh sách và lịch sử đơn theo quyền\n\nKhách chỉ đơn của mình; tổng đài xem đơn điều phối; tài xế xem đơn được giao và đơn đã thực hiện được phép xem (cần lịch sử gán). Sort thoiGianTao DESC,maDon ASC. summary tính toàn bộ tập lọc, kể cả đơn hủy; đây là tổng cước snapshot, không phải doanh thu.\n\nStatus: planned; UC: UC-12, UC-19; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runPlanned') !== 'true') {",
+                  "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Expected VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));",
+                  "pm.test('Traceable error', () => { const body = pm.response.json(); pm.expect(body.fieldErrors).to.be.an('array'); pm.expect(body.traceId).to.be.a('string').and.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "TC-19-03 - other customer order (fixture required)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{otherOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{otherOrderId}}"
+              ],
+              "query": []
+            },
+            "description": "Chi tiết đơn và trạng thái thanh toán\n\nKhách sở hữu, tổng đài hoặc tài xế có liên quan được phép. Sai chủ đơn trả 404 để tránh lộ tài nguyên.\n\nStatus: planned; UC: UC-19, UC-13, UC-08; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runPlanned') !== 'true') {",
+                  "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Expected RESOURCE_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('RESOURCE_NOT_FOUND'));",
+                  "pm.test('Traceable error', () => { const body = pm.response.json(); pm.expect(body.fieldErrors).to.be.an('array'); pm.expect(body.traceId).to.be.a('string').and.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "TC-14-02 - age 300 seconds (controlled clock fixture)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{expiredOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{expiredOrderId}}",
+                "cancel"
+              ],
+              "query": []
+            },
+            "description": "Hủy đơn trước 5 phút\n\nKhách sở hữu hoặc tổng đài; tuổi đơn từ giờ server <300 giây, chỉ CHO_GAN/DA_GAN. Đúng 300 giây từ chối. Cập nhật đơn, giải phóng tài xế, nhật ký trong transaction.\n\nStatus: planned; UC: UC-14; roles: KHACH_HANG, TONG_DAI",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lyDo\": \"Khách thay đổi kế hoạch\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runPlanned') !== 'true') {",
+                  "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Expected CANCELLATION_WINDOW_EXPIRED', () => pm.expect(pm.response.json().code).to.eql('CANCELLATION_WINDOW_EXPIRED'));",
+                  "pm.test('Traceable error', () => { const body = pm.response.json(); pm.expect(body.fieldErrors).to.be.an('array'); pm.expect(body.traceId).to.be.a('string').and.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}

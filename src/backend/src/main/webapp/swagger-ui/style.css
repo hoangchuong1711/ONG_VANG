@@ -1,0 +1,5 @@
+body { margin: 0; background: #fafafa; }
+.contract-notice { box-sizing: border-box; max-width: 1460px; margin: 20px auto 0; padding: 20px; border-left: 5px solid #b57a00; background: #fff6d8; color: #302800; font: 15px/1.6 system-ui, sans-serif; }
+.contract-notice h1 { margin: 0 0 10px; font-size: 22px; }
+.contract-notice p { margin: 6px 0; }
+.contract-notice a { color: #174e83; }
