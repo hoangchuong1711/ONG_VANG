@@ -1,6 +1,6 @@
 # Truy vết hợp đồng T04
 
-Tất cả UC nghiệp vụ dưới đây **Not Run / chờ implementation BE**, không phải kết quả test. Địa chỉ, username và ID trong OpenAPI chỉ là ví dụ; T03/T07 cung cấp fixture thật. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
+Các operation nghiệp vụ dưới đây **Not Run / chờ implementation BE ở mức HTTP**, không phải kết quả test endpoint. Riêng T08 đã có service và unit test chính sách, xem [T08 — UC-05](../T08-membership-policy.md); tích hợp `createQuote` còn thuộc T09. Địa chỉ, username và ID trong OpenAPI chỉ là ví dụ; T03/T07 cung cấp fixture thật. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
 
 | UC / task | Operation ID | Nhánh và tiêu chí cần kiểm thử |
 | --- | --- | --- |
