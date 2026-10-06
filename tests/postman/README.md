@@ -13,7 +13,7 @@ Các request chưa có BE mặc định **skip** bằng `pm.execution.skipReques
 
 ## Sau khi từng task BE hoàn thành
 
-Đặt `runPlanned=true` để chạy riêng request/folder đã hiện thực. T04 chưa cung cấp seed; điền username/password, driverId/customerId và bộ địa chỉ fixture từ T03/T07. Sau khi operation đổi sang implemented, generator chuyển nó vào folder implemented; các API nghiệp vụ vẫn cần được gọi theo luồng/role thích hợp, không xem folder đó là một scenario tự động.
+Đặt `runPlanned=true` để chạy riêng request/folder đã hiện thực. T03 cung cấp [manifest seed](../../docs/database/README.md); điền username/password, driverId/customerId theo manifest và địa chỉ fixture T07. Sau khi operation đổi sang implemented, generator chuyển nó vào folder implemented; các API nghiệp vụ vẫn cần được gọi theo luồng/role thích hợp, không xem folder đó là một scenario tự động.
 
 Session được Postman cookie jar giữ qua Set-Cookie. Không đặt Cookie/JSESSIONID thủ công. Đăng nhập mỗi vai trò theo thứ tự:
 

@@ -8,7 +8,8 @@ Hiện chỉ `/api/health` có implementation; các API nghiệp vụ là hợp 
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ SQL v0 và phần cần bổ sung](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
-SQL v0 là tài liệu tham chiếu MySQL, không được tự động chạy vào PostgreSQL.
+SQL v0 là tài liệu tham chiếu có header MySQL, không được chạy trực tiếp vào PostgreSQL.
+T03 đã có migration Flyway, Entity/DAO Hibernate, transaction và seed. Xem [hướng dẫn CSDL/seed/reset](docs/database/README.md) và [kết quả kiểm thử T03](tests/database/T03-validation.md).
 
 Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống được định hướng xây theo ba phần: giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu PostgreSQL. Hiện tại repo đã có khung Docker cho FE/BE/DB và một trang trạng thái để kiểm tra kết nối; các chức năng giao hàng sẽ được phát triển tiếp theo kế hoạch của nhóm.
 
@@ -142,7 +143,7 @@ Từ gốc repo, PowerShell:
 ```powershell
 npm.cmd ci --ignore-scripts --prefix tools/api
 npm.cmd run check --prefix tools/api
-docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120
+docker compose -f docker-compose.ci.yml up --wait --wait-timeout 120 db-test
 
 $env:TEST_DB_URL = 'jdbc:postgresql://127.0.0.1:15433/mini_ong_vang_test'
 $env:TEST_DB_USER = 'mini_ong_vang_test'
@@ -151,6 +152,7 @@ $env:REQUIRE_TEST_DB = 'true'
 $env:API_BASE_URL = 'http://127.0.0.1:18081'
 $env:API_EXPECTED_DATABASE = 'mini_ong_vang_test'
 mvn.cmd --batch-mode --no-transfer-progress -f src/backend/pom.xml verify
+docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
 npm.cmd run smoke --prefix tools/api
 ```
 
@@ -168,10 +170,10 @@ FE: chạy `npm ci`, `npm run lint`, `npm run build` trong `src/frontend`.
 Build hiện tải font Google bằng `next/font`; cần mạng khi cài dependency/build.
 FE hiện chưa có bộ test UI, không ghi lint/build là test chức năng đã PASS.
 
-Test Java hiện kiểm tra kết nối đúng DB test và commit/rollback khi có lỗi unique constraint,
-chỉ tạo bảng tạm trong connection. Chạy Maven không có `TEST_DB_URL` thì integration test skip;
-CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. Các test này kiểm tra nền PostgreSQL,
-không thay test Hibernate/nghiệp vụ sẽ bổ sung ở T03/T06–T18.
+Test Java kiểm tra kết nối, migration, Hibernate mapping, seed, constraint, snapshot,
+commit/rollback và cạnh tranh assignment/version. Bộ T03 reset dữ liệu trên DB test riêng trước từng case;
+chỉ khởi động backend-test sau khi Maven verify xong. Chạy Maven không có `TEST_DB_URL` thì test DB skip;
+CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. Test nghiệp vụ/API T06–T18 tiếp tục bổ sung theo task.
 
 Trên GitHub, xem tab **Actions → CI** hoặc checks của PR. Job BE lưu Surefire reports và
 container logs vào artifact `backend-test-results` trong 7 ngày, kể cả test thất bại;
@@ -203,8 +205,8 @@ Tham khảo: [GitHub Actions workflow syntax](https://docs.github.com/en/actions
 │           │   ├── java/com/miniongvang/
 │           │   │   ├── controller/  # Nhận HTTP request và trả response
 │           │   │   ├── service/     # Quy tắc nghiệp vụ
-│           │   │   ├── repository/  # Đọc và ghi dữ liệu
-│           │   │   ├── domain/      # Entity và mô hình nghiệp vụ
+│           │   │   ├── DAO/         # Đọc và ghi dữ liệu
+│           │   │   ├── entity/      # Entity và mô hình nghiệp vụ
 │           │   │   ├── dto/         # Dữ liệu trao đổi với API
 │           │   │   ├── integration/ # Kết nối dịch vụ bên ngoài
 │           │   │   └── config/      # Cấu hình ứng dụng
@@ -214,10 +216,12 @@ Tham khảo: [GitHub Actions workflow syntax](https://docs.github.com/en/actions
 └── tests/                    # Kiểm thử tích hợp/toàn hệ thống
 ```
 
+Package Entity là `com.miniongvang.entity`; package truy cập dữ liệu là `com.miniongvang.DAO` (giữ đúng chữ hoa theo cấu trúc thư mục). Các lớp truy cập dữ liệu dùng hậu tố `DAO`, ví dụ `DonHangDAO`.
+
 Luồng xử lý nghiệp vụ dự kiến là:
 
 ```text
-Controller → Service → Repository → Hibernate/JPA → PostgreSQL
+Controller → Service → DAO → Hibernate/JPA → PostgreSQL
 ```
 
-Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, Repository làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi Repository trực tiếp. Các package nghiệp vụ hiện mới là khung; endpoint `/api/health` là công cụ kiểm tra hạ tầng, chưa đại diện cho chức năng giao hàng hoàn chỉnh.
+Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, các API nghiệp vụ triển khai tiếp ở T06–T18.

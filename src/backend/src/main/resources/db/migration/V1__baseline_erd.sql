@@ -1,14 +1,4 @@
-DROP DATABASE IF EXISTS HeThongGiaoHangMINI;
-CREATE DATABASE HeThongGiaoHangMINI
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-USE HeThongGiaoHangMINI;
-
--- PostgreSQL 17 schema based on the completed ERD (Page-1).
--- Run inside the target database; this file does not create or drop a database.
-
-BEGIN;
-
+-- PostgreSQL baseline transcribed from docs/api/schema-v0.mysql.sql; database creation is external.
 CREATE TABLE tai_khoan (
     ma_tk                VARCHAR(36)  PRIMARY KEY,
     username             VARCHAR(50)  NOT NULL UNIQUE,
@@ -207,5 +197,3 @@ CREATE TABLE danh_gia_chuyen_di (
     CONSTRAINT fk_dg_don_hang FOREIGN KEY (ma_don)
         REFERENCES don_hang (ma_don)
 );
-
-COMMIT;

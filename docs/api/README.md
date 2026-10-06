@@ -1,6 +1,6 @@
 # T04 — Hợp đồng API Mini Ong Vàng
 
-Phiên bản hợp đồng: **0.1.0**, ngày 05/10/2026. Cơ sở: [kế hoạch dự án](../project_brief.md) và [SQL v0 do nhóm cung cấp](schema-v0.mysql.sql).
+Phiên bản hợp đồng: **0.2.0**, ngày 05/10/2026. T03 yêu cầu khối lượng kiện theo SQL và xác định User.maNguoiDung là ID tài khoản. T06/T09/T10 cần tiếp nhận hai thay đổi contract này trước khi hiện thực. Cơ sở: [kế hoạch dự án](../project_brief.md) và [migration/mapping T03](schema-mapping.md).
 
 ## Trạng thái thực tế
 

@@ -33,6 +33,8 @@ services:
       DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DEMO_SEED: ${DEMO_SEED:-false}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
 
     ports:
       - "8081:8080"

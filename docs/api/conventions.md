@@ -1,4 +1,4 @@
-# Quy ước API v0.1.0
+# Quy ước API v0.2.0
 
 Các quyết định dưới đây là baseline T04 từ SQL v0 và project brief; nhóm có thể sửa có phiên bản khi thiết kế/DB thay đổi. Chưa phải tất cả đã được thực thi bởi BE.
 
@@ -8,7 +8,7 @@ Các quyết định dưới đây là baseline T04 từ SQL v0 và project brie
 - ID là chuỗi không rỗng tối đa 36 ký tự theo VARCHAR(36), không tự ép UUID. Client không tự đặt ID cho tài nguyên được tạo.
 - Request không nhận field lạ. Chuỗi bắt buộc phải trim và không trắng; giới hạn độ dài nằm trong OpenAPI. Optional có thể bỏ; chỉ nhận null khi schema cho phép. Cấm trả password/hash, CCCD hoặc secret cổng thanh toán.
 - SĐT demo: 10 chữ số bắt đầu 0 hoặc +84 và 9 chữ số; normalize về dạng 0xxxxxxxxx trước tra/lưu. Đây là quyết định T04 chặt hơn SQL VARCHAR(15), cần review T01.
-- Kiện hàng ít nhất một phần tử; khối lượng nếu có phải >0. Giới hạn khối lượng/phạm vi/biểu phí/VIP nghiệp vụ lấy từ cấu hình T01, không tự suy ra từ sức chứa DECIMAL.
+- Kiện hàng ít nhất một phần tử; khối lượng bắt buộc và phải >0 theo schema T03. Giới hạn khối lượng/phạm vi/biểu phí/VIP nghiệp vụ lấy từ cấu hình T01, không tự suy ra từ sức chứa DECIMAL.
 - Thành công: object DTO trực tiếp; list có `items,page,size,totalElements,totalPages`; 201 khi tạo tài nguyên, 204 logout không body. Không bọc thêm `success/data`.
 - 0-based page; mặc định size=20, max=100; ngoài miền trả 400, không tự clamp. Trang vượt kết quả trả items rỗng; total vẫn đúng. Không cho sort SQL tùy ý; sort cố định ghi tại operation. totalPages=ceil(totalElements/size), bằng 0 khi rỗng.
 - Lịch sử lọc theo thoiGianTao. summary của orders tính trên **toàn bộ tập lọc trong phạm vi quyền**, kể cả đơn hủy; không phải doanh thu. Tập rỗng: tổng bằng 0.
@@ -17,7 +17,7 @@ Các quyết định dưới đây là baseline T04 từ SQL v0 và project brie
 
 - VND, BigDecimal/NUMERIC trong BE/DB; JSON chuỗi như `"45000.00"`. API chỉ giao dịch nguyên đồng, 2 chữ số lẻ luôn `.00`. Không dùng float tính tiền.
 - Tính với độ chính xác decimal, giới hạn giảm không vượt gốc+phụ thu; tổng=max(0,gốc+phụ thu−giảm); HALF_UP nguyên đồng tại bước cuối. Lưu snapshot sau làm tròn; breakdown phải cộng ra đúng tổng (điều chỉnh phần giảm đã làm tròn nếu cần). Tỷ lệ VIP là phần trăm, `"10.00"` = 10%.
-- SQL tiền đơn DECIMAL(15,2), thanh toán DECIMAL(12,2): T03 cần thống nhất sức chứa, hoặc giới hạn đơn hợp lệ không vượt 9,999,999,999 VND trước khi lưu. Không để đơn tạo được nhưng thanh toán tràn cột.
+- T03 thống nhất tiền trong snapshot, cấu hình và thanh toán thành NUMERIC(15,2). T09/T14 vẫn phải kiểm tra giới hạn nghiệp vụ và giới hạn cổng thanh toán trước khi lưu/gửi.
 - VNPay amount nhân 100 chỉ trong adapter và kiểm tra chữ ký/amount callback; DTO nội bộ luôn VND.
 - Timestamp trả ISO 8601 UTC với Z. DATE như ngày hết hạn và bộ lọc dùng YYYY-MM-DD. Quy ước DATETIME không timezone của SQL tham chiếu được hiểu theo Asia/Ho_Chi_Minh khi chuyển đổi; PostgreSQL nên dùng timestamptz cho thời điểm.
 - Hạn VIP có hiệu lực đến hết ngayHetHan tại Asia/Ho_Chi_Minh; null = không có hạn, nhưng vẫn phải có hạng hợp lệ. Hạng thiếu/hết hạn không giảm, không làm lỗi toàn bộ báo giá.
@@ -44,7 +44,7 @@ Envelope: `code` ổn định để client xử lý, `message` tiếng Việt, `
 ## Session và quyền
 
 - Vai trò: KHACH_HANG, TAI_XE, TONG_DAI, CHU_DOI_XE. CHU_DOI_XE ánh xạ quản trị trong brief; TONG_DAI gồm tổng đài/điều phối. Không tự cấp quản trị quyền hành động thay mọi actor.
-- Khách/tài xế đăng nhập bằng SĐT qua field username; nhân viên dùng username SQL. Thiếu kho credential khách/tài xế cần giải quyết tại T03/T06, không giả định cột SĐT là mật khẩu.
+- Khách/tài xế đăng nhập bằng SĐT qua field username; nhân viên dùng username. T03 lưu credential chung trong tai_khoan; User.maNguoiDung = ma_tk, các maKh/maTx/maNv là ID hồ sơ. T06 dùng PasswordHasher kiểm tra bcrypt, không dùng cột SĐT làm mật khẩu.
 - Cookie JSESSIONID, host-only, Path=/ (hoặc context path khi deploy riêng), HttpOnly, SameSite=Lax, Secure trên HTTPS. Local HTTP không bật Secure. Session chỉ qua cookie, không URL rewriting.
 - Session idle timeout 30 phút (baseline demo). Login đổi session ID/token, logout invalidate và hết hạn cookie. API riêng tư trả Cache-Control: no-store. Auth filter kiểm tra tài khoản bị khóa và role mỗi request.
 - `x-roles` là metadata mô tả, không phải cơ chế bảo mật tự sinh từ Swagger. Ownership phải kiểm tra ở BE trên đơn/lần thanh toán. Khách không được đổi maKh sang người khác. Tổng đài phải chọn khách khi tạo/báo giá.

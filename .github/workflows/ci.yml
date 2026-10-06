@@ -70,10 +70,12 @@ jobs:
         run: npm run check --prefix tools/api
       - name: Validate isolated Compose configuration
         run: docker compose -f docker-compose.ci.yml config --quiet
-      - name: Start isolated PostgreSQL and backend
-        run: docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120
+      - name: Start isolated PostgreSQL
+        run: docker compose -f docker-compose.ci.yml up --wait --wait-timeout 120 db-test
       - name: Build WAR and run Java tests against test database
         run: mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml verify
+      - name: Start backend after database tests finish
+        run: docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
       - name: Smoke test deployed API and documentation
         run: npm run smoke --prefix tools/api
       - name: Collect container logs

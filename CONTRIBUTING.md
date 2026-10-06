@@ -139,7 +139,7 @@ PR phải được ít nhất một thành viên khác review.
 
 Reviewer kiểm tra:
 - Code đúng phạm vi task.
-- Đúng kiến trúc Controller → Service → Repository.
+- Đúng kiến trúc Controller → Service → DAO.
 - Xử lý error/alternative flow cần thiết.
 - Test phù hợp.
 - Không commit secret/API key/password.

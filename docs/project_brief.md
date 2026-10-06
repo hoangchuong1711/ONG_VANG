@@ -16,7 +16,7 @@ Mục tiêu: hoàn thành 12 Use Case theo đề Hệ thống đặt xe / giao h
 
 ## 2. Yêu cầu và 12 Use Case
 
-Bắt buộc theo đề: 3 tầng UI/Presentation → Controller/Service (Business) → Repository/Database; GitHub cho mọi thành viên quyền push và có develop; tối thiểu /src, /docs, /tests; schema bám ERD và có seed; code bám Class/Sequence/Interface Design/UC Spec; mỗi UC có Alternative Flow được xử lý; demo Main Flow bằng dữ liệu chạy qua hệ thống và ít nhất một nhánh thay thế.
+Bắt buộc theo đề: 3 tầng UI/Presentation → Controller/Service (Business) → DAO/Database; GitHub cho mọi thành viên quyền push và có develop; tối thiểu /src, /docs, /tests; schema bám ERD và có seed; code bám Class/Sequence/Interface Design/UC Spec; mỗi UC có Alternative Flow được xử lý; demo Main Flow bằng dữ liệu chạy qua hệ thống và ít nhất một nhánh thay thế.
 
 | UC    | Phạm vi triển khai                                                                                       | Nhánh thay thế và lỗi cần xử lý                                                                            |
 | ----- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -41,7 +41,7 @@ Bắt buộc theo đề: 3 tầng UI/Presentation → Controller/Service (Busine
 | --------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Frontend              | Next.js, React, TypeScript                            | Khởi tạo trước; phát triển UI nghiệp vụ sau mốc BE. Không đặt nghiệp vụ chính trong Next.js.                                                                                   |
 | Backend               | Java Servlet trên Tomcat, Maven                       | Controller tiếp nhận HTTP; Service xử lý nghiệp vụ; chốt bộ phiên bản Java/Tomcat/Hibernate tương thích tại T02.                                                               |
-| CSDL và ORM           | PostgreSQL + Hibernate/JPA                            | Repository dùng Hibernate; migration SQL có phiên bản; không trộn JDBC thủ công cho CRUD mặc định. Không tự cập nhật schema ngoài kiểm soát.                                   |
+| CSDL và ORM           | PostgreSQL + Hibernate/JPA                            | DAO dùng Hibernate; migration SQL có phiên bản; không trộn JDBC thủ công cho CRUD mặc định. Không tự cập nhật schema ngoài kiểm soát.                                   |
 | API và xác thực       | REST JSON + session phía server                       | Cookie HttpOnly, Secure trên HTTPS; kiểm tra role và quyền sở hữu tại BE; mật khẩu băm bằng thư viện phù hợp. Chốt CSRF và CORS khi setup. Ưu tiên cùng origin qua proxy /api. |
 | Thanh toán            | VNPay Sandbox + ghi nhận tiền mặt                     | Tích hợp sandbox thật; không dùng tiền thật. Khóa sandbox để ở biến môi trường. Return phục vụ hiển thị; IPN/đối soát server đã xác minh quyết định kết quả.                   |
 | Lộ trình              | RouteProvider + dịch vụ giả lập                       | Bộ địa chỉ và tuyến mẫu cố định, có km/thời gian và tình huống lỗi. Không sinh khoảng cách ngẫu nhiên, không tự đổi sang dữ liệu giả khi API thật lỗi.                         |
@@ -56,15 +56,15 @@ Bắt buộc theo đề: 3 tầng UI/Presentation → Controller/Service (Busine
 
 ## 4. Kiến trúc và cấu trúc mã nguồn
 
-Theo cách gọi trong đề: tầng 1 Presentation = Next.js; tầng 2 Business = Servlet Controller + Service; tầng 3 Data = Repository/Hibernate + PostgreSQL. Controller chỉ điều phối HTTP/DTO, không chứa quy tắc tính cước và không gọi Repository bỏ qua Service. Service gọi Repository hoặc adapter tích hợp. Domain chứa mô hình nghiệp vụ được đối chiếu với Class Diagram.
+Theo cách gọi trong đề: tầng 1 Presentation = Next.js; tầng 2 Business = Servlet Controller + Service; tầng 3 Data = DAO/Hibernate + PostgreSQL. Controller chỉ điều phối HTTP/DTO, không chứa quy tắc tính cước và không gọi DAO bỏ qua Service. Service gọi DAO hoặc adapter tích hợp. Package entity chứa các Entity và mô hình dữ liệu được đối chiếu với Class Diagram.
 
 ```
 /src/frontend/                  Next.js, components, API client
 /src/backend/                   Maven project
   src/main/java/.../controller/ Servlet, DTO, kiểm tra đầu vào
   src/main/java/.../service/    Nghiệp vụ, transaction
-  src/main/java/.../domain/     Mô hình/Entity theo thiết kế
-  src/main/java/.../repository/ Hibernate/JPA
+  src/main/java/.../entity/     Mô hình/Entity theo thiết kế
+  src/main/java/.../DAO/        Hibernate/JPA
   src/main/java/.../integration/ RouteProvider, VNPay adapter
   src/main/java/.../config/     DB, auth, môi trường
   src/main/resources/          Migration và cấu hình mẫu
@@ -115,7 +115,7 @@ Mọi task phát triển phải kèm test phù hợp, cập nhật API/thiết k
 | --- | ---------------------------------- | ---------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | T01 | Thống nhất yêu cầu và thiết kế nền | Trung bình / Cao | —         | Đọc 12 UC; lập SRS ngắn, ma trận quyền, trạng thái, cấu hình biểu phí/VIP/phạm vi. Phác ERD/Class và Sequence cho phần sắp làm; lập bảng traceability và test case từ đầu. Tên class/field chi tiết cập nhật sau review. |
 | T02 | Khởi tạo repository và cả BE/FE    | Trung bình / Cao | —         | Tạo GitHub, develop, /src /docs /tests; Servlet/Maven và Next.js skeleton; chốt phiên bản tương thích, format, biến môi trường mẫu. Chạy build cả hai, BE health check; chưa làm màn hình nghiệp vụ.                     |
-| T03 | Thiết lập CSDL, Hibernate và seed  | Trung bình / Cao | T01, T02  | Tạo migration theo ERD nền, Entity/Repository Hibernate và transaction; seed đủ vai trò, khách thường/VIP/hết hạn, tài xế rảnh/bận/khóa, đơn mẫu. Kiểm tra quan hệ và reset dữ liệu test.                                |
+| T03 | Thiết lập CSDL, Hibernate và seed  | Trung bình / Cao | T01, T02  | Tạo migration theo ERD nền, Entity/DAO Hibernate và transaction; seed đủ vai trò, khách thường/VIP/hết hạn, tài xế rảnh/bận/khóa, đơn mẫu. Kiểm tra quan hệ và reset dữ liệu test.                                |
 | T04 | Thống nhất hợp đồng API và lỗi     | Trung bình / Cao | T01, T02  | Lập endpoint/DTO/mã lỗi, phân trang và định dạng tiền/thời gian; OpenAPI hoặc bảng API có ví dụ. Thống nhất session/cookie, CSRF, CORS hoặc proxy. Tạo Postman collection để BE kiểm thử độc lập FE.                     |
 | T05 | CI và môi trường chạy chung        | Trung bình / Cao | T02       | Thiết lập GitHub Actions build/test trên PR, PostgreSQL test tách biệt, Docker Compose và README. Ban đầu kiểm tra skeleton, bổ sung test theo task; không gọi VNPay thật trong mỗi unit test.                           |
 
@@ -203,12 +203,12 @@ Nếu học kỳ chỉ còn 10 tuần, giảm công mở rộng Goong và trang 
 | Bài học                     | Cách áp dụng                                                                                                                                                                               | Bằng chứng / task                                                |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
 | NoSQL                       | Không thêm NoSQL. Giải thích vì sao dữ liệu đơn–khách–tài xế–thanh toán hợp mô hình quan hệ; không coi JSON của REST là NoSQL.                                                             | Lý do lựa chọn CSDL trong T01.                                   |
-| ORM                         | Hibernate/JPA mapping Entity, quan hệ, transaction và Repository.                                                                                                                          | T03 và test lưu/đọc/rollback.                                    |
+| ORM                         | Hibernate/JPA mapping Entity, quan hệ, transaction và DAO.                                                                                                                          | T03 và test lưu/đọc/rollback.                                    |
 | Design System và UI Kit     | Một bộ component và token nhỏ theo Material Design; có thể dùng MUI, không tự xây thư viện lớn.                                                                                            | Figma/T21 và component dùng lại T22–T28.                         |
 | Figma và cộng tác           | Prototype 12 màn hình theo mã đề; review và ghi quyết định trước code FE.                                                                                                                  | T21 và liên kết Interface Design.                                |
 | Responsive và Accessibility | Mobile cho khách/tài xế; desktop cho điều phối/quản trị; label, keyboard/focus, lỗi bằng chữ; tương phản chữ thường 4.5:1, chữ lớn 3:1. Không tuyên bố đạt toàn bộ WCAG chỉ từ tương phản. | T21–T29, checklist và lỗi đã sửa.                                |
 | Usability Testing           | Một vòng 3–5 người ngoài nhóm, có kịch bản/quan sát/sửa/thử lại.                                                                                                                           | T29, không thay thế test chức năng.                              |
-| Patterns và SOLID           | SRP Controller–Service–Repository; DIP/Adapter cho RouteProvider và thanh toán. Strategy chỉ khi chính sách đủ đa dạng.                                                                    | Sơ đồ và ví dụ code thực sự dùng; không thêm pattern hình thức.  |
+| Patterns và SOLID           | SRP Controller–Service–DAO; DIP/Adapter cho RouteProvider và thanh toán. Strategy chỉ khi chính sách đủ đa dạng.                                                                    | Sơ đồ và ví dụ code thực sự dùng; không thêm pattern hình thức.  |
 | Class Diagram đến Code      | Thiết kế nền trước từng phần, code theo trách nhiệm đã thống nhất; đối chiếu ngược ở mốc BE và trước nộp. Sinh khung code là tùy chọn.                                                     | T01, T20, T31; tên class/method khớp thiết kế cuối.              |
 | MVC/MVVM/Layered            | Layered 3 tầng là kiến trúc chính theo đề. Giải thích trách nhiệm; không ép áp dụng thêm MVC/MVVM.                                                                                         | T02, sơ đồ kiến trúc và luồng một UC.                            |
 | State và bất đồng bộ        | State form cục bộ, dữ liệu dùng chung chỉ khi cần; chặn phản hồi báo giá cũ, loading/error/empty, thử lại có kiểm soát. Không mặc định Redux/WebSocket.                                    | T23, T26, T27 và test tương ứng.                                 |

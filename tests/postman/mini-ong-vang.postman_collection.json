@@ -1638,7 +1638,7 @@
                     }
                   ]
                 },
-                "description": "Lịch sử các lần thanh toán\n\nCùng quyền chi tiết đơn; sort taoLuc DESC,maGiaoDich ASC. Cần bỏ UNIQUE ma_don của SQL v0 trước hiện thực.\n\nStatus: planned; UC: UC-08, UC-10; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+                "description": "Lịch sử các lần thanh toán\n\nC?ng quy?n chi ti?t ??n; sort taoLuc DESC,maGiaoDich ASC. T03 ?? cho ph?p nhi?u attempt tr?n m?t ??n.\n\nStatus: planned; UC: UC-08, UC-10; roles: KHACH_HANG, TONG_DAI, TAI_XE"
               },
               "event": [
                 {

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Mini Ong Vàng API",
-    "version": "0.1.0",
-    "description": "Hợp đồng T04 dựa trên SQL MySQL v0 và project_brief.md. Chỉ GET /api/health đã triển khai; các operation khác là kế hoạch T06–T18, gọi hiện tại sẽ 404/405. Ví dụ không phải seed thật. Tên trường camelCase từ schema SQL; thay đổi DB được theo dõi ở docs/api/schema-mapping.md."
+    "version": "0.2.0",
+    "description": "H?p ??ng T04 c?p nh?t theo PostgreSQL T03. Ch? GET /api/health ?? tri?n khai; c?c operation kh?c thu?c T06?T18. V? d? API minh h?a, manifest seed th?t n?m ? docs/database/README.md. Thay ??i 0.2.0: kh?i l??ng ki?n b?t bu?c, maNguoiDung l? ID tai_khoan."
   },
   "servers": [
     {
@@ -216,10 +216,10 @@
                   "$ref": "#/components/schemas/User"
                 },
                 "example": {
-                  "maNguoiDung": "KH-DEMO-001",
+                  "maNguoiDung": "TK-DEMO-KH-1",
                   "hoTen": "Nguyễn An",
                   "vaiTro": "KHACH_HANG",
-                  "maKh": "KH-DEMO-001",
+                  "maKh": "KH-DEMO-1",
                   "maTx": null,
                   "maNv": null
                 }
@@ -339,7 +339,7 @@
                 "$ref": "#/components/schemas/LoginRequest"
               },
               "example": {
-                "username": "khach.demo",
+                "username": "0900000001",
                 "password": "REPLACE_WITH_LOCAL_SEED_PASSWORD"
               }
             }
@@ -393,10 +393,10 @@
                   "$ref": "#/components/schemas/User"
                 },
                 "example": {
-                  "maNguoiDung": "KH-DEMO-001",
+                  "maNguoiDung": "TK-DEMO-KH-1",
                   "hoTen": "Nguyễn An",
                   "vaiTro": "KHACH_HANG",
-                  "maKh": "KH-DEMO-001",
+                  "maKh": "KH-DEMO-1",
                   "maTx": null,
                   "maNv": null
                 }
@@ -4478,7 +4478,7 @@
         ],
         "summary": "Lịch sử các lần thanh toán",
         "operationId": "listPayments",
-        "description": "Cùng quyền chi tiết đơn; sort taoLuc DESC,maGiaoDich ASC. Cần bỏ UNIQUE ma_don của SQL v0 trước hiện thực.",
+        "description": "C?ng quy?n chi ti?t ??n; sort taoLuc DESC,maGiaoDich ASC. T03 ?? cho ph?p nhi?u attempt tr?n m?t ??n.",
         "x-implementation-status": "planned",
         "x-uc": [
           "UC-08",
@@ -6228,7 +6228,8 @@
         ],
         "properties": {
           "maNguoiDung": {
-            "$ref": "#/components/schemas/Id"
+            "$ref": "#/components/schemas/Id",
+            "description": "ID tai_khoan.ma_tk; kh?c ID h? s? maKh/maTx/maNv."
           },
           "hoTen": {
             "type": "string",
@@ -6270,10 +6271,10 @@
         },
         "examples": [
           {
-            "maNguoiDung": "KH-DEMO-001",
+            "maNguoiDung": "TK-DEMO-KH-1",
             "hoTen": "Nguyễn An",
             "vaiTro": "KHACH_HANG",
-            "maKh": "KH-DEMO-001",
+            "maKh": "KH-DEMO-1",
             "maTx": null,
             "maNv": null
           }
@@ -6301,7 +6302,7 @@
         },
         "examples": [
           {
-            "username": "khach.demo",
+            "username": "0900000001",
             "password": "REPLACE_WITH_LOCAL_SEED_PASSWORD"
           }
         ]
@@ -6490,7 +6491,8 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "loaiHangHoa"
+          "loaiHangHoa",
+          "khoiLuongKg"
         ],
         "properties": {
           "loaiHangHoa": {
