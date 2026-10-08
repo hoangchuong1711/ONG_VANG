@@ -13,7 +13,7 @@ Các request chưa có BE mặc định **skip** bằng `pm.execution.skipReques
 
 ## Sau khi từng task BE hoàn thành
 
-`estimateRoute` đã nằm trong folder implemented; đăng nhập khách hoặc tổng đài và lấy lại CSRF trước khi chạy request này. Địa chỉ mặc định `Điểm mẫu A/B` là alias của Quận 1/3, trả 5.00 km và 900 giây. Đặt `runPlanned=true` chỉ để chạy riêng những request nghiệp vụ về sau đã được hiện thực nhưng chưa cập nhật collection. T03 cung cấp [manifest seed](../../docs/database/README.md); điền username/password, driverId/customerId theo manifest. Các API nghiệp vụ vẫn cần được gọi theo luồng/role thích hợp, không xem folder implemented là một scenario tự động.
+`estimateRoute` và `createQuote` đã nằm trong folder implemented; đăng nhập khách hoặc tổng đài và lấy lại CSRF trước khi chạy. Địa chỉ mặc định `Điểm mẫu A/B` là alias của Quận 1/3. Báo giá cần biểu phí seed T03; khách hàng dùng ID từ session, tổng đài phải điền `customerId`. Đặt `runPlanned=true` chỉ để chạy riêng những request nghiệp vụ về sau đã được hiện thực nhưng chưa cập nhật collection. T03 cung cấp [manifest seed](../../docs/database/README.md). Các API nghiệp vụ vẫn cần được gọi theo luồng/role thích hợp, không xem folder implemented là một scenario tự động.
 
 Session được Postman cookie jar giữ qua Set-Cookie. Không đặt Cookie/JSESSIONID thủ công. Đăng nhập mỗi vai trò theo thứ tự:
 

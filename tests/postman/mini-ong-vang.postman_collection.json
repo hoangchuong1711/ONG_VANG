@@ -351,6 +351,70 @@
           "response": []
         },
         {
+          "name": "createQuote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/quotes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "quotes"
+              ],
+              "query": []
+            },
+            "description": "Báo giá và giảm VIP\n\nKhách lấy maKh từ session, không được báo giá cho người khác; tổng đài bắt buộc maKh. VIP hết hạn/không hợp lệ: giảm 0. Cước gốc=cước cơ bản+km×đơn giá; phụ thu demo chung đang bật được cộng; giảm VIP trên tổng trước giảm. Tổng=max(0,gốc+phụ thu-giảm), HALF_UP nguyên VND. Báo giá lưu 300 giây; BE kiểm tra lại khi tạo đơn.\n\nStatus: implemented; UC: UC-03, UC-04, UC-05; roles: KHACH_HANG, TONG_DAI",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\",\n  \"kienHang\": [\n    {\n      \"loaiHangHoa\": \"Hoa\",\n      \"ghiChuBaoQuan\": \"Tránh đè nén\",\n      \"khoiLuongKg\": \"1.00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has maBaoGia', () => pm.expect(body).to.have.property('maBaoGia'));",
+                  "  pm.test('Response has hetHanLuc', () => pm.expect(body).to.have.property('hetHanLuc'));",
+                  "  pm.test('Response has loTrinh', () => pm.expect(body).to.have.property('loTrinh'));",
+                  "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                  "  pm.test('Response has hangThanhVien', () => pm.expect(body).to.have.property('hangThanhVien'));",
+                  "  pm.environment.set('quoteId', body.maBaoGia);",
+                  "  pm.environment.set('amount', body.cuoc.tongCuoc);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "register",
           "request": {
             "method": "POST",
@@ -492,87 +556,6 @@
                       "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
                       "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
                       "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
-                      "}"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            }
-          ]
-        },
-        {
-          "name": "Quotes",
-          "item": [
-            {
-              "name": "createQuote",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "X-CSRF-Token",
-                    "value": "{{csrfToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/quotes",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "quotes"
-                  ],
-                  "query": []
-                },
-                "description": "Báo giá và giảm VIP\n\nKhách lấy maKh từ session, không được báo giá cho người khác; tổng đài bắt buộc maKh. VIP hết hạn/không hợp lệ: giảm 0. Tổng=max(0,gốc+phụ thu-giảm), HALF_UP nguyên VND. Báo giá có hạn 300 giây; BE kiểm tra lại khi tạo đơn.\n\nStatus: planned; UC: UC-03, UC-04, UC-05; roles: KHACH_HANG, TONG_DAI",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\",\n  \"kienHang\": [\n    {\n      \"loaiHangHoa\": \"Hoa\",\n      \"ghiChuBaoQuan\": \"Tránh đè nén\",\n      \"khoiLuongKg\": \"1.00\"\n    }\n  ]\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
-                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                      "  const body = pm.response.json();",
-                      "  pm.test('Response has maBaoGia', () => pm.expect(body).to.have.property('maBaoGia'));",
-                      "  pm.test('Response has hetHanLuc', () => pm.expect(body).to.have.property('hetHanLuc'));",
-                      "  pm.test('Response has loTrinh', () => pm.expect(body).to.have.property('loTrinh'));",
-                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
-                      "  pm.test('Response has hangThanhVien', () => pm.expect(body).to.have.property('hangThanhVien'));",
-                      "  pm.environment.set('quoteId', body.maBaoGia);",
-                      "  pm.environment.set('amount', body.cuoc.tongCuoc);",
                       "}"
                     ]
                   }
