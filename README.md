@@ -2,9 +2,7 @@
 
 ## Tài liệu và kiểm thử API (T04)
 
-Chạy `docker compose up --build backend`, sau đó mở [Swagger UI](http://localhost:8081/swagger-ui/)
-hoặc [OpenAPI JSON](http://localhost:8081/openapi.json). Swagger UI được đóng gói cùng BE, không cần chạy FE.
-Hiện chỉ `/api/health` có implementation; các API nghiệp vụ là hợp đồng cho T06–T18.
+Hiện `/api/health` và các API T06 (`csrf`, `register`, `login`, `me`, `logout`) có implementation; các API nghiệp vụ T07–T18 vẫn là hợp đồng chờ triển khai.
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ SQL v0 và phần cần bổ sung](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
@@ -80,8 +78,8 @@ Mở các địa chỉ sau trong trình duyệt:
 | Frontend | [http://localhost:3001](http://localhost:3001) | Trang trạng thái FE, BE và database |
 | Backend health check | [http://localhost:8081/api/health](http://localhost:8081/api/health) | JSON báo backend có kết nối được database hay không |
 | PostgreSQL từ máy host | `localhost:5433` | Cổng database nếu cần kết nối bằng công cụ quản lý DB |
+| swagger | [http://localhost:8081/swagger-ui/] | trang test API
 
-FE và BE hiển thị cổng khác nhau trong log vì ứng dụng lắng nghe bên trong container ở `3000` và `8080`. Docker chuyển cổng máy bạn `3001 → 3000` và `8081 → 8080`; vì vậy hãy mở FE ở cổng `3001` và gọi BE ở cổng `8081`.
 
 
 Để dừng các container, nhấn `Ctrl+C` trong terminal đang chạy Compose. Nếu chạy nền với `-d`, dùng:
@@ -173,7 +171,7 @@ FE hiện chưa có bộ test UI, không ghi lint/build là test chức năng đ
 Test Java kiểm tra kết nối, migration, Hibernate mapping, seed, constraint, snapshot,
 commit/rollback và cạnh tranh assignment/version. Bộ T03 reset dữ liệu trên DB test riêng trước từng case;
 chỉ khởi động backend-test sau khi Maven verify xong. Chạy Maven không có `TEST_DB_URL` thì test DB skip;
-CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. Test nghiệp vụ/API T06–T18 tiếp tục bổ sung theo task.
+CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06 có test xác thực/đăng ký; test nghiệp vụ T07–T18 tiếp tục bổ sung theo task.
 
 Trên GitHub, xem tab **Actions → CI** hoặc checks của PR. Job BE lưu Surefire reports và
 container logs vào artifact `backend-test-results` trong 7 ngày, kể cả test thất bại;
@@ -224,4 +222,4 @@ Luồng xử lý nghiệp vụ dự kiến là:
 Controller → Service → DAO → Hibernate/JPA → PostgreSQL
 ```
 
-Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, các API nghiệp vụ triển khai tiếp ở T06–T18.
+Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; T06 đã triển khai auth. Endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, các API nghiệp vụ T07–T18 triển khai tiếp.

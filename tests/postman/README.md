@@ -24,6 +24,8 @@ Session được Postman cookie jar giữ qua Set-Cookie. Không đặt Cookie/J
 
 ## Main Flow thủ công có lưu biến
 
+Luồng register của T06: dùng cookie jar riêng cho khách mới → `getCsrf` → `register` với SĐT chưa tồn tại → kiểm tra 201 và role KHACH_HANG → `getCurrentUser` phải báo chưa đăng nhập → `getCsrf` → `login` bằng SĐT/mật khẩu vừa đăng ký → `getCsrf` → `getCurrentUser` → `logout` → xác nhận phiên không còn dùng được. Register không cấp VIP, nên không dùng khách mới thay fixture VIP ở Main Flow bên dưới. Chạy thêm nhánh thiếu/sai dữ liệu, SĐT trùng sau chuẩn hóa, CSRF thiếu/sai và gửi field role trái phép; kiểm thử đồng thời/rollback nằm ở bộ integration T06.
+
 | Bước | Vai trò / thao tác | Biến/kết quả |
 | --- | --- | --- |
 | 1 | Khách VIP: getCsrf/login/getCsrf/getCurrentUser | Cookie jar, csrfToken |

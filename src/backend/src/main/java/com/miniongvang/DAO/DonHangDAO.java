@@ -5,10 +5,10 @@ import java.util.List;
 
 import com.miniongvang.entity.ChiTietKienHang;
 import com.miniongvang.entity.DonHang;
+import com.miniongvang.entity.NhatKyTrangThai;
 import com.miniongvang.entity.PhuThuDonHang;
 import com.miniongvang.entity.PhuThuDonHangId;
 import com.miniongvang.entity.SnapshotCuocDonHang;
-import com.miniongvang.entity.enums.NhatKyTrangThai;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;

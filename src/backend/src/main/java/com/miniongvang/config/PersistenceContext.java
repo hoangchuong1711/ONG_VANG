@@ -23,6 +23,8 @@ public final class PersistenceContext implements AutoCloseable {
             throw new IllegalArgumentException("DB_URL, DB_USER and DB_PASSWORD are required");
         }
         HikariConfig config = new HikariConfig();
+        // Load the WAR-local driver explicitly when running under Tomcat.
+        config.setDriverClassName("org.postgresql.Driver");
         config.setJdbcUrl(url);
         config.setUsername(user);
         config.setPassword(password);
