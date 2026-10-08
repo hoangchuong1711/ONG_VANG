@@ -1,10 +1,9 @@
-package com.miniongvang.entity.enums;
+package com.miniongvang.entity;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
-import com.miniongvang.entity.DonHang;
-import com.miniongvang.entity.TaiKhoan;
+import com.miniongvang.entity.enums.OrderStatus;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

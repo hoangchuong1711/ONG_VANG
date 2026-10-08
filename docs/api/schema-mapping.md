@@ -21,11 +21,11 @@ Schema chạy thực tế nằm trong [migration Flyway](../../src/backend/src/m
 
 Tiền thống nhất NUMERIC(15,2)/BigDecimal. DATE dùng LocalDate, thời điểm dùng Instant/timestamptz và trả UTC. Quy tắc VND nguyên đồng/HALF_UP do T09/T14 thực hiện. Đơn tổng 0 không có attempt; service trả PaymentSummary=MIEN_CUOC.
 
-## Phần còn thuộc task nghiệp vụ
+## Phần tiếp nhận theo task nghiệp vụ
 
 | Phần | Task tiếp nhận |
 | --- | --- |
-| Login/SĐT normalize, session, CSRF, quyền và đồng bộ hồ sơ | T06; dùng PasswordHasher bcrypt đã có |
+| Register khách hàng, login/SĐT normalize, session, CSRF, quyền | T06 đã triển khai; dùng PasswordHasher bcrypt đã có. Register tạo tai_khoan + khach_hang cùng transaction, tên đồng nhất; username và so_dien_thoai cùng SĐT chuẩn hóa; role KHACH_HANG, trạng thái HOAT_DONG; không tạo khach_hang_vip. ID tài khoản/hồ sơ do server cấp; lỗi rollback cả hai, unique username chặn đăng ký trùng kể cả đồng thời. API sửa hồ sơ/đồng bộ sau tạo chưa thuộc T06. |
 | Route, phạm vi, VIP, thuật toán cước | T07–T09; giá seed chỉ là fixture persistence/demo |
 | Quote 300 giây và idempotency 24 giờ | T09/T10/T14; chưa có persistence cho hai chức năng này |
 | Tạo đơn đủ aggregate, quyền và state machine | T10–T13; DAO.persistAggregate dùng chung EntityManager do service cấp |
@@ -33,4 +33,4 @@ Tiền thống nhất NUMERIC(15,2)/BigDecimal. DATE dùng LocalDate, thời đi
 | Tất toán, callback muộn, đối soát, chuyển phương thức | T14–T15; unique success/pending không thay thế lock và lifecycle thanh toán |
 | Báo cáo/lịch sử | T16–T17; đọc snapshot/assignment/payment, không dùng bảng thống kê thu nhập cũ |
 
-T03 kiểm thử toàn vẹn DB/ORM; endpoint nghiệp vụ vẫn planned. Xem [hướng dẫn database](../database/README.md) để migrate, seed, reset và đọc giới hạn chuyển đổi V1.
+T03 kiểm thử toàn vẹn DB/ORM; T06 đã triển khai auth, còn endpoint nghiệp vụ T07–T18 vẫn planned. Xem [hướng dẫn database](../database/README.md) để migrate, seed, reset và đọc giới hạn chuyển đổi V1.

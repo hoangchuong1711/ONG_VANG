@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Mini Ong Vàng API",
-    "version": "0.2.0",
-    "description": "H?p ??ng T04 c?p nh?t theo PostgreSQL T03. Ch? GET /api/health ?? tri?n khai; c?c operation kh?c thu?c T06?T18. V? d? API minh h?a, manifest seed th?t n?m ? docs/database/README.md. Thay ??i 0.2.0: kh?i l??ng ki?n b?t bu?c, maNguoiDung l? ID tai_khoan."
+    "version": "0.3.0",
+    "description": "T06: auth/session/CSRF và khách hàng tự đăng ký đã triển khai; các API nghiệp vụ còn lại theo T07–T18."
   },
   "servers": [
     {
@@ -111,7 +111,7 @@
         "summary": "Lấy CSRF token",
         "operationId": "getCsrf",
         "description": "Tạo anonymous session nếu chưa có; không cache. Sau login lấy lại token vì session/token được xoay.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-01"
         ],
@@ -194,7 +194,7 @@
         "summary": "Đăng nhập",
         "operationId": "login",
         "description": "Khách/tài xế dùng SĐT làm username; nhân viên dùng username. Đổi session ID, xoay CSRF token; gọi lại getCsrf. Credential sai trả chung INVALID_CREDENTIALS.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-01"
         ],
@@ -371,7 +371,7 @@
         "summary": "Thông tin phiên hiện tại",
         "operationId": "getCurrentUser",
         "description": "Thông tin phiên hiện tại",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-01"
         ],
@@ -517,7 +517,7 @@
         "summary": "Đăng xuất",
         "operationId": "logout",
         "description": "Vô hiệu session, xóa cookie và CSRF. Session đã hết trả 401.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-01"
         ],
@@ -6079,6 +6079,167 @@
           ]
         }
       }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Đăng ký khách hàng",
+        "operationId": "register",
+        "description": "Tạo tài khoản và hồ sơ khách thường trong một transaction; không tự đăng nhập.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-01"
+        ],
+        "x-roles": [
+          "PUBLIC"
+        ],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Tạo khách hàng thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                },
+                "example": {
+                  "maNguoiDung": "11111111-1111-4111-8111-111111111111",
+                  "hoTen": "Khách Mới",
+                  "vaiTro": "KHACH_HANG",
+                  "maKh": "22222222-2222-4222-8222-222222222222",
+                  "maTx": null,
+                  "maNv": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, JSON_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "VALIDATION_ERROR": {
+                    "value": {
+                      "code": "VALIDATION_ERROR",
+                      "message": "Không thể thực hiện yêu cầu: VALIDATION_ERROR",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  },
+                  "JSON_INVALID": {
+                    "value": {
+                      "code": "JSON_INVALID",
+                      "message": "JSON khong hop le.",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF_INVALID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "CSRF_INVALID": {
+                    "value": {
+                      "code": "CSRF_INVALID",
+                      "message": "Không thể thực hiện yêu cầu: CSRF_INVALID",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ACCOUNT_ALREADY_EXISTS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "ACCOUNT_ALREADY_EXISTS": {
+                    "value": {
+                      "code": "ACCOUNT_ALREADY_EXISTS",
+                      "message": "Số điện thoại đã được đăng ký",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "value": {
+                      "code": "INTERNAL_ERROR",
+                      "message": "Không thể thực hiện yêu cầu: INTERNAL_ERROR",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "example": {
+                "hoTen": "Khách Mới",
+                "soDienThoai": "0912345678",
+                "password": "ReplaceWithLocalPassword"
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "400": [
+            "VALIDATION_ERROR",
+            "JSON_INVALID"
+          ],
+          "403": [
+            "CSRF_INVALID"
+          ],
+          "409": [
+            "ACCOUNT_ALREADY_EXISTS"
+          ],
+          "500": [
+            "INTERNAL_ERROR"
+          ]
+        }
+      }
     }
   },
   "components": {
@@ -7814,6 +7975,48 @@
         "examples": [
           {
             "maTx": "TX-DEMO-001"
+          }
+        ]
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hoTen",
+          "soDienThoai",
+          "password"
+        ],
+        "properties": {
+          "hoTen": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "soDienThoai": {
+            "type": "string",
+            "pattern": "^(0[0-9]{9}|\\+84[0-9]{9})$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72,
+            "writeOnly": true
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 150
+          },
+          "diaChiMacDinh": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "examples": [
+          {
+            "hoTen": "Khách Mới",
+            "soDienThoai": "0912345678",
+            "password": "ReplaceWithLocalPassword"
           }
         ]
       }

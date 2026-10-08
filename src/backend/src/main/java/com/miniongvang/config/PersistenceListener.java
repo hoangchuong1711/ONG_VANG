@@ -10,6 +10,9 @@ public class PersistenceListener implements ServletContextListener {
     public static final String ATTRIBUTE = PersistenceContext.class.getName();
 
     @Override public void contextInitialized(ServletContextEvent event) {
+        event.getServletContext().getSessionCookieConfig().setHttpOnly(true);
+        event.getServletContext().getSessionCookieConfig().setPath("/");
+        event.getServletContext().setSessionTrackingModes(java.util.Set.of(jakarta.servlet.SessionTrackingMode.COOKIE));
         PersistenceContext persistence = PersistenceContext.start(
                 System.getenv("DB_URL"), System.getenv("DB_USER"), System.getenv("DB_PASSWORD"));
         try {
