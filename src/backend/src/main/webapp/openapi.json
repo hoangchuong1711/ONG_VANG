@@ -3,7 +3,7 @@
   "info": {
     "title": "Mini Ong Vàng API",
     "version": "0.3.0",
-    "description": "T06: auth/session/CSRF và khách hàng tự đăng ký đã triển khai; các API nghiệp vụ còn lại theo T07–T18."
+    "description": "T06 auth/session/CSRF và T07 ước tính lộ trình đã triển khai; các API nghiệp vụ T08–T18 còn chờ."
   },
   "servers": [
     {
@@ -852,8 +852,8 @@
         ],
         "summary": "Chuẩn hóa địa chỉ và ước tính lộ trình",
         "operationId": "estimateRoute",
-        "description": "Bộ tuyến giả lập cố định T07; địa chỉ ví dụ phải thay bằng fixture T03/T07. Không đổi sang dữ liệu giả khi provider thật lỗi.",
-        "x-implementation-status": "planned",
+        "description": "Mặc định dùng bộ tuyến T07 cố định: Quận 1, Quận 3, Quận 5 (TP.HCM); Hà Nội là fixture vượt phạm vi. ROUTE_PROVIDER=goong dùng Geocode/Directions V2 và yêu cầu GOONG_API_KEY. Không đổi sang dữ liệu giả khi provider thật lỗi.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-04"
         ],
@@ -877,8 +877,8 @@
                   "$ref": "#/components/schemas/Route"
                 },
                 "example": {
-                  "diemLayHang": "Điểm mẫu A",
-                  "diemGiaoHang": "Điểm mẫu B",
+                  "diemLayHang": "Quận 1, TP.HCM",
+                  "diemGiaoHang": "Quận 3, TP.HCM",
                   "quangDuongKm": "5.00",
                   "thoiGianDuKienGiay": 900,
                   "trongPhamVi": true,
@@ -6634,13 +6634,13 @@
             "const": true
           },
           "nguon": {
-            "const": "GIA_LAP"
+            "enum": ["GIA_LAP", "GOONG"]
           }
         },
         "examples": [
           {
-            "diemLayHang": "Điểm mẫu A",
-            "diemGiaoHang": "Điểm mẫu B",
+            "diemLayHang": "Quận 1, TP.HCM",
+            "diemGiaoHang": "Quận 3, TP.HCM",
             "quangDuongKm": "5.00",
             "thoiGianDuKienGiay": 900,
             "trongPhamVi": true,

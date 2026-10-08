@@ -287,6 +287,70 @@
           "response": []
         },
         {
+          "name": "estimateRoute",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/routes/estimate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "routes",
+                "estimate"
+              ],
+              "query": []
+            },
+            "description": "Chuẩn hóa địa chỉ và ước tính lộ trình\n\nMặc định dùng bộ tuyến T07 cố định: Quận 1, Quận 3, Quận 5 (TP.HCM); Hà Nội là fixture vượt phạm vi. ROUTE_PROVIDER=goong dùng Geocode/Directions V2 và yêu cầu GOONG_API_KEY. Không đổi sang dữ liệu giả khi provider thật lỗi.\n\nStatus: implemented; UC: UC-04; roles: KHACH_HANG, TONG_DAI",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                  "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                  "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                  "  pm.test('Response has thoiGianDuKienGiay', () => pm.expect(body).to.have.property('thoiGianDuKienGiay'));",
+                  "  pm.test('Response has trongPhamVi', () => pm.expect(body).to.have.property('trongPhamVi'));",
+                  "  pm.test('Response has nguon', () => pm.expect(body).to.have.property('nguon'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "register",
           "request": {
             "method": "POST",
@@ -428,87 +492,6 @@
                       "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
                       "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
                       "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
-                      "}"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            }
-          ]
-        },
-        {
-          "name": "Routes",
-          "item": [
-            {
-              "name": "estimateRoute",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "X-CSRF-Token",
-                    "value": "{{csrfToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/routes/estimate",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "routes",
-                    "estimate"
-                  ],
-                  "query": []
-                },
-                "description": "Chuẩn hóa địa chỉ và ước tính lộ trình\n\nBộ tuyến giả lập cố định T07; địa chỉ ví dụ phải thay bằng fixture T03/T07. Không đổi sang dữ liệu giả khi provider thật lỗi.\n\nStatus: planned; UC: UC-04; roles: KHACH_HANG, TONG_DAI",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
-                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                      "  const body = pm.response.json();",
-                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
-                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
-                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
-                      "  pm.test('Response has thoiGianDuKienGiay', () => pm.expect(body).to.have.property('thoiGianDuKienGiay'));",
-                      "  pm.test('Response has trongPhamVi', () => pm.expect(body).to.have.property('trongPhamVi'));",
-                      "  pm.test('Response has nguon', () => pm.expect(body).to.have.property('nguon'));",
                       "}"
                     ]
                   }

@@ -2,7 +2,7 @@
 
 ## Tài liệu và kiểm thử API (T04)
 
-Hiện `/api/health` và các API T06 (`csrf`, `register`, `login`, `me`, `logout`) có implementation; các API nghiệp vụ T07–T18 vẫn là hợp đồng chờ triển khai.
+Hiện `/api/health`, các API T06 (`csrf`, `register`, `login`, `me`, `logout`) và T07 (`POST /api/routes/estimate`) đã triển khai; T08–T18 vẫn là hợp đồng chờ triển khai.
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ SQL v0 và phần cần bổ sung](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
@@ -57,6 +57,8 @@ Docker Compose đọc thông tin database từ file `.env` ở thư mục gốc.
 ```powershell
 Copy-Item .env.example .env
 ```
+
+T07 mặc định dùng `ROUTE_PROVIDER=fake`: thử `Quận 1, TP.HCM` → `Quận 3, TP.HCM` để nhận 5.00 km, 900 giây. Các địa chỉ mẫu khác là Quận 5, TP.HCM và Hà Nội (ngoài phạm vi). Có thể dùng tên `Điểm mẫu A/B/C`. Khoảng cách tối đa mặc định là `ROUTE_MAX_DISTANCE_KM=30`. Khi có Goong API key, đặt `ROUTE_PROVIDER=goong` và `GOONG_API_KEY` trong `.env`, rồi tạo lại backend bằng `docker compose up --build -d backend`; Goong dùng `GOONG_TIMEOUT_MS=5000`. Thiếu key ở chế độ Goong làm backend từ chối khởi động; lỗi Goong không chuyển sang kết quả mẫu. Xem [hướng dẫn T07](docs/T07-route-provider.md).
 
 ## Chạy toàn bộ hệ thống bằng Docker
 
@@ -171,7 +173,7 @@ FE hiện chưa có bộ test UI, không ghi lint/build là test chức năng đ
 Test Java kiểm tra kết nối, migration, Hibernate mapping, seed, constraint, snapshot,
 commit/rollback và cạnh tranh assignment/version. Bộ T03 reset dữ liệu trên DB test riêng trước từng case;
 chỉ khởi động backend-test sau khi Maven verify xong. Chạy Maven không có `TEST_DB_URL` thì test DB skip;
-CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06 có test xác thực/đăng ký; test nghiệp vụ T07–T18 tiếp tục bổ sung theo task.
+CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06 có test xác thực/đăng ký; T07 có test lộ trình và adapter; test nghiệp vụ T08–T18 tiếp tục bổ sung theo task.
 
 Trên GitHub, xem tab **Actions → CI** hoặc checks của PR. Job BE lưu Surefire reports và
 container logs vào artifact `backend-test-results` trong 7 ngày, kể cả test thất bại;
@@ -222,4 +224,4 @@ Luồng xử lý nghiệp vụ dự kiến là:
 Controller → Service → DAO → Hibernate/JPA → PostgreSQL
 ```
 
-Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; T06 đã triển khai auth. Endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, các API nghiệp vụ T07–T18 triển khai tiếp.
+Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; T06 đã triển khai auth; T07 đã triển khai lộ trình. Endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, các API nghiệp vụ T08–T18 triển khai tiếp.
