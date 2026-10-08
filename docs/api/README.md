@@ -1,12 +1,12 @@
 # T04 — Hợp đồng API Mini Ong Vàng
 
-Phiên bản hợp đồng: **0.2.0**, ngày 05/10/2026. T03 yêu cầu khối lượng kiện theo SQL và xác định User.maNguoiDung là ID tài khoản. T06/T09/T10 cần tiếp nhận hai thay đổi contract này trước khi hiện thực. Cơ sở: [kế hoạch dự án](../project_brief.md) và [migration/mapping T03](schema-mapping.md).
+Phiên bản hợp đồng: **0.3.0**, ngày 08/10/2026. T03 yêu cầu khối lượng kiện theo SQL và xác định User.maNguoiDung là ID tài khoản. T06 bổ sung đăng ký khách hàng và triển khai xác thực. Cơ sở: [kế hoạch dự án](../project_brief.md) và [migration/mapping T03](schema-mapping.md).
 
 ## Trạng thái thực tế
 
-- Bổ sung phạm vi ngày 08/10/2026: `POST /api/auth/register` cho khách hàng tự đăng ký thuộc T06. Hiện mới ghi yêu cầu trong [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06); OpenAPI 0.2.0, Swagger và collection hiện tại chưa có endpoint này. Khi triển khai T06 phải cập nhật phiên bản OpenAPI/DTO/examples và sinh lại Postman trước khi nghiệm thu; ghi chú này không phải đặc tả máy đọc thứ hai.
+- `POST /api/auth/register` cho khách hàng tự đăng ký đã có trong OpenAPI 0.3.0, Swagger và Postman. Xem [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06).
 - Đã có implementation: `GET /api/health`.
-- Đã đặc tả, **chưa có implementation**: đăng nhập/session/CSRF và toàn bộ nghiệp vụ T06–T18. Gọi các đường dẫn này hiện tại có thể trả 404/405 hoặc HTML lỗi Tomcat; đó không phải API nghiệp vụ đã đạt contract.
+- Đã triển khai: `/api/health` và 5 operation T06: `getCsrf`, `register`, `login`, `getCurrentUser`, `logout`. Các nghiệp vụ T07–T18 vẫn planned; gọi các đường dẫn này hiện tại có thể trả 404/405 sau khi vượt kiểm tra quyền.
 - T04 không chạy SQL v0, không tạo/migrate bảng, không tạo tài khoản seed, không hiện thực thanh toán.
 - Swagger UI là công cụ tài liệu/test BE, không phải FE nghiệp vụ T21–T28.
 
@@ -20,6 +20,7 @@ Phiên bản hợp đồng: **0.2.0**, ngày 05/10/2026. T03 yêu cầu khối l
 | [coverage.md](coverage.md) | Truy vết UC, operation và kiểm thử |
 | [Hướng dẫn Postman](../../tests/postman/README.md) | Chạy BE độc lập FE; phân biệt smoke và nghiệp vụ chưa triển khai |
 | [Kết quả kiểm tra T04](../../tests/postman/T04-validation.md) | Phân biệt những kiểm tra đã đạt và phần chưa chạy |
+| [Kết quả kiểm tra T06](../../tests/T06-validation.md) | Test đăng ký, phiên, quyền và HTTP trên DB test |
 
 JSON được chọn để kiểm tra/sinh Postman bằng Node và phục vụ trực tiếp trong WAR; ý nghĩa hợp đồng tương đương YAML. Không có bản đặc tả thứ hai cần sửa đồng thời.
 
@@ -35,7 +36,7 @@ Mở `http://localhost:8081/swagger-ui/`. Spec: `http://localhost:8081/openapi.j
 
 Chọn `Infrastructure → getHealth → Try it out → Execute`. Khi DB khỏe, trả 200; khi mất kết nối/cấu hình DB, trả 503 với schema Health riêng. Không tự đổi response health hiện có sang envelope lỗi nghiệp vụ.
 
-Sau khi T06 hiện thực: Execute `getCsrf`, `login`, `getCsrf` lần nữa rồi `getCurrentUser`. Trang Swagger tự giữ CSRF **trong bộ nhớ trang**, thêm header vào request cùng origin và xóa khi logout/401. Cookie HttpOnly do trình duyệt nhận từ server, không dán JSESSIONID vào Authorize. Reload trang thì lấy lại CSRF. Các endpoint nghiệp vụ và flow này chưa chạy được chỉ bằng T04.
+Để thử T06, Execute `getCsrf`, `register` nếu muốn tạo khách mới, `login`, `getCsrf` lần nữa rồi `getCurrentUser` và `logout`. Trang Swagger tự giữ CSRF **trong bộ nhớ trang**, thêm header vào request cùng origin và xóa khi logout/401. Cookie HttpOnly do trình duyệt nhận từ server, không dán JSESSIONID vào Authorize. Reload trang thì lấy lại CSRF. Các nghiệp vụ T07–T18 tiếp tục triển khai sau.
 
 Swagger cùng BE origin nên không cần mở thêm CORS cho tài liệu. Các đường dẫn tương đối hoạt động khi deploy WAR ở context khác ROOT.
 

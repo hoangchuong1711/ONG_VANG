@@ -45,14 +45,14 @@ Envelope: `code` ổn định để client xử lý, `message` tiếng Việt, `
 
 ### Đăng ký khách hàng — bổ sung phạm vi T06
 
-Yêu cầu bổ sung ngày 08/10/2026, chưa có trong OpenAPI 0.2.0 hoặc implementation. T06 cập nhật hợp đồng máy đọc và sinh lại collection trước khi nghiệm thu.
+Yêu cầu bổ sung ngày 08/10/2026, đã có trong OpenAPI 0.3.0 và implementation T06.
 
-- Endpoint dự kiến: `POST /api/auth/register`, operationId `register`; không yêu cầu đã đăng nhập nhưng bắt buộc session và `X-CSRF-Token` lấy từ `GET /api/auth/csrf`.
-- Request gồm `hoTen` (bắt buộc, tối đa 100 ký tự), `soDienThoai` (bắt buộc, chuẩn hóa theo quy ước SĐT), `password` (bắt buộc, không trắng, tối đa 72 byte UTF-8 theo PasswordHasher); `email` (tùy chọn, đúng định dạng, tối đa 150 ký tự), `diaChiMacDinh` (tùy chọn, tối đa 255 ký tự). Không trim hoặc biến đổi mật khẩu; chính sách độ dài tối thiểu sẽ được chốt trong OpenAPI khi triển khai. Không nhận username riêng: username lấy từ SĐT đã chuẩn hóa.
+- Endpoint: `POST /api/auth/register`, operationId `register`; không yêu cầu đã đăng nhập nhưng bắt buộc session và `X-CSRF-Token` lấy từ `GET /api/auth/csrf`.
+- Request gồm `hoTen` (bắt buộc, tối đa 100 ký tự), `soDienThoai` (bắt buộc, chuẩn hóa theo quy ước SĐT), `password` (bắt buộc, ít nhất 8 ký tự, tối đa 72 byte UTF-8 theo PasswordHasher); `email` (tùy chọn, đúng định dạng, tối đa 150 ký tự), `diaChiMacDinh` (tùy chọn, tối đa 255 ký tự). Không trim hoặc biến đổi mật khẩu. Không nhận username riêng: username lấy từ SĐT đã chuẩn hóa.
 - Server sinh ID, đặt role `KHACH_HANG` và trạng thái `HOAT_DONG`; tạo tài khoản và hồ sơ khách thường cùng transaction, đồng bộ họ tên. Không tạo VIP. Từ chối field lạ, bao gồm role, trạng thái, ID, hash và thông tin cấp VIP do client gửi.
 - Băm mật khẩu bằng `PasswordHasher` sẵn có; chỉ lưu hash. Kiểm tra trùng username sau chuẩn hóa và xử lý cả vi phạm unique khi hai request đồng thời; lỗi rollback toàn bộ, không để tài khoản thiếu hồ sơ.
-- Thành công dự kiến: `201` với DTO `User` của khách vừa tạo (có `maNguoiDung` và `maKh`), không trả mật khẩu/hash. Không tự đăng nhập, không thay danh tính phiên hiện có; khách gọi login riêng sau khi đăng ký.
-- Lỗi dự kiến: `400 JSON_INVALID/VALIDATION_ERROR`, `409 ACCOUNT_ALREADY_EXISTS` cho username/SĐT đã tồn tại, `403 CSRF_INVALID`, `500 INTERNAL_ERROR` cho lỗi ngoài dự kiến. Đây là mã bổ sung cần đưa vào OpenAPI; không mặc định email là duy nhất vì schema hiện tại không quy định điều đó.
+- Thành công: `201` với DTO `User` của khách vừa tạo (có `maNguoiDung` và `maKh`), không trả mật khẩu/hash. Không tự đăng nhập, không thay danh tính phiên hiện có; khách gọi login riêng sau khi đăng ký.
+- Lỗi: `400 JSON_INVALID/VALIDATION_ERROR`, `409 ACCOUNT_ALREADY_EXISTS` cho username/SĐT đã tồn tại, `403 CSRF_INVALID`, `500 INTERNAL_ERROR` cho lỗi ngoài dự kiến. Email không bắt buộc duy nhất vì schema hiện tại không quy định điều đó.
 - Phạm vi chỉ là API tự đăng ký khách hàng. Cấp tài khoản tài xế/tổng đài/chủ đội xe, xác minh OTP/email, quên/đổi mật khẩu và giao diện đăng ký không được tự động bổ sung vào T06.
 
 ### Phiên đăng nhập và phân quyền

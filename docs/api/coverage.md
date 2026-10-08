@@ -1,11 +1,11 @@
 # Truy vết hợp đồng T04
 
-Tất cả UC nghiệp vụ dưới đây **Not Run / chờ implementation BE**, không phải kết quả test. Địa chỉ, username và ID trong OpenAPI chỉ là ví dụ; T03/T07 cung cấp fixture thật. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
+UC-01/T06 đã có implementation và test riêng; UC nghiệp vụ T07–T18 vẫn **Not Run / chờ implementation BE**. Địa chỉ, username và ID trong OpenAPI chỉ là ví dụ; T03/T07 cung cấp fixture thật. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
 
 | UC / task | Operation ID | Nhánh và tiêu chí cần kiểm thử |
 | --- | --- | --- |
 | Hạ tầng / T02 | getHealth | 200 DB connected; 503 thiếu cấu hình/driver hoặc DB lỗi, vẫn là JSON Health |
-| UC-01 / T06 | getCsrf, register (phạm vi bổ sung, chưa có trong OpenAPI), login, getCurrentUser, logout | Register: tạo tài khoản và hồ sơ khách thường nguyên tử, hash mật khẩu, chuẩn hóa SĐT, trùng SĐT kể cả đồng thời, rollback, chặn field role/status/ID/VIP, không tự đăng nhập; login bằng tài khoản mới. Auth: sai credential, thiếu field, tài khoản khóa, session hết hạn, CSRF thiếu/sai kể cả register; cookie HttpOnly/SameSite/Secure; đổi session khi login và vô hiệu sau logout |
+| UC-01 / T06 | getCsrf, register, login, getCurrentUser, logout | Register: tạo tài khoản và hồ sơ khách thường nguyên tử, hash mật khẩu, chuẩn hóa SĐT, trùng SĐT kể cả đồng thời, rollback, chặn field role/status/ID/VIP, không tự đăng nhập; login bằng tài khoản mới. Auth: sai credential, thiếu field, tài khoản khóa, session hết hạn, CSRF thiếu/sai kể cả register; cookie HttpOnly/SameSite/Secure; đổi session khi login và vô hiệu sau logout |
 | UC-02 / T10 | listCustomers, createOrder, getOrder | Khách/tổng đài tạo đúng chủ; thiếu địa chỉ/SĐT, sai SĐT, ngoài vùng; báo giá hết hạn/đổi giá; timeout retry cùng key; rollback đơn/kiện/snapshot/nhật ký |
 | UC-03 / T09 | createQuote | Thiếu biểu phí, khoảng cách không hợp lệ, HALF_UP và không âm; tổng breakdown khớp snapshot |
 | UC-04 / T07 | estimateRoute, createQuote | Địa chỉ không tìm thấy, quá phạm vi, timeout/lỗi provider; fixture cố định, không random/fallback âm thầm |
