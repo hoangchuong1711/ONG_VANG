@@ -25,7 +25,7 @@ Tiền thống nhất NUMERIC(15,2)/BigDecimal. DATE dùng LocalDate, thời đi
 
 | Phần | Task tiếp nhận |
 | --- | --- |
-| Login/SĐT normalize, session, CSRF, quyền và đồng bộ hồ sơ | T06; dùng PasswordHasher bcrypt đã có |
+| Register khách hàng, login/SĐT normalize, session, CSRF, quyền và đồng bộ hồ sơ | T06; dùng PasswordHasher bcrypt đã có. Register tạo tai_khoan + khach_hang cùng transaction, tên đồng nhất; username và so_dien_thoai cùng SĐT chuẩn hóa; role KHACH_HANG, trạng thái HOAT_DONG; không tạo khach_hang_vip. ID tài khoản/hồ sơ do server cấp; lỗi rollback cả hai, unique username chặn đăng ký trùng kể cả đồng thời. |
 | Route, phạm vi, VIP, thuật toán cước | T07–T09; giá seed chỉ là fixture persistence/demo |
 | Quote 300 giây và idempotency 24 giờ | T09/T10/T14; chưa có persistence cho hai chức năng này |
 | Tạo đơn đủ aggregate, quyền và state machine | T10–T13; DAO.persistAggregate dùng chung EntityManager do service cấp |

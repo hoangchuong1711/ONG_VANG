@@ -12,7 +12,7 @@ Mục tiêu: hoàn thành 12 Use Case theo đề Hệ thống đặt xe / giao h
 
 * Kế hoạch gồm 32 task lớn ở mức chức năng. Mã T01–T32 là mã nội bộ của bản kế hoạch mới, thay thế cách đánh số 25 task cũ; không phải mã work item OV-… trên Plane. Có thể tách subtasks sau khi thống nhất thiết kế.
 
-* Các mục áp dụng bài giảng là lựa chọn của nhóm để nâng chất lượng, không tự gán thành yêu cầu bắt buộc của giảng viên. Không mở rộng thêm đăng ký tài khoản, GPS trực tiếp, nhiều cổng thanh toán hay tối ưu đội xe.
+* Các mục áp dụng bài giảng là lựa chọn của nhóm để nâng chất lượng, không tự gán thành yêu cầu bắt buộc của giảng viên. Bổ sung phạm vi ngày 08/10/2026: khách hàng tự đăng ký tài khoản trong UC-01/T06; không cho tự đăng ký vai trò tài xế, tổng đài hoặc chủ đội xe. Đây là mở rộng của nhóm, không thay đổi số lượng 12 UC. Không mở rộng GPS trực tiếp, nhiều cổng thanh toán hay tối ưu đội xe.
 
 ## 2. Yêu cầu và 12 Use Case
 
@@ -20,7 +20,7 @@ Bắt buộc theo đề: 3 tầng UI/Presentation → Controller/Service (Busine
 
 | UC    | Phạm vi triển khai                                                                                       | Nhánh thay thế và lỗi cần xử lý                                                                            |
 | ----- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| UC-01 | Đăng nhập và phân quyền khách, tổng đài/điều phối, tài xế, quản trị.                                     | Sai thông tin đăng nhập; tài xế bị khóa; thiếu dữ liệu.                                                    |
+| UC-01 | Đăng nhập, đăng xuất và phân quyền khách, tổng đài/điều phối, tài xế, quản trị; bổ sung khách hàng tự đăng ký tài khoản. | Sai thông tin đăng nhập; tài khoản bị khóa; thiếu/sai dữ liệu; SĐT đăng ký trùng sau chuẩn hóa; gửi role trái phép; CSRF thiếu/sai. |
 | UC-02 | Khách hoặc tổng đài tạo đơn; thông tin kiện hàng, cước snapshot và nhật ký; trạng thái CHO_GAN.          | Thiếu điểm giao/SĐT; SĐT sai; ngoài vùng phục vụ; lỗi mạng/server.                                         |
 | UC-03 | Tính cước gốc + phụ thu − giảm giá; trả chi tiết và lưu snapshot khi chốt đơn.                           | Thiếu biểu phí; khoảng cách không hợp lệ; chặn/giới hạn tổng âm.                                           |
 | UC-04 | Chuẩn hóa điểm lấy/giao; lấy km, thời gian ước tính; kiểm tra phạm vi; gọi dịch vụ giả lập qua adapter.  | Timeout/lỗi dịch vụ; không tìm thấy địa chỉ; vượt giới hạn.                                                |
@@ -123,7 +123,7 @@ Mọi task phát triển phải kèm test phù hợp, cập nhật API/thiết k
 
 | Mã  | Task                                   | Độ khó / ưu tiên | Phụ thuộc          | Hướng dẫn và kết quả cần có                                                                                                                                                                                                              |
 | --- | -------------------------------------- | ---------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T06 | BE đăng nhập và quyền truy cập — UC-01 | Khó / Cao        | T03, T04           | Làm session, đăng xuất, kiểm tra role/trạng thái tài khoản; hash mật khẩu. Test thiếu dữ liệu, sai mật khẩu, bị khóa, truy cập không có quyền; API hoạt động qua Postman.                                                                |
+| T06 | BE đăng ký, đăng nhập và quyền truy cập — UC-01 | Khó / Cao | T03, T04 | Register khách hàng: chuẩn hóa SĐT làm username, hash mật khẩu, tạo tài khoản KHACH_HANG/HOAT_DONG và hồ sơ khách thường cùng transaction; không tự đăng nhập. Làm session, đăng xuất, kiểm tra role/trạng thái tài khoản và CSRF. Test thiếu/sai dữ liệu, trùng SĐT kể cả đồng thời, rollback, tự cấp quyền trái phép, sai mật khẩu, bị khóa, truy cập không có quyền; API hoạt động qua Swagger/Postman. |
 | T07 | BE lộ trình giả lập — UC-04            | Trung bình / Cao | T03, T04           | Tạo RouteProvider và bộ địa chỉ/tuyến cố định có km/thời gian. Chuẩn hóa đầu vào, lỗi địa chỉ/timeout/vượt phạm vi; hỗ trợ điều khiển lỗi trong test. Chuẩn bị adapter thay thế nếu tích hợp Goong sau.                                  |
 | T08 | BE chính sách thành viên — UC-05       | Trung bình / Cao | T03, T04           | Đọc hạng/hạn thành viên và tỷ lệ từ seed/cấu hình; khách thường giảm 0, không áp hạng hết hạn. Viết test tỷ lệ/ngưỡng, giới hạn giảm; chưa tự nâng hạng bằng hệ thống tích điểm.                                                         |
 | T09 | BE tính cước và báo giá — UC-03        | Trung bình / Cao | T07, T08           | Tổng hợp khoảng cách, biểu phí, phụ thu và giảm; trả breakdown thống nhất. Test thiếu biểu phí, km sai, làm tròn và tổng không âm. Chuẩn bị dữ liệu snapshot cho tạo đơn.                                                                |

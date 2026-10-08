@@ -4,6 +4,7 @@ Phiên bản hợp đồng: **0.2.0**, ngày 05/10/2026. T03 yêu cầu khối l
 
 ## Trạng thái thực tế
 
+- Bổ sung phạm vi ngày 08/10/2026: `POST /api/auth/register` cho khách hàng tự đăng ký thuộc T06. Hiện mới ghi yêu cầu trong [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06); OpenAPI 0.2.0, Swagger và collection hiện tại chưa có endpoint này. Khi triển khai T06 phải cập nhật phiên bản OpenAPI/DTO/examples và sinh lại Postman trước khi nghiệm thu; ghi chú này không phải đặc tả máy đọc thứ hai.
 - Đã có implementation: `GET /api/health`.
 - Đã đặc tả, **chưa có implementation**: đăng nhập/session/CSRF và toàn bộ nghiệp vụ T06–T18. Gọi các đường dẫn này hiện tại có thể trả 404/405 hoặc HTML lỗi Tomcat; đó không phải API nghiệp vụ đã đạt contract.
 - T04 không chạy SQL v0, không tạo/migrate bảng, không tạo tài khoản seed, không hiện thực thanh toán.
