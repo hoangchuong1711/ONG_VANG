@@ -3,7 +3,6 @@ package com.miniongvang.persistence;
 import com.miniongvang.DAO.*;
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.entity.*;
-import com.miniongvang.entity.enums.NhatKyTrangThai;
 import com.miniongvang.entity.enums.OrderStatus;
 import com.miniongvang.entity.enums.PaymentMethod;
 import com.miniongvang.seed.DemoSeeder;
