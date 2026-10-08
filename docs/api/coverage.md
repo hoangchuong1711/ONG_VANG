@@ -2,6 +2,7 @@
 
 UC-01/T06 đã có implementation và test riêng; UC nghiệp vụ T07–T18 vẫn **Not Run / chờ implementation BE**. Địa chỉ, username và ID trong OpenAPI chỉ là ví dụ; T03/T07 cung cấp fixture thật. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
 
+
 | UC / task | Operation ID | Nhánh và tiêu chí cần kiểm thử |
 | --- | --- | --- |
 | Hạ tầng / T02 | getHealth | 200 DB connected; 503 thiếu cấu hình/driver hoặc DB lỗi, vẫn là JSON Health |
