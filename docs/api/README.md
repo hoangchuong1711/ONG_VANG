@@ -6,7 +6,7 @@ Phiên bản hợp đồng: **0.3.0**, ngày 08/10/2026. T03 yêu cầu khối l
 
 - `POST /api/auth/register` cho khách hàng tự đăng ký đã có trong OpenAPI 0.3.0, Swagger và Postman. Xem [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06).
 - Đã có implementation: `GET /api/health`.
-- Đã triển khai: `/api/health` và 5 operation T06: `getCsrf`, `register`, `login`, `getCurrentUser`, `logout`. Các nghiệp vụ T07–T18 vẫn planned; gọi các đường dẫn này hiện tại có thể trả 404/405 sau khi vượt kiểm tra quyền.
+- Đã triển khai: `/api/health`, 5 operation T06 và `estimateRoute` của T07. Các nghiệp vụ T08–T18 vẫn planned; gọi các đường dẫn này hiện tại có thể trả 404/405 sau khi vượt kiểm tra quyền.
 - T04 không chạy SQL v0, không tạo/migrate bảng, không tạo tài khoản seed, không hiện thực thanh toán.
 - Swagger UI là công cụ tài liệu/test BE, không phải FE nghiệp vụ T21–T28.
 
@@ -36,7 +36,7 @@ Mở `http://localhost:8081/swagger-ui/`. Spec: `http://localhost:8081/openapi.j
 
 Chọn `Infrastructure → getHealth → Try it out → Execute`. Khi DB khỏe, trả 200; khi mất kết nối/cấu hình DB, trả 503 với schema Health riêng. Không tự đổi response health hiện có sang envelope lỗi nghiệp vụ.
 
-Để thử T06, Execute `getCsrf`, `register` nếu muốn tạo khách mới, `login`, `getCsrf` lần nữa rồi `getCurrentUser` và `logout`. Trang Swagger tự giữ CSRF **trong bộ nhớ trang**, thêm header vào request cùng origin và xóa khi logout/401. Cookie HttpOnly do trình duyệt nhận từ server, không dán JSESSIONID vào Authorize. Reload trang thì lấy lại CSRF. Các nghiệp vụ T07–T18 tiếp tục triển khai sau.
+Để thử T06/T07, Execute `getCsrf`, `register` nếu muốn tạo khách mới, `login`, `getCsrf` lần nữa rồi `getCurrentUser` và `estimateRoute`; có thể gọi `logout` sau đó. Trang Swagger tự giữ CSRF **trong bộ nhớ trang**, thêm header vào request cùng origin và xóa khi logout/401. Cookie HttpOnly do trình duyệt nhận từ server, không dán JSESSIONID vào Authorize. Reload trang thì lấy lại CSRF. Các nghiệp vụ T08–T18 tiếp tục triển khai sau.
 
 Swagger cùng BE origin nên không cần mở thêm CORS cho tài liệu. Các đường dẫn tương đối hoạt động khi deploy WAR ở context khác ROOT.
 

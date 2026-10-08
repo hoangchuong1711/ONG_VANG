@@ -33,4 +33,4 @@ Tiền thống nhất NUMERIC(15,2)/BigDecimal. DATE dùng LocalDate, thời đi
 | Tất toán, callback muộn, đối soát, chuyển phương thức | T14–T15; unique success/pending không thay thế lock và lifecycle thanh toán |
 | Báo cáo/lịch sử | T16–T17; đọc snapshot/assignment/payment, không dùng bảng thống kê thu nhập cũ |
 
-T03 kiểm thử toàn vẹn DB/ORM; T06 đã triển khai auth, còn endpoint nghiệp vụ T07–T18 vẫn planned. Xem [hướng dẫn database](../database/README.md) để migrate, seed, reset và đọc giới hạn chuyển đổi V1.
+T03 kiểm thử toàn vẹn DB/ORM; T06 đã triển khai auth; T07 đã triển khai `estimateRoute`. Các endpoint nghiệp vụ T08–T18 vẫn planned. Xem [hướng dẫn database](../database/README.md) để migrate, seed, reset và đọc giới hạn chuyển đổi V1.
