@@ -1,6 +1,8 @@
 package com.miniongvang.DAO;
 
 import com.miniongvang.entity.TaiXe;
+import com.miniongvang.entity.enums.AccountStatus;
+import com.miniongvang.entity.enums.DriverStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import java.util.List;
@@ -14,11 +16,14 @@ public final class TaiXeDAO extends BaseDAO<TaiXe> {
         if (limit < 1 || limit > 100) throw new IllegalArgumentException("limit must be 1..100");
         return em.createQuery("""
             select t from TaiXe t join t.taiKhoan a
-            where a.trangThai = com.miniongvang.entity.AccountStatus.HOAT_DONG
-              and t.trangThai = com.miniongvang.entity.DriverStatus.ONLINE
+            where a.trangThai = :accountStatus
+              and t.trangThai = :driverStatus
               and not exists (select p.id from PhanCongDonHang p
                               where p.taiXe = t and p.ketThucLuc is null)
             order by t.ranhTu asc, t.id asc
-            """, TaiXe.class).setMaxResults(limit).getResultList();
+            """, TaiXe.class)
+                .setParameter("accountStatus", AccountStatus.HOAT_DONG)
+                .setParameter("driverStatus", DriverStatus.ONLINE)
+                .setMaxResults(limit).getResultList();
     }
 }
