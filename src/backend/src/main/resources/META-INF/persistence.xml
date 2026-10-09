@@ -11,6 +11,7 @@
         <class>com.miniongvang.entity.DieuPhoiVien</class>
         <class>com.miniongvang.entity.CauHinhCuoc</class>
         <class>com.miniongvang.entity.BaoGia</class>
+        <class>com.miniongvang.entity.OrderCreationRequest</class>
         <class>com.miniongvang.entity.CauHinhPhuThu</class>
         <class>com.miniongvang.entity.DonHang</class>
         <class>com.miniongvang.entity.SnapshotCuocDonHang</class>

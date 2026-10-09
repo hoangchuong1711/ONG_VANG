@@ -1162,7 +1162,13 @@
                     "tienGiamGia": "5000.00",
                     "tongCuoc": "45000.00",
                     "donViTien": "VND",
-                    "phuThu": [{"maPhuThu":"PHU-DEMO-1","tenPhuThu":"Phụ thu demo","soTienTinh":"5000.00"}]
+                    "phuThu": [
+                      {
+                        "maPhuThu": "PHU-DEMO-1",
+                        "tenPhuThu": "Phụ thu demo",
+                        "soTienTinh": "5000.00"
+                      }
+                    ]
                   },
                   "hangThanhVien": {
                     "maHang": "HANG-DEMO-VIP",
@@ -1263,10 +1269,17 @@
             "description": "RESOURCE_NOT_FOUND",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/Error"},
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
                 "examples": {
                   "RESOURCE_NOT_FOUND": {
-                    "value": {"code":"RESOURCE_NOT_FOUND","message":"Không thể thực hiện yêu cầu: RESOURCE_NOT_FOUND","fieldErrors":[],"traceId":"trace-demo-001"}
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Không thể thực hiện yêu cầu: RESOURCE_NOT_FOUND",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
                   }
                 }
               }
@@ -1423,7 +1436,9 @@
             "FORBIDDEN",
             "CSRF_INVALID"
           ],
-          "404": ["RESOURCE_NOT_FOUND"],
+          "404": [
+            "RESOURCE_NOT_FOUND"
+          ],
           "422": [
             "ADDRESS_NOT_FOUND",
             "OUT_OF_SERVICE_AREA",
@@ -1451,8 +1466,8 @@
         ],
         "summary": "Tạo đơn với cước snapshot",
         "operationId": "createOrder",
-        "description": "Tổng đài bắt buộc maKh; khách chỉ được dùng chính maKh của session. Lưu người tạo, kiện hàng, snapshot và nhật ký cùng transaction. Báo giá phải khớp đầu vào và chưa hết hạn; giá đổi trả 409 để xác nhận lại.",
-        "x-implementation-status": "planned",
+        "description": "Tổng đài bắt buộc maKh; khách chỉ được dùng chính maKh của session. Lưu người tạo, kiện hàng, snapshot, phụ thu và nhật ký cùng transaction. Báo giá phải khớp đầu vào và chưa hết hạn; giá đổi trả 409 để lấy báo giá mới và xác nhận lại. Retry thành công trả lại HTTP 201/body gốc kể cả báo giá hết hạn. Khóa có hiệu lực 24 giờ theo tài khoản; payload được chuẩn hóa trước so sánh. Lỗi không giữ khóa.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-02"
         ],
@@ -1608,6 +1623,26 @@
               }
             }
           },
+          "404": {
+            "description": "RESOURCE_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_NOT_FOUND": {
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Không thể thực hiện yêu cầu: RESOURCE_NOT_FOUND",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "409": {
             "description": "QUOTE_EXPIRED, QUOTE_CHANGED, IDEMPOTENCY_CONFLICT",
             "content": {
@@ -1645,17 +1680,33 @@
             }
           },
           "422": {
-            "description": "OUT_OF_SERVICE_AREA",
+            "description": "ADDRESS_NOT_FOUND, OUT_OF_SERVICE_AREA, DISTANCE_INVALID",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
                 "examples": {
+                  "ADDRESS_NOT_FOUND": {
+                    "value": {
+                      "code": "ADDRESS_NOT_FOUND",
+                      "message": "Không thể thực hiện yêu cầu: ADDRESS_NOT_FOUND",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  },
                   "OUT_OF_SERVICE_AREA": {
                     "value": {
                       "code": "OUT_OF_SERVICE_AREA",
                       "message": "Không thể thực hiện yêu cầu: OUT_OF_SERVICE_AREA",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  },
+                  "DISTANCE_INVALID": {
+                    "value": {
+                      "code": "DISTANCE_INVALID",
+                      "message": "Không thể thực hiện yêu cầu: DISTANCE_INVALID",
                       "fieldErrors": [],
                       "traceId": "trace-demo-001"
                     }
@@ -1676,6 +1727,66 @@
                     "value": {
                       "code": "INTERNAL_ERROR",
                       "message": "Không thể thực hiện yêu cầu: INTERNAL_ERROR",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "ROUTE_PROVIDER_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "ROUTE_PROVIDER_ERROR": {
+                    "value": {
+                      "code": "ROUTE_PROVIDER_ERROR",
+                      "message": "Không thể thực hiện yêu cầu: ROUTE_PROVIDER_ERROR",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "FARE_CONFIG_MISSING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "FARE_CONFIG_MISSING": {
+                    "value": {
+                      "code": "FARE_CONFIG_MISSING",
+                      "message": "Không thể thực hiện yêu cầu: FARE_CONFIG_MISSING",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "ROUTE_PROVIDER_TIMEOUT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "ROUTE_PROVIDER_TIMEOUT": {
+                    "value": {
+                      "code": "ROUTE_PROVIDER_TIMEOUT",
+                      "message": "Không thể thực hiện yêu cầu: ROUTE_PROVIDER_TIMEOUT",
                       "fieldErrors": [],
                       "traceId": "trace-demo-001"
                     }
@@ -1721,16 +1832,30 @@
             "FORBIDDEN",
             "CSRF_INVALID"
           ],
+          "404": [
+            "RESOURCE_NOT_FOUND"
+          ],
           "409": [
             "QUOTE_EXPIRED",
             "QUOTE_CHANGED",
             "IDEMPOTENCY_CONFLICT"
           ],
           "422": [
-            "OUT_OF_SERVICE_AREA"
+            "OUT_OF_SERVICE_AREA",
+            "ADDRESS_NOT_FOUND",
+            "DISTANCE_INVALID"
           ],
           "500": [
             "INTERNAL_ERROR"
+          ],
+          "502": [
+            "ROUTE_PROVIDER_ERROR"
+          ],
+          "503": [
+            "FARE_CONFIG_MISSING"
+          ],
+          "504": [
+            "ROUTE_PROVIDER_TIMEOUT"
           ]
         }
       },
@@ -6648,7 +6773,10 @@
             "const": true
           },
           "nguon": {
-            "enum": ["GIA_LAP", "GOONG"]
+            "enum": [
+              "GIA_LAP",
+              "GOONG"
+            ]
           }
         },
         "examples": [
@@ -6855,7 +6983,13 @@
               "tienGiamGia": "5000.00",
               "tongCuoc": "45000.00",
               "donViTien": "VND",
-              "phuThu": [{"maPhuThu":"PHU-DEMO-1","tenPhuThu":"Phụ thu demo","soTienTinh":"5000.00"}]
+              "phuThu": [
+                {
+                  "maPhuThu": "PHU-DEMO-1",
+                  "tenPhuThu": "Phụ thu demo",
+                  "soTienTinh": "5000.00"
+                }
+              ]
             },
             "hangThanhVien": {
               "maHang": "HANG-DEMO-VIP",

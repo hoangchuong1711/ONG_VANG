@@ -78,6 +78,8 @@ jobs:
         run: docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
       - name: Smoke test deployed API and documentation
         run: npm run smoke --prefix tools/api
+      - name: Smoke test T10 order creation
+        run: npm run smoke:orders --prefix tools/api
       - name: Collect container logs
         if: always()
         run: |
