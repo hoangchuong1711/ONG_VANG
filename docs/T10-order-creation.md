@@ -46,4 +46,4 @@ sequenceDiagram
 
 Mapping: OrderServlet (HTTP/DTO), OrderService (quyền, báo giá, transaction), QuoteService.evaluate (cước dùng chung T09), DonHangDAO (aggregate), OrderCreationRequestDAO (khóa/replay), OrderCreationRequest (V4). T06 ApiSecurityFilter tiếp tục kiểm tra session/role/CSRF.
 
-Phạm vi T10 ở đây là tạo đơn. `listCustomers`, các API đọc đơn/lịch sử vẫn planned trong OpenAPI; không đánh dấu các API đó đã hoàn thành. Kết quả test và lệnh chạy ở [tests/T10-validation.md](../tests/T10-validation.md). Review/merge theo CONTRIBUTING do nhóm thực hiện.
+Phạm vi T10 ở đây là tạo đơn. T11 bổ sung đọc danh sách/chi tiết đơn; `listCustomers` và API đọc nhật ký còn planned trong OpenAPI. Kết quả test và lệnh chạy ở [tests/T10-validation.md](../tests/T10-validation.md). Review/merge theo CONTRIBUTING do nhóm thực hiện.

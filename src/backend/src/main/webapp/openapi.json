@@ -1865,8 +1865,8 @@
         ],
         "summary": "Danh sách và lịch sử đơn theo quyền",
         "operationId": "listOrders",
-        "description": "Khách chỉ đơn của mình; tổng đài xem đơn điều phối; tài xế xem đơn được giao và đơn đã thực hiện được phép xem (cần lịch sử gán). Sort thoiGianTao DESC,maDon ASC. summary tính toàn bộ tập lọc, kể cả đơn hủy; đây là tổng cước snapshot, không phải doanh thu.",
-        "x-implementation-status": "planned",
+        "description": "Khách chỉ đơn của mình; tổng đài xem đơn điều phối; tài xế xem đơn hiện được giao hoặc lịch sử phân công không bị từ chối. Sort thoiGianTao DESC,maDon ASC. summary tính toàn bộ tập lọc, kể cả đơn hủy; đây là tổng cước snapshot, không phải doanh thu. Ngày lọc theo Asia/Ho_Chi_Minh; tuNgay bao gồm, denNgay không bao gồm.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-12",
           "UC-19"
@@ -2114,8 +2114,8 @@
         ],
         "summary": "Chi tiết đơn và trạng thái thanh toán",
         "operationId": "getOrder",
-        "description": "Khách sở hữu, tổng đài hoặc tài xế có liên quan được phép. Sai chủ đơn trả 404 để tránh lộ tài nguyên.",
-        "x-implementation-status": "planned",
+        "description": "Khách sở hữu, tổng đài hoặc tài xế hiện được giao/có lịch sử phân công không bị từ chối. Sai chủ đơn trả 404 để tránh lộ tài nguyên. Trả cước snapshot và trạng thái thanh toán từ dữ liệu đã lưu.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-19",
           "UC-13",
@@ -2536,8 +2536,8 @@
         ],
         "summary": "Danh sách tài xế",
         "operationId": "listDrivers",
-        "description": "Không trả CCCD. Sort hoTen,maTx; danh sách rỗng trả 200.",
-        "x-implementation-status": "planned",
+        "description": "Chỉ tài khoản hoạt động; không trả CCCD. Lọc trạng thái ONLINE và dangBanChuyen=false để lấy tài xế rảnh. Sort hoTen,maTx; danh sách rỗng trả 200.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-12"
         ],
@@ -2742,8 +2742,8 @@
         ],
         "summary": "Gợi ý tài xế rảnh",
         "operationId": "suggestDrivers",
-        "description": "Chỉ đơn CHO_GAN. ONLINE, không bận, tài khoản không khóa; rảnh lâu nhất rồi maTx. Loại tài xế vừa từ chối đơn. Không có tài xế: items=[]; không phải lỗi.",
-        "x-implementation-status": "planned",
+        "description": "Chỉ đơn CHO_GAN. ONLINE, không bận, tài khoản hoạt động; rảnh lâu nhất rồi maTx (ranhTu null đứng cuối). Loại các tài xế đã từ chối chính đơn này. Không có tài xế: items=[]; không phải lỗi.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-12"
         ],
@@ -2980,8 +2980,8 @@
         ],
         "summary": "Gán tài xế",
         "operationId": "assignDriver",
-        "description": "Chỉ CHO_GAN; khóa/cập nhật có điều kiện để một tài xế chỉ có một đơn hoạt động. Cạnh tranh gán/hủy trả 409.",
-        "x-implementation-status": "planned",
+        "description": "Chỉ CHO_GAN; khóa/cập nhật có điều kiện để một tài xế chỉ có một đơn hoạt động. Cạnh tranh gán/hủy trả 409. Kiểm tra lại ONLINE, tài khoản hoạt động, bận/rảnh và lịch sử từ chối bên trong transaction; không gán lại người đã từ chối chính đơn này.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-12"
         ],
@@ -3021,9 +3021,9 @@
                   "sdtNguoiNhan": "0901234567",
                   "quangDuongKm": "5.00",
                   "ghiChuGiaoHang": null,
-                  "trangThai": "CHO_GAN",
+                  "trangThai": "DA_GAN",
                   "maKh": "KH-DEMO-001",
-                  "maTx": null,
+                  "maTx": "TX-DEMO-001",
                   "maNv": null,
                   "cuoc": {
                     "cuocGoc": "50000.00",
@@ -3250,7 +3250,7 @@
         "summary": "Tài xế từ chối trước lấy hàng",
         "operationId": "rejectOrder",
         "description": "Chỉ tài xế đang được gán, trạng thái DA_GAN. Về CHO_GAN, giải phóng tài xế, lưu lịch sử và lý do.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-12"
         ],

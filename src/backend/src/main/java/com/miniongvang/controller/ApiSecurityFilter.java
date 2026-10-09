@@ -41,7 +41,7 @@ public final class ApiSecurityFilter implements Filter {
             resp.setStatus(204);
             return;
         }
-        String path = req.getServletPath();
+        String path = req.getServletPath() + (req.getPathInfo() == null ? "" : req.getPathInfo());
         if (path.equals("/api/health") || path.equals("/api/auth/csrf") || path.equals("/api/auth/login")
                 || path.equals("/api/auth/register") || path.equals("/api/payments/vnpay/ipn")
                 || path.equals("/api/payments/vnpay/return") || path.equals("/api/auth/logout")

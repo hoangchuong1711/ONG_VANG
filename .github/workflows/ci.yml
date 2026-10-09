@@ -49,6 +49,7 @@ jobs:
       REQUIRE_TEST_DB: 'true'
       API_BASE_URL: http://127.0.0.1:18081
       API_EXPECTED_DATABASE: mini_ong_vang_test
+      DEMO_PASSWORD: ci-only-demo-password
     steps:
       - uses: actions/checkout@v6
         with:
@@ -74,12 +75,18 @@ jobs:
         run: docker compose -f docker-compose.ci.yml up --wait --wait-timeout 120 db-test
       - name: Build WAR and run Java tests against test database
         run: mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml verify
+      - name: Prepare isolated demo fixtures for HTTP dispatch tests
+        run: |
+          docker compose -f docker-compose.ci.yml exec -T db-test psql -U mini_ong_vang_test -d mini_ong_vang_test -v ON_ERROR_STOP=1 -c "TRUNCATE tai_khoan,cau_hinh_cuoc,cau_hinh_phu_thu,hang_thanh_vien,demo_seed_manifest CASCADE"
+          mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml exec:java -Dexec.mainClass=com.miniongvang.seed.SeedCommand -Dexec.args=test
       - name: Start backend after database tests finish
         run: docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
       - name: Smoke test deployed API and documentation
         run: npm run smoke --prefix tools/api
       - name: Smoke test T10 order creation
         run: npm run smoke:orders --prefix tools/api
+      - name: Smoke test T11 dispatch and concurrent assignment
+        run: npm run smoke:dispatch --prefix tools/api
       - name: Collect container logs
         if: always()
         run: |
