@@ -29,6 +29,10 @@ public final class OrderServlet extends HttpServlet {
     private static final Set<String> FIELDS = Set.of("maBaoGia", "maKh", "diemLayHang", "diemGiaoHang", "sdtNguoiNhan", "ghiChuGiaoHang", "kienHang");
     private static final Set<String> PARCEL_FIELDS = Set.of("loaiHangHoa", "ghiChuBaoQuan", "khoiLuongKg");
 
+    @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        DispatchServlet.handle(req,resp);
+    }
+
     @Override protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setHeader("Cache-Control", "no-store");
         if (req.getContentType() == null || !req.getContentType().toLowerCase(java.util.Locale.ROOT).startsWith("application/json")) {

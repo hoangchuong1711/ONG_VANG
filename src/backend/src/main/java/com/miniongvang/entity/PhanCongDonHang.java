@@ -35,6 +35,9 @@ public class PhanCongDonHang {
     @Column(name="ly_do_ket_thuc", length=500)
     private String lyDoKetThuc;
 
+    @Column(name="tu_choi", nullable=false)
+    private boolean tuChoi;
+
     public PhanCongDonHang() {}
 
     public String getId() { return id; }
@@ -57,4 +60,7 @@ public class PhanCongDonHang {
 
     public String getLyDoKetThuc() { return lyDoKetThuc; }
     public void setLyDoKetThuc(String value) { this.lyDoKetThuc = value; }
+
+    public boolean isTuChoi() { return tuChoi; }
+    public void setTuChoi(boolean value) { this.tuChoi = value; }
 }
