@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Mini Ong Vàng API",
-    "version": "0.3.0",
-    "description": "T06 xác thực, T07 lộ trình và T09 báo giá dùng chính sách T08 đã triển khai; T10–T18 còn chờ."
+    "version": "0.4.0",
+    "description": "T06-T12 implemented; remaining operations are marked planned individually."
   },
   "servers": [
     {
@@ -2324,7 +2324,7 @@
         "summary": "Nhật ký đơn",
         "operationId": "listOrderEvents",
         "description": "Cùng quyền getOrder. Sort thoiGianGhiNhan ASC,maNhatKy ASC.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-13",
           "UC-19"
@@ -3509,8 +3509,8 @@
         ],
         "summary": "Cập nhật tiến trình",
         "operationId": "transitionOrder",
-        "description": "Chỉ tài xế được gán: DA_GAN → DA_LAY_HANG → DANG_GIAO → HOAN_TAT. Không nhảy bước; lặp cùng đích đã đạt trả hiện trạng, không ghi nhật ký lần hai. Hoàn tất giải phóng tài xế, không tự tất toán.",
-        "x-implementation-status": "planned",
+        "description": "Chỉ tài xế được gán: DA_GAN → DA_LAY_HANG → DANG_GIAO → HOAN_TAT. Không nhảy bước; lặp cùng đích đã đạt trả hiện trạng, không ghi nhật ký lần hai. Hoàn tất giải phóng tài xế, không tự tất toán. Replay only when the current status equals the requested target; older targets return 409. Completion keeps maTx for history, closes the active assignment and sets ranhTu atomically.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-13"
         ],
@@ -3769,8 +3769,8 @@
         ],
         "summary": "Ghi sự cố giao hàng",
         "operationId": "recordIncident",
-        "description": "Chỉ tài xế đang phụ trách ở DANG_GIAO. Giữ nguyên trạng thái và tài xế bận; ghi thời điểm server.",
-        "x-implementation-status": "planned",
+        "description": "Chỉ tài xế đang phụ trách ở DANG_GIAO. Giữ nguyên trạng thái và tài xế bận; ghi thời điểm server. Each accepted POST records a separate delivery attempt; this endpoint has no idempotency key. loaiSuCo and the full trimmed lyDo (up to 500 characters) are stored separately.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-13"
         ],
@@ -3805,10 +3805,11 @@
                 "example": {
                   "maNhatKy": "NK-DEMO-001",
                   "maDon": "DH-DEMO-001",
-                  "tenTrangThai": "CHO_GAN",
+                  "tenTrangThai": "DANG_GIAO",
                   "thoiGianGhiNhan": "2026-10-05T03:00:00Z",
-                  "nguoiThucHien": "KH-DEMO-001",
-                  "ghiChuSuCo": null
+                  "nguoiThucHien": "Demo driver",
+                  "ghiChuSuCo": "Recipient did not answer",
+                  "loaiSuCo": "KHONG_LIEN_LAC_DUOC"
                 }
               }
             }
@@ -7262,6 +7263,18 @@
               "null"
             ],
             "maxLength": 500
+          },
+          "loaiSuCo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "KHONG_LIEN_LAC_DUOC",
+              "TU_CHOI_NHAN",
+              null
+            ],
+            "description": "Delivery incident type; null for status transitions and legacy events."
           }
         },
         "examples": [

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 import com.miniongvang.entity.enums.OrderStatus;
+import com.miniongvang.entity.enums.IncidentType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -41,6 +42,12 @@ public class NhatKyTrangThai {
 
     @Column(name="ghi_chu_su_co", length=500)
     private String ghiChuSuCo;
+
+    @Enumerated(EnumType.STRING) @Column(name="loai_su_co", length=30)
+    private IncidentType loaiSuCo;
+
+    public IncidentType getLoaiSuCo() { return loaiSuCo; }
+    public void setLoaiSuCo(IncidentType value) { this.loaiSuCo = value; }
 
     @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="ma_tk_thuc_hien")
     private TaiKhoan taiKhoanThucHien;

@@ -13,6 +13,20 @@ public final class DispatchDAO {
     private final EntityManager em;
     public DispatchDAO(EntityManager em) { this.em = em; }
 
+    public boolean completedBy(String order,String driver) {
+        return em.createQuery("select count(p) from PhanCongDonHang p where p.donHang.id=:order "
+                + "and p.taiXe.id=:driver and p.tuChoi=false and p.ketThucLuc=p.donHang.thoiGianHoanTat",Long.class)
+                .setParameter("order",order).setParameter("driver",driver).getSingleResult()>0;
+    }
+    public Events events(String order,int page,int size) {
+        long total=em.createQuery("select count(n) from NhatKyTrangThai n where n.donHang.id=:id",Long.class)
+                .setParameter("id",order).getSingleResult();
+        var items=em.createQuery("from NhatKyTrangThai n where n.donHang.id=:id order by n.thoiGianGhiNhan,n.id",NhatKyTrangThai.class)
+                .setParameter("id",order).setFirstResult(Math.multiplyExact(page,size)).setMaxResults(size).getResultList();
+        return new Events(items,total);
+    }
+    public record Events(List<NhatKyTrangThai> items,long total) {}
+
     public boolean relatedDriver(String order, String driver) {
         return em.createQuery("select count(p) from PhanCongDonHang p where p.donHang.id=:order "
                 + "and p.taiXe.id=:driver and p.tuChoi=false", Long.class)

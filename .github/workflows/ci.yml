@@ -87,6 +87,8 @@ jobs:
         run: npm run smoke:orders --prefix tools/api
       - name: Smoke test T11 dispatch and concurrent assignment
         run: npm run smoke:dispatch --prefix tools/api
+      - name: Smoke test T12 delivery progress and completion
+        run: npm run smoke:progress --prefix tools/api
       - name: Collect container logs
         if: always()
         run: |
