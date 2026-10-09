@@ -638,6 +638,67 @@
           "response": []
         },
         {
+          "name": "listOrderEvents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/events?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": false,
+                  "description": "Trang bắt đầu từ 0"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": false,
+                  "description": "Số bản ghi mỗi trang"
+                }
+              ]
+            },
+            "description": "Nhật ký đơn\n\nCùng quyền getOrder. Sort thoiGianGhiNhan ASC,maNhatKy ASC.\n\nStatus: implemented; UC: UC-13, UC-19; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                  "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
+                  "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
+                  "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
+                  "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
+                  "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "listDrivers",
           "request": {
             "method": "GET",
@@ -922,6 +983,147 @@
           "response": []
         },
         {
+          "name": "transitionOrder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/transitions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}",
+                "transitions"
+              ],
+              "query": []
+            },
+            "description": "Cập nhật tiến trình\n\nChỉ tài xế được gán: DA_GAN → DA_LAY_HANG → DANG_GIAO → HOAN_TAT. Không nhảy bước; lặp cùng đích đã đạt trả hiện trạng, không ghi nhật ký lần hai. Hoàn tất giải phóng tài xế, không tự tất toán. Replay only when the current status equals the requested target; older targets return 409. Completion keeps maTx for history, closes the active assignment and sets ranhTu atomically.\n\nStatus: implemented; UC: UC-13; roles: TAI_XE",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trangThai\": \"DA_LAY_HANG\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                  "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
+                  "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                  "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                  "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
+                  "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                  "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
+                  "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                  "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                  "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                  "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                  "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
+                  "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
+                  "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
+                  "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                  "  pm.test('Requested state reached', () => pm.expect(body.trangThai).to.eql(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).trangThai));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "recordIncident",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/incidents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}",
+                "incidents"
+              ],
+              "query": []
+            },
+            "description": "Ghi sự cố giao hàng\n\nChỉ tài xế đang phụ trách ở DANG_GIAO. Giữ nguyên trạng thái và tài xế bận; ghi thời điểm server. Each accepted POST records a separate delivery attempt; this endpoint has no idempotency key. loaiSuCo and the full trimmed lyDo (up to 500 characters) are stored separately.\n\nStatus: implemented; UC: UC-13; roles: TAI_XE",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loaiSuCo\": \"KHONG_LIEN_LAC_DUOC\",\n  \"lyDo\": \"Đã gọi nhưng người nhận chưa trả lời\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has maNhatKy', () => pm.expect(body).to.have.property('maNhatKy'));",
+                  "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                  "  pm.test('Response has tenTrangThai', () => pm.expect(body).to.have.property('tenTrangThai'));",
+                  "  pm.test('Response has thoiGianGhiNhan', () => pm.expect(body).to.have.property('thoiGianGhiNhan'));",
+                  "  pm.test('Response has nguoiThucHien', () => pm.expect(body).to.have.property('nguoiThucHien'));",
+                  "  pm.test('Response has ghiChuSuCo', () => pm.expect(body).to.have.property('ghiChuSuCo'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "register",
           "request": {
             "method": "POST",
@@ -1076,79 +1278,6 @@
           "name": "Orders",
           "item": [
             {
-              "name": "listOrderEvents",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/events?page=0&size=20",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "orders",
-                    "{{orderId}}",
-                    "events"
-                  ],
-                  "query": [
-                    {
-                      "key": "page",
-                      "value": "0",
-                      "disabled": false,
-                      "description": "Trang bắt đầu từ 0"
-                    },
-                    {
-                      "key": "size",
-                      "value": "20",
-                      "disabled": false,
-                      "description": "Số bản ghi mỗi trang"
-                    }
-                  ]
-                },
-                "description": "Nhật ký đơn\n\nCùng quyền getOrder. Sort thoiGianGhiNhan ASC,maNhatKy ASC.\n\nStatus: planned; UC: UC-13, UC-19; roles: KHACH_HANG, TONG_DAI, TAI_XE"
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
-                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                      "  const body = pm.response.json();",
-                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
-                      "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
-                      "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
-                      "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
-                      "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
-                      "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
-                      "}"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            },
-            {
               "name": "cancelOrder",
               "request": {
                 "method": "POST",
@@ -1229,176 +1358,6 @@
                       "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
                       "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
                       "  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('DA_HUY'));",
-                      "}"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            }
-          ]
-        },
-        {
-          "name": "Driver",
-          "item": [
-            {
-              "name": "transitionOrder",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "X-CSRF-Token",
-                    "value": "{{csrfToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/transitions",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "orders",
-                    "{{orderId}}",
-                    "transitions"
-                  ],
-                  "query": []
-                },
-                "description": "Cập nhật tiến trình\n\nChỉ tài xế được gán: DA_GAN → DA_LAY_HANG → DANG_GIAO → HOAN_TAT. Không nhảy bước; lặp cùng đích đã đạt trả hiện trạng, không ghi nhật ký lần hai. Hoàn tất giải phóng tài xế, không tự tất toán.\n\nStatus: planned; UC: UC-13; roles: TAI_XE",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"trangThai\": \"DA_LAY_HANG\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
-                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                      "  const body = pm.response.json();",
-                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
-                      "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
-                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
-                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
-                      "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
-                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
-                      "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
-                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
-                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
-                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                      "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
-                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
-                      "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
-                      "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
-                      "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
-                      "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
-                      "  pm.test('Requested state reached', () => pm.expect(body.trangThai).to.eql(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).trangThai));",
-                      "}"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            },
-            {
-              "name": "recordIncident",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "X-CSRF-Token",
-                    "value": "{{csrfToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/incidents",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "orders",
-                    "{{orderId}}",
-                    "incidents"
-                  ],
-                  "query": []
-                },
-                "description": "Ghi sự cố giao hàng\n\nChỉ tài xế đang phụ trách ở DANG_GIAO. Giữ nguyên trạng thái và tài xế bận; ghi thời điểm server.\n\nStatus: planned; UC: UC-13; roles: TAI_XE",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"loaiSuCo\": \"KHONG_LIEN_LAC_DUOC\",\n  \"lyDo\": \"Đã gọi nhưng người nhận chưa trả lời\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 201', () => pm.response.to.have.status(201));",
-                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                      "  const body = pm.response.json();",
-                      "  pm.test('Response has maNhatKy', () => pm.expect(body).to.have.property('maNhatKy'));",
-                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
-                      "  pm.test('Response has tenTrangThai', () => pm.expect(body).to.have.property('tenTrangThai'));",
-                      "  pm.test('Response has thoiGianGhiNhan', () => pm.expect(body).to.have.property('thoiGianGhiNhan'));",
-                      "  pm.test('Response has nguoiThucHien', () => pm.expect(body).to.have.property('nguoiThucHien'));",
-                      "  pm.test('Response has ghiChuSuCo', () => pm.expect(body).to.have.property('ghiChuSuCo'));",
                       "}"
                     ]
                   }

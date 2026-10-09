@@ -113,6 +113,94 @@ public final class DispatchService {
             em.flush(); return view(em,orderId);
         });
     }
+    public EventPage events(AuthService.User actor,String orderId,int page,int size) {
+        id(orderId); page(page,size);
+        return transactions.run(em -> {
+            actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
+            DonHang order=new DonHangDAO(em).find(orderId);
+            if (order==null || !visible(em,actor,order)) throw new NoSuchElementException("Order not found");
+            var result=new DispatchDAO(em).events(orderId,page,size);
+            return new EventPage(result.items().stream().map(DispatchService::eventView).toList(),
+                    page,size,result.total(),pages(result.total(),size));
+        });
+    }
+    public OrderService.Order transition(AuthService.User actor,String orderId,OrderStatus target) {
+        id(orderId);
+        if (target==null || !EnumSet.of(OrderStatus.DA_LAY_HANG,OrderStatus.DANG_GIAO,OrderStatus.HOAN_TAT).contains(target))
+            throw new IllegalArgumentException("Invalid transition target");
+        return transactions.run(em -> {
+            TaiKhoan account=actor(em,actor,AccountRole.TAI_XE);
+            DonHang order=ownedOrder(em,actor,orderId);
+            // A completed replay must not release a driver now working on another order.
+            if (order.getTrangThai()==OrderStatus.HOAN_TAT && target==OrderStatus.HOAN_TAT) {
+                em.refresh(account,LockModeType.PESSIMISTIC_WRITE);
+                activeDriverAccount(account);
+                return view(em,orderId);
+            }
+            TaiXe driver=lockDriver(em,actor,account,orderId);
+            if (order.getTrangThai()==target) return view(em,orderId);
+            OrderStatus required=switch(target) {
+                case DA_LAY_HANG -> OrderStatus.DA_GAN;
+                case DANG_GIAO -> OrderStatus.DA_LAY_HANG;
+                case HOAN_TAT -> OrderStatus.DANG_GIAO;
+                default -> throw new IllegalArgumentException("Invalid transition target");
+            };
+            if (order.getTrangThai()!=required) throw new Conflict("ORDER_STATE_CONFLICT");
+            Instant now=clock.instant();
+            order.setTrangThai(target);
+            if (target==OrderStatus.HOAN_TAT) {
+                var assignment=new DispatchDAO(em).activeOrder(orderId);
+                assignment.setKetThucLuc(now); assignment.setLyDoKetThuc("HOAN_TAT");
+                order.setThoiGianHoanTat(now); driver.setRanhTu(now);
+                // Keep the performing driver for ownership/history; busy is derived from active assignments/orders.
+            }
+            event(em,order,account,now,null);
+            em.flush(); return view(em,orderId);
+        });
+    }
+    public Event incident(AuthService.User actor,String orderId,IncidentType type,String reason) {
+        id(orderId);
+        if (type==null || reason==null || reason.isBlank() || reason.strip().length()>500)
+            throw new IllegalArgumentException("Incident requires type and 1-500 character reason");
+        return transactions.run(em -> {
+            TaiKhoan account=actor(em,actor,AccountRole.TAI_XE);
+            DonHang order=ownedOrder(em,actor,orderId);
+            if (order.getTrangThai()!=OrderStatus.DANG_GIAO) throw new Conflict("ORDER_STATE_CONFLICT");
+            lockDriver(em,actor,account,orderId);
+            NhatKyTrangThai event=event(em,order,account,clock.instant(),reason.strip());
+            event.setLoaiSuCo(type);
+            em.flush(); return eventView(event);
+        });
+    }
+    private static DonHang ownedOrder(EntityManager em,AuthService.User actor,String id) {
+        DonHang order=new DonHangDAO(em).findForUpdate(id);
+        if (order==null || (order.getTaiXe()==null || !order.getTaiXe().getId().equals(actor.maTx()))
+                && !(order.getTrangThai()==OrderStatus.HOAN_TAT && new DispatchDAO(em).completedBy(id,actor.maTx())))
+            throw new NoSuchElementException("Order not found");
+        return order;
+    }
+    private static TaiXe lockDriver(EntityManager em,AuthService.User actor,TaiKhoan account,String orderId) {
+        TaiXe driver=new TaiXeDAO(em).findForUpdate(actor.maTx());
+        em.refresh(driver,LockModeType.PESSIMISTIC_WRITE);
+        em.refresh(account,LockModeType.PESSIMISTIC_WRITE);
+        activeDriverAccount(account);
+        PhanCongDonHang assignment=new DispatchDAO(em).activeOrder(orderId);
+        if (assignment==null || !assignment.getTaiXe().getId().equals(driver.getId()))
+            throw new Conflict("ORDER_STATE_CONFLICT");
+        return driver;
+    }
+    private static void activeDriverAccount(TaiKhoan account) {
+        if (account.getTrangThai()!=AccountStatus.HOAT_DONG || account.getVaiTro()!=AccountRole.TAI_XE)
+            throw new SecurityException("Account unavailable");
+    }
+    private static Event eventView(NhatKyTrangThai event) {
+        return new Event(event.getId(),event.getDonHang().getId(),event.getTrangThai().name(),
+                event.getThoiGianGhiNhan().toString(),event.getNguoiThucHien(),event.getGhiChuSuCo(),event.getLoaiSuCo());
+    }
+    public record Event(String maNhatKy,String maDon,String tenTrangThai,String thoiGianGhiNhan,
+                        String nguoiThucHien,String ghiChuSuCo,IncidentType loaiSuCo) {}
+    public record EventPage(List<Event> items,int page,int size,long totalElements,long totalPages) {}
+
     private static boolean visible(EntityManager em,AuthService.User actor,DonHang order) {
         return switch(actor.vaiTro()) {
             case TONG_DAI -> true;
@@ -137,11 +225,12 @@ public final class DispatchService {
         if (!account.getId().equals(bound)) throw new SecurityException("Profile mismatch");
         return account;
     }
-    private static void event(EntityManager em,DonHang order,TaiKhoan actor,Instant now,String reason) {
+    private static NhatKyTrangThai event(EntityManager em,DonHang order,TaiKhoan actor,Instant now,String reason) {
         NhatKyTrangThai event=new NhatKyTrangThai(); event.setId(UUID.randomUUID().toString());
         event.setDonHang(order); event.setTrangThai(order.getTrangThai()); event.setThoiGianGhiNhan(now);
         event.setTaiKhoanThucHien(actor); event.setNguoiThucHien(actor.getHoTen());
         event.setVaiTroThucHien(actor.getVaiTro().name()); event.setGhiChuSuCo(reason); em.persist(event);
+        return event;
     }
     private static OrderService.Order view(EntityManager em,String id) {
         var details=new DonHangDAO(em).findDetails(id); var order=details.order(); var snapshot=details.fare();

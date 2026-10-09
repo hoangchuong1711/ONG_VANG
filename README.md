@@ -2,7 +2,7 @@
 
 ## Tài liệu và kiểm thử API (T04)
 
-Hiện `/api/health`, các API T06, T07 (`POST /api/routes/estimate`) và T09 (`POST /api/quotes`, dùng chính sách T08) đã triển khai; T10 (`POST /api/orders`) và T11 (danh sách/chi tiết đơn, tài xế, gợi ý, gán/từ chối) đã triển khai; các API còn lại vẫn là hợp đồng chờ triển khai.
+Hiện `/api/health`, các API T06, T07 (`POST /api/routes/estimate`) và T09 (`POST /api/quotes`, dùng chính sách T08) đã triển khai; T10 (`POST /api/orders`), T11 (danh sách/chi tiết đơn, tài xế, gợi ý, gán/từ chối) và T12 (tiến trình, sự cố, nhật ký) đã triển khai; các API còn lại vẫn là hợp đồng chờ triển khai.
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ SQL v0 và phần cần bổ sung](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
@@ -10,6 +10,8 @@ và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
 T10: [thiết kế và cách tạo đơn](docs/T10-order-creation.md), [kết quả và lệnh kiểm thử](tests/T10-validation.md).
 
 T11: [thiết kế điều phối/gán/từ chối](docs/T11-driver-dispatch.md), [kết quả và lệnh kiểm thử](tests/T11-validation.md).
+
+T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progress.md), [kết quả và lệnh kiểm thử](tests/T12-validation.md).
 SQL v0 là tài liệu tham chiếu có header MySQL, không được chạy trực tiếp vào PostgreSQL.
 T03 đã có migration Flyway, Entity/DAO Hibernate, transaction và seed. Xem [hướng dẫn CSDL/seed/reset](docs/database/README.md) và [kết quả kiểm thử T03](tests/database/T03-validation.md).
 
@@ -177,7 +179,7 @@ FE hiện chưa có bộ test UI, không ghi lint/build là test chức năng đ
 Test Java kiểm tra kết nối, migration, Hibernate mapping, seed, constraint, snapshot,
 commit/rollback và cạnh tranh assignment/version. Bộ T03 reset dữ liệu trên DB test riêng trước từng case;
 chỉ khởi động backend-test sau khi Maven verify xong. Chạy Maven không có `TEST_DB_URL` thì test DB skip;
-CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06–T09 có test tương ứng; T10 có integration test tạo đơn và HTTP smoke; T11 có test PostgreSQL và HTTP với cạnh tranh gán/từ chối; test T12–T18 tiếp tục bổ sung theo task.
+CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06–T09 có test tương ứng; T10 có integration test tạo đơn và HTTP smoke; T11 có test PostgreSQL và HTTP với cạnh tranh gán/từ chối; T12 có kiểm thử tiến trình/sự cố/hoàn tất; test T13–T18 tiếp tục bổ sung theo task.
 
 Trên GitHub, xem tab **Actions → CI** hoặc checks của PR. Job BE lưu Surefire reports và
 container logs vào artifact `backend-test-results` trong 7 ngày, kể cả test thất bại;
@@ -228,4 +230,4 @@ Luồng xử lý nghiệp vụ dự kiến là:
 Controller → Service → DAO → Hibernate/JPA → PostgreSQL
 ```
 
-Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; T06 đã triển khai auth; T07–T09 đã triển khai lộ trình, chính sách thành viên và báo giá. Endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, T10 đã có API tạo đơn, T11 có API điều phối/gán/từ chối; các API còn lại triển khai tiếp.
+Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; T06 đã triển khai auth; T07–T09 đã triển khai lộ trình, chính sách thành viên và báo giá. Endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, T10 đã có API tạo đơn, T11 có API điều phối/gán/từ chối; T12 có tiến trình, sự cố và nhật ký; các API còn lại triển khai tiếp.
