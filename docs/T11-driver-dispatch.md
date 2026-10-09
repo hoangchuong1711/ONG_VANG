@@ -1,6 +1,6 @@
 # T11 — Điều phối, gán và từ chối đơn (UC-12)
 
-Phụ thuộc T10 đã merge vào `develop`. Luồng Controller → DispatchService → DAO dùng cùng EntityManager trong TransactionRunner. API dùng session T06; các POST bắt buộc `X-CSRF-Token`.
+Phụ thuộc T10 đã merge vào `develop`. Luồng Controller → DispatchService → DAO dùng cùng EntityManager trong TransactionRunner. API dùng session T06; các POST bắt buộc `X-CSRF-Token`. Chỉ POST thực hiện gán/từ chối; HEAD không được thay đổi dữ liệu.
 
 | API | Quyền | Kết quả |
 | --- | --- | --- |
@@ -31,7 +31,7 @@ Các partial unique index V2 `uq_pc_active_order` và `uq_pc_active_driver` bả
 
 Chỉ tài xế đang được gán và đơn DA_GAN được từ chối. Lý do sau trim phải 1–500 ký tự. Transaction khóa đơn và tài xế, kết thúc phân công, lưu lý do/`tuChoi=true`, xóa liên kết tài xế trên đơn, chuyển về CHO_GAN, đặt `ranhTu=now`, ghi nhật ký và commit. Sai tài xế trả 404; đã lấy hàng/đang giao trả 409 ORDER_STATE_CONFLICT. Lỗi DB ở bất kỳ bước nào rollback toàn bộ.
 
-Migration V5 thêm cờ `tu_choi` và CHECK bắt buộc thời điểm kết thúc/lý do cho phân công bị từ chối. Phân công cũ giữ `false`; không suy diễn lý do kết thúc cũ thành từ chối. Dữ liệu đơn, snapshot giá và kiện hàng không đổi khi gán/từ chối.
+Migration V5 thêm cờ `tu_choi` và CHECK bắt buộc thời điểm kết thúc/lý do cho phân công bị từ chối. Phân công cũ giữ `false`; không suy diễn lý do kết thúc cũ thành từ chối. V6 sửa riêng fixture `PC-DEMO-REJECTED` đã biết là từ chối; DemoSeeder cũng đặt cờ tương ứng. Dữ liệu đơn, snapshot giá và kiện hàng không đổi khi gán/từ chối.
 
 ```mermaid
 sequenceDiagram
@@ -55,4 +55,4 @@ sequenceDiagram
 
 Xem [kết quả T11](../tests/T11-validation.md). JUnit chạy PostgreSQL thật, kiểm tra gán/từ chối/rollback/phân quyền và cạnh tranh. HTTP smoke kiểm tra WAR trên Tomcat, filter với wildcard `/api/orders/*`, CSRF và schema OpenAPI. Postman được sinh lại từ spec và bỏ planned guard cho 6 operation trên.
 
-T12 triển khai chuyển trạng thái/nhật ký đọc; T13 triển khai hủy và tích hợp tranh chấp gán–hủy. Các thao tác sau này phải giữ thứ tự khóa đơn rồi tài xế, cập nhật lịch sử phân công và đơn trong cùng transaction. API thanh toán/báo cáo chưa thuộc T11. Task chỉ Done sau PR được thành viên khác review, CI pass và merge theo CONTRIBUTING.
+JUnit đã kiểm tra gán cạnh tranh transaction hủy bằng fixture DB, chưa gọi API hủy. T12 triển khai chuyển trạng thái/nhật ký đọc; T13 triển khai API hủy và kiểm thử tích hợp gán–hủy qua API. Các thao tác sau này phải giữ thứ tự khóa đơn rồi tài xế, cập nhật lịch sử phân công và đơn trong cùng transaction. API thanh toán/báo cáo chưa thuộc T11. Task chỉ Done sau PR được thành viên khác review, CI pass và merge theo CONTRIBUTING.

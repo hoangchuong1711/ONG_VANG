@@ -181,6 +181,7 @@ public final class DemoSeeder {
                 now.minusSeconds(9900), "Khách hủy", "PC-DEMO-5");
         assign(em, completed, drivers[1], dispatcherAccount, now.minusSeconds(86300), now.minusSeconds(86100),
                 "Tài xế từ chối: xe gặp sự cố", "PC-DEMO-REJECTED");
+        em.find(PhanCongDonHang.class,"PC-DEMO-REJECTED").setTuChoi(true);
         completed.setTaiXe(drivers[0]);
         assign(em, online, drivers[0], dispatcherAccount, now.minusSeconds(172000), now.minusSeconds(170000), "Hoàn tất", "PC-DEMO-6");
         assign(em, pending, drivers[0], dispatcherAccount, now.minusSeconds(24500), now.minusSeconds(22000), "Hoàn tất", "PC-DEMO-7");

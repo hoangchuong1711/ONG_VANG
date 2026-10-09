@@ -4,11 +4,11 @@ Ngày chạy: 09/10/2026. Nhánh `feature/T11-driver-dispatch`, nền T10 `b67da
 
 ## Kết quả đã chạy
 
-- Maven verify: **89 test, 0 failure, 0 error, 0 skipped**, WAR build thành công. Trong đó **14 test DispatchServiceIntegrationTest**.
+- Maven verify: **93 test, 0 failure, 0 error, 0 skipped**, WAR build thành công. Trong đó **18 test DispatchServiceIntegrationTest**.
 - API check: OpenAPI hợp lệ, 29 operation / 12 UC / 287 example; Postman đồng bộ; **2 test Swagger CSRF đạt**.
 - Smoke chung: spec được deploy khớp source, Swagger/assets phục vụ đúng, health có database connected.
 - Smoke T10: **24 kiểm tra HTTP đạt**, gồm chống gửi lặp và tạo đơn đồng thời.
-- Smoke T11: **83 kiểm tra HTTP đạt**, gồm session/role/CSRF, schema, bộ lọc, gán/từ chối và hai lượt 8 request đồng thời.
+- Smoke T11: **89 kiểm tra HTTP đạt**, gồm session/role/CSRF, schema, bộ lọc, gán/từ chối và hai lượt 8 request đồng thời.
 
 Các báo cáo hiện tại nằm ở `src/backend/target/surefire-reports/`. Đây là kết quả local; không thay thế CI GitHub hay review của thành viên khác.
 
@@ -25,7 +25,18 @@ Các báo cáo hiện tại nằm ở `src/backend/target/surefire-reports/`. Đ
 | 8 request gán cùng một đơn | Chính xác 1 thành công, 7 ORDER_STATE_CONFLICT; 1 phân công/audit mới |
 | 8 đơn tranh một tài xế | Chính xác 1 thành công, 7 DRIVER_UNAVAILABLE; tài xế chỉ liên kết 1 đơn hoạt động |
 | Gán và từ chối cùng đơn đồng thời | JUnit: không trùng phân công, tài xế cũ được giải phóng |
-| Lỗi DB ở bước audit gán/từ chối | Trigger lỗi có chủ đích, rollback mọi thay đổi; sau bỏ trigger hoạt động lại |
+| Lỗi DB ở bước audit gán/từ chối | Xác nhận đúng SQLException P0001 từ trigger; rollback trạng thái, phân công, thời điểm rảnh và audit |
+| Gán cạnh tranh transaction hủy | JUnit dùng fixture transaction DB theo thứ tự khóa; không phải API hủy T13 |
+| HEAD không được gán/từ chối | HTTP raw có body, không CSRF: 404; trạng thái đơn giữ nguyên |
+| Lịch sử hoàn thành và từ chối | Người hoàn thành vẫn xem được; người từ chối không xem được |
+
+## Rà soát bổ sung
+
+Đã sửa hai lỗi: Servlet trước đây coi HEAD là thao tác ghi và fixture PC-DEMO-REJECTED chưa có cờ tuChoi. Chỉ POST được gán/từ chối; seed và migration V6 sửa đúng fixture từ chối đã biết, giữ nguyên checksum V5.
+
+Đã dựng bản sao WAR với routing HEAD cũ để kiểm chứng test hồi quy: request HEAD không CSRF trả 200 và thực sự chuyển đơn sang DA_GAN; test mới thất bại đúng tại kỳ vọng 404. Với WAR đã sửa, toàn bộ 89 kiểm tra HTTP đạt. Các worker JUnit chờ đủ tại barrier trước khi bắt đầu cạnh tranh; kiểm tra cả đơn thua không bị thay đổi hoặc có audit dư.
+
+Postman collection đã kiểm tra đồng bộ và schema; chưa chạy Postman GUI/Newman. Các kết quả HTTP trên do script Node gọi trực tiếp backend thật. API hủy thuộc T13 chưa triển khai; test gán–hủy chỉ kiểm tra hợp đồng transaction DB bằng fixture.
 
 ## Chạy lại trong Git Bash / Linux
 

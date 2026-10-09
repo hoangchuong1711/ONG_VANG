@@ -27,7 +27,10 @@ public final class DispatchServlet extends HttpServlet {
             String user=session==null?null:(String)session.getAttribute("auth.userId");
             var actor=user==null?null:new AuthService(persistence.entityManagerFactory()).current(user);
             String path=req.getServletPath()+(req.getPathInfo()==null?"":req.getPathInfo());
-            boolean get="GET".equals(req.getMethod());
+            // HttpServlet routes HEAD through doGet. HEAD must never reach writes
+            // (the security filter intentionally exempts safe methods from CSRF).
+            boolean get="GET".equals(req.getMethod()) || "HEAD".equals(req.getMethod());
+            boolean post="POST".equals(req.getMethod());
             Object result;
             if (get && path.equals("/api/orders")) {
                 result=service.orders(actor,integer(req,"page",0),integer(req,"size",20),
@@ -43,9 +46,9 @@ public final class DispatchServlet extends HttpServlet {
                 if (get && parts.length==4) result=service.order(actor,id);
                 else if (get && parts.length==5 && parts[4].equals("driver-suggestions"))
                     result=service.suggestions(actor,id,integer(req,"page",0),integer(req,"size",20));
-                else if (!get && parts.length==5 && parts[4].equals("assignments"))
+                else if (post && parts.length==5 && parts[4].equals("assignments"))
                     result=service.assign(actor,id,body(req,"maTx"));
-                else if (!get && parts.length==5 && parts[4].equals("reject"))
+                else if (post && parts.length==5 && parts[4].equals("reject"))
                     result=service.reject(actor,id,body(req,"lyDo"));
                 else throw new NoSuchElementException("Endpoint not found");
             }

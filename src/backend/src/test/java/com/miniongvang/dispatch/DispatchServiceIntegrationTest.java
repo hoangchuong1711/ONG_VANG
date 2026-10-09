@@ -158,13 +158,63 @@ class DispatchServiceIntegrationTest {
         assertEquals("MIEN_CUOC",service.order(customer(2),"DH-DEMO-FREE").thanhToan().trangThai());
         assertEquals("DANG_XU_LY",service.order(customer(3),"DH-DEMO-PENDING").thanhToan().trangThai());
     }
+    @Test void staleSuggestionsDoNotReserveDriversOrBypassEligibility() {
+        var ids=service.suggestions(dispatcher(),"DH-DEMO-WAIT",0,20).items().stream().map(DispatchService.Driver::maTx).toList();
+        assertTrue(ids.contains("TX-DEMO-1"));
+        tx.run(em->{em.find(TaiXe.class,"TX-DEMO-1").setTrangThai(DriverStatus.OFFLINE);return null;});
+        conflict("DRIVER_UNAVAILABLE",()->service.assign(dispatcher(),"DH-DEMO-WAIT","TX-DEMO-1"));
+        tx.run(em->{em.find(TaiXe.class,"TX-DEMO-1").setTrangThai(DriverStatus.ONLINE);em.find(TaiKhoan.class,"TK-DEMO-TX-1").setTrangThai(AccountStatus.KHOA);return null;});
+        conflict("DRIVER_UNAVAILABLE",()->service.assign(dispatcher(),"DH-DEMO-WAIT","TX-DEMO-1"));
+        tx.run(em->{em.find(TaiKhoan.class,"TK-DEMO-TX-1").setTrangThai(AccountStatus.HOAT_DONG);return null;});
+        service.assign(dispatcher(),newOrder(),"TX-DEMO-1");
+        conflict("DRIVER_UNAVAILABLE",()->service.assign(dispatcher(),"DH-DEMO-WAIT","TX-DEMO-1"));
+        assertEquals("CHO_GAN",service.order(dispatcher(),"DH-DEMO-WAIT").trangThai());
+        assertEquals(1,events("DH-DEMO-WAIT"));assertEquals(0,active("donHang","DH-DEMO-WAIT"));
+    }
+    @Test void historyRemainsVisibleAfterCompletedOrderReleasesCurrentDriver() {
+        tx.run(em->{em.find(DonHang.class,"DH-DEMO-PAID-CASH").setTaiXe(null);return null;});
+        assertEquals("DH-DEMO-PAID-CASH",service.order(driver(1),"DH-DEMO-PAID-CASH").maDon());
+        assertTrue(service.orders(driver(1),0,20,null,null,null).items().stream().anyMatch(d->d.maDon().equals("DH-DEMO-PAID-CASH")));
+        assertThrows(NoSuchElementException.class,()->service.order(driver(2),"DH-DEMO-PAID-CASH"));
+    }
+    @Test void suggestionsPutUnknownIdleTimeLastAndAllowMissingVehicle() {
+        tx.run(em->{em.find(TaiXe.class,"TX-DEMO-2").setRanhTu(null);
+            em.createQuery("delete from PhuongTien where taiXe.id='TX-DEMO-2'").executeUpdate();return null;});
+        var result=service.suggestions(dispatcher(),"DH-DEMO-WAIT",0,20);
+        assertEquals(List.of("TX-DEMO-1","TX-DEMO-2"),result.items().stream().map(DispatchService.Driver::maTx).toList());
+        assertNull(result.items().getLast().phuongTien());
+    }
+    @Test void assignmentRacingCancellationTransactionNeverLeavesAnActiveDriver() throws Exception {
+        // The cancellation endpoint belongs to T13. This fixture exercises its DB
+        // write contract (order -> driver locks), not an unimplemented HTTP API.
+        var results=race(2,n->n==0?service.assign(dispatcher(),"DH-DEMO-WAIT","TX-DEMO-1").trangThai():tx.run(em->{
+            DonHang order=new DonHangDAO(em).findForUpdate("DH-DEMO-WAIT");
+            if (order.getTaiXe()!=null) {
+                TaiXe driver=new TaiXeDAO(em).findForUpdate(order.getTaiXe().getId());
+                var assignment=new DispatchDAO(em).activeOrder(order.getId());
+                assignment.setKetThucLuc(NOW);assignment.setLyDoKetThuc("Cancellation fixture");
+                driver.setRanhTu(NOW);order.setTaiXe(null);
+            }
+            order.setTrangThai(OrderStatus.DA_HUY);order.setThoiGianHuy(NOW);order.setLyDoHuy("Cancellation fixture");
+            return "DA_HUY";
+        }));
+        assertTrue(results.contains("DA_HUY"));assertTrue(results.contains("DA_GAN") || results.contains("ORDER_STATE_CONFLICT"));
+        var saved=service.order(dispatcher(),"DH-DEMO-WAIT");assertEquals("DA_HUY",saved.trangThai());assertNull(saved.maTx());
+        assertEquals(0,active("donHang","DH-DEMO-WAIT"));assertEquals(0,active("taiXe","TX-DEMO-1"));
+        assertEquals(2,service.drivers(dispatcher(),0,20,DriverStatus.ONLINE,false).totalElements());
+    }
     static List<String> race(int count,IntFunction<String> work) throws Exception {
-        var start=new CountDownLatch(1);
-        try(var pool=Executors.newFixedThreadPool(count)) {
+        var start=new CountDownLatch(1);var ready=new CountDownLatch(count);
+        var pool=Executors.newFixedThreadPool(count);
+        try {
             List<Future<String>> tasks=new ArrayList<>();
-            for(int i=0;i<count;i++) {int n=i; tasks.add(pool.submit(()->{start.await();try{return work.apply(n);}catch(DispatchService.Conflict c){return c.getMessage();}}));}
+            for(int i=0;i<count;i++) {int n=i; tasks.add(pool.submit(()->{ready.countDown();start.await();try{return work.apply(n);}catch(DispatchService.Conflict c){return c.getMessage();}}));}
+            assertTrue(ready.await(10,TimeUnit.SECONDS),"All workers must be ready before releasing the race");
             start.countDown();List<String> results=new ArrayList<>();
             for(var task:tasks) results.add(task.get(30,TimeUnit.SECONDS));return results;
+        } finally {
+            start.countDown();pool.shutdownNow();
+            assertTrue(pool.awaitTermination(10,TimeUnit.SECONDS),"Concurrent workers did not finish");
         }
     }
     @Test void eightConcurrentAssignmentsToSameOrderHaveExactlyOneWinner() throws Exception {
@@ -181,11 +231,19 @@ class DispatchServiceIntegrationTest {
         assertEquals(1,active("taiXe","TX-DEMO-1"));
         long linked=tx.run(em->em.createQuery("select count(d) from DonHang d where d.taiXe.id='TX-DEMO-1' and d.trangThai=:s",Long.class).setParameter("s",OrderStatus.DA_GAN).getSingleResult());
         assertEquals(1,linked);
+        for(String id:ids) {
+            var saved=service.order(dispatcher(),id);
+            boolean winner=saved.maTx()!=null;
+            assertEquals(winner?"DA_GAN":"CHO_GAN",saved.trangThai());
+            assertEquals(winner?1:0,active("donHang",id));
+            assertEquals(winner?2:1,events(id),"Failed assignment must not leave an audit event");
+        }
     }
     @Test void simultaneousRejectionAndAssignmentPreserveActiveUniqueness() throws Exception {
         service.assign(dispatcher(),"DH-DEMO-WAIT","TX-DEMO-1");
         var results=race(2,n->n==0?service.reject(driver(1),"DH-DEMO-WAIT","Xe hỏng").trangThai():service.assign(dispatcher(),"DH-DEMO-WAIT","TX-DEMO-2").trangThai());
         assertTrue(results.contains("CHO_GAN"));
+        assertTrue(results.contains("DA_GAN") || results.contains("ORDER_STATE_CONFLICT"));
         assertEquals(0,active("taiXe","TX-DEMO-1"));
         var finalOrder=service.order(dispatcher(),"DH-DEMO-WAIT");
         assertEquals(finalOrder.maTx()==null?0:1,active("donHang",finalOrder.maDon()));
@@ -193,15 +251,28 @@ class DispatchServiceIntegrationTest {
     }
     @Test void lateAuditFailureRollsBackAssignmentAndRejection() {
         long before=events("DH-DEMO-WAIT");
+        Instant idle=tx.run(em->em.find(TaiXe.class,"TX-DEMO-1").getRanhTu());
         installFailure();
-        try {assertThrows(RuntimeException.class,()->service.assign(dispatcher(),"DH-DEMO-WAIT","TX-DEMO-1"));}
+        try {auditFailure(()->service.assign(dispatcher(),"DH-DEMO-WAIT","TX-DEMO-1"));}
         finally {removeFailure();}
         assertEquals(0,active("donHang","DH-DEMO-WAIT"));assertEquals(before,events("DH-DEMO-WAIT"));
         assertEquals("CHO_GAN",service.order(dispatcher(),"DH-DEMO-WAIT").trangThai());
+        assertEquals(idle,tx.run(em->em.find(TaiXe.class,"TX-DEMO-1").getRanhTu()));
         service.assign(dispatcher(),"DH-DEMO-WAIT","TX-DEMO-1");installFailure();
-        try {assertThrows(RuntimeException.class,()->service.reject(driver(1),"DH-DEMO-WAIT","no"));}
+        try {auditFailure(()->service.reject(driver(1),"DH-DEMO-WAIT","no"));}
         finally {removeFailure();}
         assertEquals(1,active("donHang","DH-DEMO-WAIT"));assertEquals("DA_GAN",service.order(driver(1),"DH-DEMO-WAIT").trangThai());
+        assertEquals(before+1,events("DH-DEMO-WAIT"));
+        tx.run(em->{var assignment=new DispatchDAO(em).activeOrder("DH-DEMO-WAIT");
+            assertFalse(assignment.isTuChoi());assertNull(assignment.getKetThucLuc());assertNull(assignment.getLyDoKetThuc());
+            assertNull(em.find(TaiXe.class,"TX-DEMO-1").getRanhTu());return null;});
+    }
+    static void auditFailure(org.junit.jupiter.api.function.Executable work) {
+        Throwable error=assertThrows(RuntimeException.class,work);
+        while(error.getCause()!=null) error=error.getCause();
+        assertInstanceOf(java.sql.SQLException.class,error);
+        assertEquals("P0001",((java.sql.SQLException)error).getSQLState());
+        assertTrue(error.getMessage().contains("test audit failure"),"Failure must come from the audit trigger, not an earlier check");
     }
     static void installFailure() {tx.run(em->{em.createNativeQuery("CREATE FUNCTION t11_fail_event() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RAISE EXCEPTION ''test audit failure''; END'").executeUpdate();em.createNativeQuery("CREATE TRIGGER t11_fail_event BEFORE INSERT ON nhat_ky_trang_thai FOR EACH ROW EXECUTE FUNCTION t11_fail_event()").executeUpdate();return null;});}
     static void removeFailure() {tx.run(em->{em.createNativeQuery("DROP TRIGGER t11_fail_event ON nhat_ky_trang_thai").executeUpdate();em.createNativeQuery("DROP FUNCTION t11_fail_event()").executeUpdate();return null;});}

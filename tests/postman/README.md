@@ -72,4 +72,4 @@ Không chỉnh tay file JSON sinh tự động. Đổi cách sinh/assertion ở 
 
 ## T11 điều phối
 
-6 operation T11 đã implemented. Tổng đài đăng nhập, lấy CSRF mới, chọn orderId của đơn CHO_GAN, chạy suggestDrivers và chọn driverId rồi assignDriver. Đổi sang tài khoản tài xế được gán, đăng nhập/lấy CSRF mới để xem getOrder và rejectOrder với lý do. Không chạy toàn bộ thư mục bằng một vai trò. Gợi ý rỗng là kết quả hợp lệ. Xem [thiết kế](../../docs/T11-driver-dispatch.md) và [83 kiểm tra HTTP T11](../T11-validation.md).
+6 operation T11 đã implemented. Tổng đài đăng nhập, lấy CSRF mới, chọn orderId của đơn CHO_GAN, chạy suggestDrivers và chọn driverId rồi assignDriver. Đổi sang tài khoản tài xế được gán, đăng nhập/lấy CSRF mới để xem getOrder và rejectOrder với lý do. Không chạy toàn bộ thư mục bằng một vai trò. Gợi ý rỗng là kết quả hợp lệ. Xem [thiết kế](../../docs/T11-driver-dispatch.md) và [89 kiểm tra HTTP T11](../T11-validation.md).

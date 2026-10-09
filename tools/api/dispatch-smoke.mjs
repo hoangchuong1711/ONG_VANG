@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { randomInt, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 
@@ -37,6 +39,19 @@ class Client {
     const user = await this.call('/api/auth/login', { username, password });
     this.csrf = (await this.call('/api/auth/csrf')).csrfToken; return user;
   }
+  async headWithBody(path, body) {
+    // fetch forbids HEAD bodies; raw HTTP reproduces Servlet HEAD -> doGet routing.
+    const url = new URL(base + path), payload = JSON.stringify(body);
+    const status = await new Promise((resolve, reject) => {
+      const req = (url.protocol === 'https:' ? httpsRequest : httpRequest)(url, {
+        method: 'HEAD', headers: { Cookie: this.cookie, 'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload) } // Deliberately no CSRF token.
+      }, response => { response.resume(); response.on('end', () => resolve(response.statusCode)); });
+      req.setTimeout(15000, () => req.destroy(new Error('HEAD regression request timed out')));
+      req.on('error', reject); req.end(payload);
+    });
+    assert.equal(status, 404, 'HEAD on a write-only path must not run assignment/rejection'); checks++;
+  }
 }
 const anon = new Client(), customer = new Client(), dispatcher = new Client(), driver1 = new Client(), driver2 = new Client();
 await anon.call('/api/orders', undefined, 401, 'Error', 'AUTH_REQUIRED');
@@ -48,6 +63,8 @@ await customer.login(username, password);
 await dispatcher.login('demo_dispatcher', process.env.DEMO_PASSWORD);
 await driver1.login('0800000001', process.env.DEMO_PASSWORD);
 await driver2.login('0800000002', process.env.DEMO_PASSWORD);
+await driver2.call('/api/orders/DH-DEMO-PAID-CASH', undefined, 404, 'Error', 'RESOURCE_NOT_FOUND');
+await driver1.call('/api/orders/DH-DEMO-PAID-CASH', undefined, 200, 'Order');
 const quoteInput = { diemLayHang: 'Điểm mẫu A', diemGiaoHang: 'Điểm mẫu B', kienHang: [{ loaiHangHoa: 'Hoa', khoiLuongKg: '1.00' }] };
 async function create() {
   const quote = await customer.call('/api/quotes', quoteInput);
@@ -75,6 +92,8 @@ assert(free.items.every(d => !('cccd' in d) && !d.dangBanChuyen));
 await dispatcher.call('/api/orders?size=1', undefined, 200, 'OrderPage');
 await customer.call(path, undefined, 200, 'Order');
 await driver1.call(path, undefined, 404, 'Error', 'RESOURCE_NOT_FOUND');
+await dispatcher.headWithBody(path + '/assignments', { maTx: 'TX-DEMO-1' });
+assert.equal((await customer.call(path, undefined, 200, 'Order')).trangThai, 'CHO_GAN');
 const assignments = await Promise.all(Array.from({ length: 8 }, () => dispatcher.raw(path + '/assignments', { maTx: 'TX-DEMO-1' })));
 assert.equal(assignments.filter(r => r.status === 200).length, 1);
 assert.equal(assignments.filter(r => r.status === 409 && r.body.code === 'ORDER_STATE_CONFLICT').length, 7);
@@ -89,6 +108,8 @@ await dispatcher.call(path + '/reject', { lyDo: 'Xe hỏng' }, 403, 'Error', 'FO
 await driver1.call(path + '/reject', { lyDo: 'Xe hỏng' }, 403, 'Error', 'CSRF_INVALID', { 'X-CSRF-Token': '' });
 await driver1.call(path + '/reject', { lyDo: '  ' }, 400, 'Error', 'VALIDATION_ERROR');
 await driver1.call(path + '/reject', { lyDo: 'x'.repeat(501) }, 400, 'Error', 'VALIDATION_ERROR');
+await driver1.headWithBody(path + '/reject', { lyDo: 'HEAD must never reject' });
+assert.equal((await driver1.call(path, undefined, 200, 'Order')).trangThai, 'DA_GAN');
 const rejected = await driver1.call(path + '/reject', { lyDo: 'Xe hỏng' }, 200, 'Order');
 assert.equal(rejected.trangThai, 'CHO_GAN'); assert.equal(rejected.maTx, null);
 await driver1.call(path, undefined, 404, 'Error', 'RESOURCE_NOT_FOUND');

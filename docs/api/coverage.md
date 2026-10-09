@@ -13,7 +13,7 @@ UC-01/T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng T08) đ�
 | UC-05 / T08 | createQuote | Khách thường=0 giảm; VIP hợp lệ/hết hạn/hạng lỗi; giảm không vượt cước; tổng đài chọn đúng khách |
 | UC-08 / T14 | createPayment, listPayments, getPayment, confirmCash | Đơn chưa hoàn tất, đã trả, sai tiền, giao dịch thất bại; khách không tự xác nhận tiền mặt; miễn cước; nhiều attempt nhưng một tất toán |
 | UC-10 / T15/T18 | createPayment, getPayment, reconcilePayment, vnpayIpn, vnpayReturn | Thành công, khách hủy/thất bại; sai chữ ký/merchant/reference/amount; callback lặp/muộn; timeout chưa rõ kết quả; return không xác nhận đã trả; HTTPS public nhận IPN |
-| UC-12 / T11 | listOrders, listDrivers, suggestDrivers, assignDriver, rejectOrder | Không có tài xế trả danh sách rỗng; tài xế vừa bận/khóa/offline; từ chối phải có lý do, CHO_GAN trở lại; gán-gán/gán-từ chối đồng thời; tích hợp gán-hủy ở T13 |
+| UC-12 / T11 | listOrders, listDrivers, suggestDrivers, assignDriver, rejectOrder | Không có tài xế trả danh sách rỗng; tài xế vừa bận/khóa/offline; từ chối phải có lý do, CHO_GAN trở lại; gán-gán/gán-từ chối đồng thời; gán-hủy bằng fixture DB; tích hợp API hủy ở T13 |
 | UC-13 / T12 | getOrder, listOrderEvents, transitionOrder, recordIncident | Sai tài xế, nhảy bước, request lặp; không liên lạc/từ chối nhận giữ DANG_GIAO; hoàn tất ghi timestamp và giải phóng tài xế |
 | UC-14 / T13 | cancelOrder | CHO_GAN/DA_GAN trước 300 giây; 299/300/301; thiếu lý do; đang giao/đã xong; đơn không có/khác chủ; cạnh tranh tiến trình/gán |
 | UC-15 / T17 | getRevenueReport, exportRevenueReport | Ngày sai; rỗng số 0; ranh giới ngày/tuần/tháng múi giờ VN; snapshot lịch sử; join nhiều payment không nhân tiền; lỗi export không mất báo cáo; chỉ quản trị |
