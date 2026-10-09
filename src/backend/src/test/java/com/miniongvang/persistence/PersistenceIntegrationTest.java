@@ -47,7 +47,7 @@ class PersistenceIntegrationTest {
     @BeforeEach void reset() {
         transactions.run(em -> {
             em.createNativeQuery("""
-                TRUNCATE TABLE bao_gia, danh_gia_chuyen_di, thanh_toan, nhat_ky_trang_thai,
+                TRUNCATE TABLE order_creation_request, bao_gia, danh_gia_chuyen_di, thanh_toan, nhat_ky_trang_thai,
                 chi_tiet_kien_hang, phu_thu_don_hang, snapshot_cuoc_don_hang,
                 phan_cong_don_hang, don_hang, khach_hang_vip, phuong_tien,
                 dieu_phoi_vien, tai_xe, khach_hang, cau_hinh_phu_thu,

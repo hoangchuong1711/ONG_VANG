@@ -65,3 +65,7 @@ npm.cmd run check --prefix tools/api
 ```
 
 Không chỉnh tay file JSON sinh tự động. Đổi cách sinh/assertion ở `tools/api/generate-postman.mjs`. Lưu Actual/PASS/FAIL/Not Run, bản build và bằng chứng trong báo cáo test; T04 chưa ghi kết quả nghiệp vụ.
+
+## T10 tạo đơn
+
+`createOrder` đã implemented và không còn bị planned guard bỏ qua. Sau login lấy CSRF mới, chạy `createQuote` rồi `createOrder`; collection tự lấy quoteId/orderId. Giữ orderIdempotencyKey khi retry; xóa biến này để tạo ý định đặt đơn mới. Tổng đài thêm maKh đúng khách ở cả hai request. Xem [kết quả test T10](../T10-validation.md).

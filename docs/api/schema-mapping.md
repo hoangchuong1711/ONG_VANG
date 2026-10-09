@@ -10,6 +10,7 @@ Schema chạy thực tế nằm trong [migration Flyway](../../src/backend/src/m
 | tai_xe + tai_khoan + phan_cong_don_hang | TaiXeDAO → Driver | ONLINE/OFFLINE/NGHI là trạng thái làm việc; HOAT_DONG/KHOA ở tài khoản; dangBanChuyen = tồn tại assignment chưa kết thúc. |
 | phuong_tien | PhuongTien → Driver.phuongTien | UNIQUE ma_tx, mỗi tài xế tối đa một xe. |
 | dieu_phoi_vien | DieuPhoiVien → User.maNv | Hồ sơ TONG_DAI; CHU_DOI_XE chỉ cần tài khoản. Composite FK role ngăn gắn sai loại hồ sơ. |
+| order_creation_request (V4) | OrderCreationRequestDAO → response Order gốc | Khóa theo tài khoản/operation/key, FK đơn và tài khoản, request/response chuẩn hóa, expires_at 24 giờ; commit cùng đơn. |
 | don_hang | DonHangDAO → Order | Các FK giữ theo ERD; version hỗ trợ optimistic lock; thời điểm hủy/hoàn tất map huyLuc/hoanTatLuc. |
 | snapshot_cuoc_don_hang | SnapshotCuocDonHang → Order.cuoc | Nguồn chuẩn của cước gốc/phụ thu/giảm/tổng và tên biểu phí/hạng/tỷ lệ. V2 bỏ don_hang.tien_giam_gia để tránh trùng dữ liệu. |
 | phu_thu_don_hang | PhuThuDonHang với EmbeddedId/MapsId → Fare.phuThu | Lưu số tiền và tên snapshot; trang_thai='0' chỉ là giá trị legacy chưa được ERD định nghĩa, không dùng tính tiền. |
@@ -27,10 +28,10 @@ Tiền thống nhất NUMERIC(15,2)/BigDecimal. DATE dùng LocalDate, thời đi
 | --- | --- |
 | Register khách hàng, login/SĐT normalize, session, CSRF, quyền | T06 đã triển khai; dùng PasswordHasher bcrypt đã có. Register tạo tai_khoan + khach_hang cùng transaction, tên đồng nhất; username và so_dien_thoai cùng SĐT chuẩn hóa; role KHACH_HANG, trạng thái HOAT_DONG; không tạo khach_hang_vip. ID tài khoản/hồ sơ do server cấp; lỗi rollback cả hai, unique username chặn đăng ký trùng kể cả đồng thời. API sửa hồ sơ/đồng bộ sau tạo chưa thuộc T06. |
 | Route, phạm vi, VIP, thuật toán cước | T07–T09; giá seed chỉ là fixture persistence/demo |
-| Quote 300 giây và idempotency 24 giờ | T09 đã có bảng `bao_gia`; idempotency cho T10/T14 chưa có persistence |
-| Tạo đơn đủ aggregate, quyền và state machine | T10–T13; DAO.persistAggregate dùng chung EntityManager do service cấp |
+| Quote 300 giây và idempotency 24 giờ | T09 đã có bảng `bao_gia`; T10 có `order_creation_request` (V4), replay 24 giờ theo tài khoản; T14 chưa triển khai |
+| Tạo đơn đủ aggregate, quyền và state machine | T10 đã có OrderService; T11–T13 tiếp nhận state machine. DAO.persistAggregate dùng chung EntityManager do service cấp |
 | Gán/hủy/hoàn tất đồng thời, cập nhật ranh_tu | T11–T13; lock đơn rồi tài xế và DB unique |
 | Tất toán, callback muộn, đối soát, chuyển phương thức | T14–T15; unique success/pending không thay thế lock và lifecycle thanh toán |
 | Báo cáo/lịch sử | T16–T17; đọc snapshot/assignment/payment, không dùng bảng thống kê thu nhập cũ |
 
-T03 kiểm thử toàn vẹn DB/ORM; T06 đã triển khai auth; T07 đã triển khai `estimateRoute`; T09 đã triển khai `createQuote` với chính sách T08 và bảng `bao_gia`. Các endpoint T10–T18 vẫn planned. Xem [hướng dẫn database](../database/README.md) để migrate, seed, reset và đọc giới hạn chuyển đổi V1.
+T03 kiểm thử toàn vẹn DB/ORM; T06 đã triển khai auth; T07 đã triển khai `estimateRoute`; T09 đã triển khai `createQuote` với chính sách T08 và bảng `bao_gia`. T10 đã triển khai `POST /api/orders`; các endpoint đọc đơn/danh sách khách và T11–T18 vẫn planned. Xem [hướng dẫn database](../database/README.md) để migrate, seed, reset và đọc giới hạn chuyển đổi V1.

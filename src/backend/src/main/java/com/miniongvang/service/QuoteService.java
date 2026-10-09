@@ -58,28 +58,12 @@ public final class QuoteService {
         List<Parcel> normalizedParcels = normalizeParcels(parcels);
         // Network route lookup must finish before a database transaction begins.
         RouteService.Route route = routes.estimate(origin, destination);
-        BigDecimal km = new BigDecimal(route.quangDuongKm());
         Instant now = clock.instant();
-        LocalDate today = LocalDate.ofInstant(now, VIETNAM);
         return transactions.run(em -> {
-            var customers = new KhachHangDAO(em);
-            var customer = customers.findWithVip(customerId);
-            if (customer == null) throw new NoSuchElementException("Customer not found");
-            CauHinhCuoc tariff = new CauHinhCuocDAO(em).findActiveOn(today).stream()
-                    .filter(t -> t.getKmToiThieu() != null && t.getKmToiThieu().compareTo(km) <= 0
-                            && (t.getKmToiDa() == null || t.getKmToiDa().compareTo(km) >= 0))
-                    .findFirst().orElseThrow(FareCalculator.FareConfigurationException::new);
-            // Region-specific rules need an explicit region policy; T09 demo uses global rows only.
-            List<CauHinhPhuThu> extras = new CauHinhPhuThuDAO(em).findActive().stream()
-                    .filter(p -> p.getKhuVucApDung() == null || p.getKhuVucApDung().isBlank()).toList();
-            FareCalculator.Fare fullFare = calculator.calculate(km, tariff, extras, null);
-            BigDecimal beforeDiscount = new BigDecimal(fullFare.cuocGoc())
-                    .add(new BigDecimal(fullFare.tienPhuThu()));
-            MembershipDiscountResponse discount = membership.calculateDiscount(customer, beforeDiscount);
-            FareCalculator.Fare fare = calculator.calculate(km, tariff, extras, discount);
-            MembershipView tier = discount.maHang() == null ? null : new MembershipView(
-                    discount.maHang(), discount.tenHang(), discount.phanTramGiamGia().setScale(2).toPlainString(),
-                    discount.ngayHetHan() == null ? null : discount.ngayHetHan().toString(), discount.conHieuLuc());
+            Evaluation evaluated = evaluate(em, customerId, route, now);
+            CauHinhCuoc tariff = evaluated.tariff();
+            FareCalculator.Fare fare = evaluated.fare();
+            MembershipView tier = evaluated.tier();
             Instant expiry = now.plusSeconds(300);
             Quote result = new Quote(UUID.randomUUID().toString(), expiry.toString(), route, fare, tier);
             BaoGia stored = new BaoGia();
@@ -92,7 +76,34 @@ public final class QuoteService {
         });
     }
 
-    private static List<Parcel> normalizeParcels(List<Parcel> parcels) {
+    /** Reused by order creation inside its transaction; never persists another quote. */
+    Evaluation evaluate(jakarta.persistence.EntityManager em, String customerId, RouteService.Route route, Instant now) {
+        BigDecimal km = new BigDecimal(route.quangDuongKm());
+        LocalDate today = LocalDate.ofInstant(now, VIETNAM);
+        var customers = new KhachHangDAO(em);
+        var customer = customers.findWithVip(customerId);
+        if (customer == null) throw new NoSuchElementException("Customer not found");
+        CauHinhCuoc tariff = new CauHinhCuocDAO(em).findActiveOn(today).stream()
+                .filter(t -> t.getKmToiThieu() != null && t.getKmToiThieu().compareTo(km) <= 0
+                        && (t.getKmToiDa() == null || t.getKmToiDa().compareTo(km) >= 0))
+                .findFirst().orElseThrow(FareCalculator.FareConfigurationException::new);
+        // Region-specific rules need an explicit region policy; T09 demo uses global rows only.
+        List<CauHinhPhuThu> extras = new CauHinhPhuThuDAO(em).findActive().stream()
+                .filter(p -> p.getKhuVucApDung() == null || p.getKhuVucApDung().isBlank()).toList();
+        FareCalculator.Fare fullFare = calculator.calculate(km, tariff, extras, null);
+        BigDecimal beforeDiscount = new BigDecimal(fullFare.cuocGoc())
+                .add(new BigDecimal(fullFare.tienPhuThu()));
+        MembershipDiscountResponse discount = membership.calculateDiscount(customer, beforeDiscount);
+        FareCalculator.Fare fare = calculator.calculate(km, tariff, extras, discount);
+        MembershipView tier = discount.maHang() == null ? null : new MembershipView(
+                discount.maHang(), discount.tenHang(), discount.phanTramGiamGia().setScale(2).toPlainString(),
+                discount.ngayHetHan() == null ? null : discount.ngayHetHan().toString(), discount.conHieuLuc());
+        return new Evaluation(tariff, fare, tier);
+    }
+
+    record Evaluation(CauHinhCuoc tariff, FareCalculator.Fare fare, MembershipView tier) {}
+
+    static List<Parcel> normalizeParcels(List<Parcel> parcels) {
         if (parcels == null || parcels.isEmpty()) throw new IllegalArgumentException("kienHang is required");
         java.util.ArrayList<Parcel> normalized = new java.util.ArrayList<>();
         for (Parcel parcel : parcels) {
@@ -108,6 +119,7 @@ public final class QuoteService {
         return List.copyOf(normalized);
     }
 
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record Parcel(String loaiHangHoa, String ghiChuBaoQuan, String khoiLuongKg) {}
     public record MembershipView(String maHang, String tenHang, String phanTramGiamGia,
                                  String ngayHetHan, boolean conHieuLuc) {}
