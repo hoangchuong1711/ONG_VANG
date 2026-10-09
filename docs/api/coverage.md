@@ -1,6 +1,6 @@
 # Truy vết hợp đồng T04
 
-UC-01/T06 và endpoint `estimateRoute` của UC-04/T07 đã có implementation và test riêng; UC nghiệp vụ T08–T18 vẫn **Not Run / chờ implementation BE**. `createQuote` thuộc T09 chưa triển khai dù phụ thuộc lộ trình T07. Địa chỉ T07 là fixture cố định; username và ID trong OpenAPI còn là ví dụ. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
+UC-01/T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng T08) đã có implementation và test riêng; endpoint T10–T18 vẫn **Not Run / chờ implementation BE**. Địa chỉ T07 là fixture cố định; username và ID trong OpenAPI còn là ví dụ. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
 
 
 | UC / task | Operation ID | Nhánh và tiêu chí cần kiểm thử |

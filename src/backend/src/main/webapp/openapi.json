@@ -3,7 +3,7 @@
   "info": {
     "title": "Mini Ong Vàng API",
     "version": "0.3.0",
-    "description": "T06 auth/session/CSRF và T07 ước tính lộ trình đã triển khai; các API nghiệp vụ T08–T18 còn chờ."
+    "description": "T06 xác thực, T07 lộ trình và T09 báo giá dùng chính sách T08 đã triển khai; T10–T18 còn chờ."
   },
   "servers": [
     {
@@ -1119,8 +1119,8 @@
         ],
         "summary": "Báo giá và giảm VIP",
         "operationId": "createQuote",
-        "description": "Khách lấy maKh từ session, không được báo giá cho người khác; tổng đài bắt buộc maKh. VIP hết hạn/không hợp lệ: giảm 0. Tổng=max(0,gốc+phụ thu-giảm), HALF_UP nguyên VND. Báo giá có hạn 300 giây; BE kiểm tra lại khi tạo đơn.",
-        "x-implementation-status": "planned",
+        "description": "Khách lấy maKh từ session, không được báo giá cho người khác; tổng đài bắt buộc maKh. VIP hết hạn/không hợp lệ: giảm 0. Cước gốc=cước cơ bản+km×đơn giá; phụ thu demo chung đang bật được cộng; giảm VIP trên tổng trước giảm. Tổng=max(0,gốc+phụ thu-giảm), HALF_UP nguyên VND. Báo giá lưu 300 giây; BE kiểm tra lại khi tạo đơn.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-03",
           "UC-04",
@@ -1149,26 +1149,26 @@
                   "maBaoGia": "BG-DEMO-001",
                   "hetHanLuc": "2026-10-05T03:05:00Z",
                   "loTrinh": {
-                    "diemLayHang": "Điểm mẫu A",
-                    "diemGiaoHang": "Điểm mẫu B",
+                    "diemLayHang": "Quận 1, TP.HCM",
+                    "diemGiaoHang": "Quận 3, TP.HCM",
                     "quangDuongKm": "5.00",
                     "thoiGianDuKienGiay": 900,
                     "trongPhamVi": true,
                     "nguon": "GIA_LAP"
                   },
                   "cuoc": {
-                    "cuocGoc": "50000.00",
-                    "tienPhuThu": "0.00",
+                    "cuocGoc": "45000.00",
+                    "tienPhuThu": "5000.00",
                     "tienGiamGia": "5000.00",
                     "tongCuoc": "45000.00",
                     "donViTien": "VND",
-                    "phuThu": []
+                    "phuThu": [{"maPhuThu":"PHU-DEMO-1","tenPhuThu":"Phụ thu demo","soTienTinh":"5000.00"}]
                   },
                   "hangThanhVien": {
-                    "maHang": "VIP",
-                    "tenHang": "Khách VIP",
+                    "maHang": "HANG-DEMO-VIP",
+                    "tenHang": "VIP demo",
                     "phanTramGiamGia": "10.00",
-                    "ngayHetHan": "2027-12-31",
+                    "ngayHetHan": "2026-11-04",
                     "conHieuLuc": true
                   }
                 }
@@ -1254,6 +1254,19 @@
                       "fieldErrors": [],
                       "traceId": "trace-demo-001"
                     }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/Error"},
+                "examples": {
+                  "RESOURCE_NOT_FOUND": {
+                    "value": {"code":"RESOURCE_NOT_FOUND","message":"Không thể thực hiện yêu cầu: RESOURCE_NOT_FOUND","fieldErrors":[],"traceId":"trace-demo-001"}
                   }
                 }
               }
@@ -1410,6 +1423,7 @@
             "FORBIDDEN",
             "CSRF_INVALID"
           ],
+          "404": ["RESOURCE_NOT_FOUND"],
           "422": [
             "ADDRESS_NOT_FOUND",
             "OUT_OF_SERVICE_AREA",
@@ -6828,26 +6842,26 @@
             "maBaoGia": "BG-DEMO-001",
             "hetHanLuc": "2026-10-05T03:05:00Z",
             "loTrinh": {
-              "diemLayHang": "Điểm mẫu A",
-              "diemGiaoHang": "Điểm mẫu B",
+              "diemLayHang": "Quận 1, TP.HCM",
+              "diemGiaoHang": "Quận 3, TP.HCM",
               "quangDuongKm": "5.00",
               "thoiGianDuKienGiay": 900,
               "trongPhamVi": true,
               "nguon": "GIA_LAP"
             },
             "cuoc": {
-              "cuocGoc": "50000.00",
-              "tienPhuThu": "0.00",
+              "cuocGoc": "45000.00",
+              "tienPhuThu": "5000.00",
               "tienGiamGia": "5000.00",
               "tongCuoc": "45000.00",
               "donViTien": "VND",
-              "phuThu": []
+              "phuThu": [{"maPhuThu":"PHU-DEMO-1","tenPhuThu":"Phụ thu demo","soTienTinh":"5000.00"}]
             },
             "hangThanhVien": {
-              "maHang": "VIP",
-              "tenHang": "Khách VIP",
+              "maHang": "HANG-DEMO-VIP",
+              "tenHang": "VIP demo",
               "phanTramGiamGia": "10.00",
-              "ngayHetHan": "2027-12-31",
+              "ngayHetHan": "2026-11-04",
               "conHieuLuc": true
             }
           }
