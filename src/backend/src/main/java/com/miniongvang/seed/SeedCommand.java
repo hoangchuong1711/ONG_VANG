@@ -26,7 +26,7 @@ public final class SeedCommand {
             } catch (java.sql.SQLException failure) {
                 throw new IllegalStateException("Cannot verify test database", failure);
             }
-            new DemoSeeder(persistence.entityManagerFactory()).seed(password);
+            new DesignV1DemoSeeder(persistence.entityManagerFactory()).seed(password);
         }
     }
 }
