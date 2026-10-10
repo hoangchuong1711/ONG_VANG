@@ -32,11 +32,11 @@ class PersistenceIntegrationTest {
         boolean configured = url != null && !url.isBlank();
         if (Boolean.parseBoolean(System.getenv("REQUIRE_TEST_DB")))
             assertTrue(configured, "CI requires TEST_DB_URL");
-        assumeTrue(configured, "Set TEST_DB_URL for PostgreSQL integration tests");
-        assertTrue(url.matches("jdbc:postgresql://[^/]+/mini_ong_vang_test"), "Dedicated test DB only");
+        assumeTrue(configured, "Set TEST_DB_URL for SQL Server integration tests");
+        assertTrue(url.matches("jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"), "Dedicated test DB only");
         // Verify the actual target before migration or reset.
         try (var c = java.sql.DriverManager.getConnection(url, System.getenv("TEST_DB_USER"), System.getenv("TEST_DB_PASSWORD"));
-             var s = c.createStatement(); var r = s.executeQuery("select current_database()")) {
+             var s = c.createStatement(); var r = s.executeQuery("select DB_NAME()")) {
             assertTrue(r.next()); assertEquals("mini_ong_vang_test", r.getString(1));
         }
         persistence = PersistenceContext.start(url, System.getenv("TEST_DB_USER"), System.getenv("TEST_DB_PASSWORD"));
@@ -47,11 +47,7 @@ class PersistenceIntegrationTest {
     @BeforeEach void reset() {
         transactions.run(em -> {
             em.createNativeQuery("""
-                TRUNCATE TABLE order_creation_request, bao_gia, danh_gia_chuyen_di, thanh_toan, nhat_ky_trang_thai,
-                chi_tiet_kien_hang, phu_thu_don_hang, snapshot_cuoc_don_hang,
-                phan_cong_don_hang, don_hang, khach_hang_vip, phuong_tien,
-                dieu_phoi_vien, tai_xe, khach_hang, cau_hinh_phu_thu,
-                cau_hinh_cuoc, hang_thanh_vien, tai_khoan, demo_seed_manifest
+                DELETE FROM order_creation_request; DELETE FROM bao_gia; DELETE FROM danh_gia_chuyen_di; DELETE FROM thanh_toan; DELETE FROM nhat_ky_trang_thai; DELETE FROM chi_tiet_kien_hang; DELETE FROM phu_thu_don_hang; DELETE FROM snapshot_cuoc_don_hang; DELETE FROM phan_cong_don_hang; DELETE FROM don_hang; DELETE FROM khach_hang_vip; DELETE FROM phuong_tien; DELETE FROM dieu_phoi_vien; DELETE FROM tai_xe; DELETE FROM khach_hang; DELETE FROM cau_hinh_phu_thu; DELETE FROM cau_hinh_cuoc; DELETE FROM hang_thanh_vien; DELETE FROM tai_khoan; DELETE FROM demo_seed_manifest;
                 """).executeUpdate();
             return null;
         });
@@ -67,7 +63,7 @@ class PersistenceIntegrationTest {
     }
 
     @Test void migrationRerunAndSeedRerunPreserveData() {
-        int applied = Flyway.configure().dataSource(persistence.dataSource()).load().migrate().migrationsExecuted;
+        int applied = Flyway.configure().dataSource(persistence.dataSource()).defaultSchema("dbo").locations("classpath:db/sqlserver").load().migrate().migrationsExecuted;
         assertEquals(0, applied);
         seeder.seed(PASSWORD);
         transactions.run(em -> {
@@ -268,21 +264,25 @@ class PersistenceIntegrationTest {
     @Test void upgradePreservesCompatibleV1Profiles() throws Exception {
         String schema = "t03_upgrade_" + java.util.UUID.randomUUID().toString().replace("-", "");
         try {
-            Flyway.configure().dataSource(persistence.dataSource()).schemas(schema).defaultSchema(schema)
+            Flyway.configure().dataSource(persistence.dataSource()).schemas(schema).defaultSchema(schema).locations("classpath:db/sqlserver")
                     .target("1").load().migrate();
             try (var c = persistence.dataSource().getConnection(); var s = c.createStatement()) {
                 s.execute("INSERT INTO " + schema + ".tai_khoan VALUES ('OLD-TK','old',NULL,'hash','KHACH_HANG','HOAT_DONG','2026-10-05 10:00:00',NULL)");
-                s.execute("INSERT INTO " + schema + ".khach_hang VALUES ('OLD-KH','OLD-TK','Tên cũ','0909999999',NULL)");
+                s.execute("INSERT INTO " + schema + ".khach_hang VALUES ('OLD-KH','OLD-TK',N'Tên cũ','0909999999',NULL)");
             }
-            Flyway.configure().dataSource(persistence.dataSource()).schemas(schema).defaultSchema(schema).load().migrate();
+            Flyway.configure().dataSource(persistence.dataSource()).schemas(schema).defaultSchema(schema).locations("classpath:db/sqlserver").load().migrate();
             try (var c = persistence.dataSource().getConnection(); var s = c.createStatement();
                  var r = s.executeQuery("SELECT ho_ten,ngay_tao FROM " + schema + ".tai_khoan WHERE ma_tk='OLD-TK'")) {
                 assertTrue(r.next()); assertEquals("Tên cũ", r.getString(1));
-                assertEquals(NOW, r.getTimestamp(2).toInstant());
+                assertEquals(NOW, r.getTimestamp(2, java.util.Calendar.getInstance(
+                        java.util.TimeZone.getTimeZone("UTC"))).toInstant());
             }
         } finally {
             try (var c = persistence.dataSource().getConnection(); var s = c.createStatement()) {
-                s.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
+                for (String table : java.util.List.of("order_creation_request", "bao_gia", "danh_gia_chuyen_di", "thanh_toan", "nhat_ky_trang_thai", "chi_tiet_kien_hang", "phu_thu_don_hang", "snapshot_cuoc_don_hang", "phan_cong_don_hang", "don_hang", "khach_hang_vip", "phuong_tien", "dieu_phoi_vien", "tai_xe", "khach_hang", "cau_hinh_phu_thu", "cau_hinh_cuoc", "hang_thanh_vien", "tai_khoan", "demo_seed_manifest", "flyway_schema_history")) {
+                    s.execute("DROP TABLE IF EXISTS [" + schema + "].[" + table + "]");
+                }
+                s.execute("DROP SCHEMA [" + schema + "]");
             }
         }
     }
@@ -353,6 +353,31 @@ class PersistenceIntegrationTest {
             assertEquals(LocalDate.of(2026, 10, 5), em.find(KhachHangVip.class, "KH-DEMO-2").getNgayHetHan());
             assertNull(em.find(KhachHangVip.class, "KH-DEMO-3").getNgayHetHan());
             assertEquals("Edited after seed", em.find(DonHang.class, "DH-DEMO-WAIT").getGhiChuGiaoHang());
+            return null;
+        });
+    }
+
+    @Test void sqlServerPreservesUnicodeLongTextUtcPrecisionAndNullableUniqueReferences() {
+        Instant precise = Instant.parse("2026-10-05T03:00:00.123456Z");
+        String text = "Tiếng Việt: Đặng, đường Nguyễn Huệ 🚚 ".repeat(200);
+        transactions.run(em -> {
+            BaoGia quote = new BaoGia(); quote.setId("TEST-SQLSERVER-UNICODE");
+            quote.setMaKh("KH-DEMO-1"); quote.setMaBieuPhi("CUOC-DEMO-1");
+            quote.setTaoLuc(precise); quote.setHetHanLuc(precise.plusSeconds(300));
+            quote.setYeuCauJson(text); quote.setKetQuaJson(text); em.persist(quote);
+            for (String id : List.of("TEST-NULL-REF-1", "TEST-NULL-REF-2")) {
+                ThanhToan p = payment(em, id, "DH-DEMO-FREE", PaymentStatus.CHO_XU_LY);
+                p.setPhuongThuc(PaymentMethod.TIEN_MAT); p.setMaThamChieu(null); em.persist(p);
+            }
+            return null;
+        });
+        transactions.run(em -> {
+            BaoGia quote = em.find(BaoGia.class, "TEST-SQLSERVER-UNICODE");
+            assertEquals(text, quote.getYeuCauJson()); assertEquals(text, quote.getKetQuaJson());
+            assertEquals(precise, quote.getTaoLuc());
+            assertNull(em.find(ThanhToan.class, "TEST-NULL-REF-1").getMaThamChieu());
+            assertNull(em.find(ThanhToan.class, "TEST-NULL-REF-2").getMaThamChieu());
+            assertNull(em.find(TaiKhoan.class, "tk-demo-kh-1"));
             return null;
         });
     }

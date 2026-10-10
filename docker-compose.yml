@@ -1,38 +1,46 @@
 services:
-
-  db:
-    image: postgres:17
-
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
+      SQLCMDPASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
     ports:
-      - "5433:5432"
-
+      - "127.0.0.1:1433:1433"
     volumes:
-      - mini_ong_vang_pgdata:/var/lib/postgresql/data
-
+      - mini_ong_vang_mssqldata:/var/opt/mssql
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
-        ]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -Q 'SELECT 1' -o /dev/null"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 40
+      start_period: 20s
 
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SQLCMDPASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
+      DATABASE_NAME: ${MSSQL_DATABASE:-mini_ong_vang}
+    volumes:
+      - ./scripts/init-sqlserver.sql:/init.sql:ro
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        [[ "$$DATABASE_NAME" =~ ^[a-zA-Z_][a-zA-Z0-9_]{0,127}$$ ]] || exit 1
+        /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -C -b -v DatabaseName="$$DATABASE_NAME" -i /init.sql
+    depends_on:
+      sqlserver:
+        condition: service_healthy
 
   backend:
     build:
       context: ./src/backend
 
     environment:
-      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
-      DB_USER: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=${MSSQL_DATABASE:-mini_ong_vang};encrypt=true;trustServerCertificate=true"
+      DB_USER: sa
+      DB_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
       DEMO_SEED: ${DEMO_SEED:-false}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-}
       ROUTE_PROVIDER: ${ROUTE_PROVIDER:-fake}
@@ -44,8 +52,8 @@ services:
       - "8081:8080"
 
     depends_on:
-      db:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
 
 
   frontend:
@@ -63,4 +71,4 @@ services:
 
 
 volumes:
-  mini_ong_vang_pgdata:
+  mini_ong_vang_mssqldata:

@@ -11,7 +11,7 @@ public final class SeedCommand {
             throw new IllegalArgumentException("Only the dedicated test seed mode is supported");
         String url = System.getenv("TEST_DB_URL");
         if (!"true".equalsIgnoreCase(System.getenv("REQUIRE_TEST_DB"))
-                || url == null || !url.matches("jdbc:postgresql://(127\\.0\\.0\\.1|localhost):15433/mini_ong_vang_test")) {
+                || url == null || !url.matches("jdbc:sqlserver://(127\\.0\\.0\\.1|localhost):15433;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true")) {
             throw new IllegalArgumentException("Dedicated test DB settings are required");
         }
         String password = System.getenv("DEMO_PASSWORD");
@@ -19,7 +19,7 @@ public final class SeedCommand {
                 System.getenv("TEST_DB_USER"), System.getenv("TEST_DB_PASSWORD"))) {
             try (var connection = persistence.dataSource().getConnection();
                  var statement = connection.createStatement();
-                 var result = statement.executeQuery("SELECT current_database()")) {
+                 var result = statement.executeQuery("SELECT DB_NAME()")) {
                 result.next();
                 if (!"mini_ong_vang_test".equals(result.getString(1)))
                     throw new IllegalStateException("Refusing to seed a non-test database");

@@ -24,7 +24,7 @@ public final class PersistenceContext implements AutoCloseable {
         }
         HikariConfig config = new HikariConfig();
         // Load the WAR-local driver explicitly when running under Tomcat.
-        config.setDriverClassName("org.postgresql.Driver");
+        config.setDriverClassName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
         config.setJdbcUrl(url);
         config.setUsername(user);
         config.setPassword(password);
@@ -33,7 +33,8 @@ public final class PersistenceContext implements AutoCloseable {
         config.setPoolName("mini-ong-vang");
         HikariDataSource pool = new HikariDataSource(config);
         try {
-            Flyway.configure().dataSource(pool).load().migrate();
+            Flyway.configure().dataSource(pool).defaultSchema("dbo")
+                    .locations("classpath:db/sqlserver").load().migrate();
             EntityManagerFactory factory = Persistence.createEntityManagerFactory("mini-ong-vang",
                     Map.of("jakarta.persistence.nonJtaDataSource", pool));
             return new PersistenceContext(pool, factory);

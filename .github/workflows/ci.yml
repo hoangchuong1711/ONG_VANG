@@ -43,9 +43,8 @@ jobs:
     timeout-minutes: 20
     env:
       COMPOSE_PROJECT_NAME: mini-ong-vang-ci
-      TEST_DB_URL: jdbc:postgresql://127.0.0.1:15433/mini_ong_vang_test
-      TEST_DB_USER: mini_ong_vang_test
-      TEST_DB_PASSWORD: ci-only-password
+      TEST_DB_URL: jdbc:sqlserver://127.0.0.1:15433;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true
+      TEST_DB_USER: sa
       REQUIRE_TEST_DB: 'true'
       API_BASE_URL: http://127.0.0.1:18081
       API_EXPECTED_DATABASE: mini_ong_vang_test
@@ -69,15 +68,19 @@ jobs:
         run: npm ci --ignore-scripts --prefix tools/api
       - name: Validate contract, examples, Postman and CSRF tests
         run: npm run check --prefix tools/api
+      - name: Generate disposable SQL Server credentials
+        run: echo "TEST_DB_PASSWORD=Aa!$(openssl rand -hex 24)" >> "$GITHUB_ENV"
       - name: Validate isolated Compose configuration
         run: docker compose -f docker-compose.ci.yml config --quiet
-      - name: Start isolated PostgreSQL
-        run: docker compose -f docker-compose.ci.yml up --wait --wait-timeout 120 db-test
+      - name: Start isolated SQL Server 2022
+        run: |
+          docker compose -f docker-compose.ci.yml up --wait --wait-timeout 180 db-test
+          docker compose -f docker-compose.ci.yml up --no-deps --exit-code-from db-init-test db-init-test
       - name: Build WAR and run Java tests against test database
         run: mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml verify
       - name: Prepare isolated demo fixtures for HTTP dispatch tests
         run: |
-          docker compose -f docker-compose.ci.yml exec -T db-test psql -U mini_ong_vang_test -d mini_ong_vang_test -v ON_ERROR_STOP=1 -c "TRUNCATE tai_khoan,cau_hinh_cuoc,cau_hinh_phu_thu,hang_thanh_vien,demo_seed_manifest CASCADE"
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test < scripts/reset-test-db.sql
           mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml exec:java -Dexec.mainClass=com.miniongvang.seed.SeedCommand -Dexec.args=test
       - name: Start backend after database tests finish
         run: docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
