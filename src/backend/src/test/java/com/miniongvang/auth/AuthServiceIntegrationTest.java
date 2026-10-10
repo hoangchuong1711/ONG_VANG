@@ -44,7 +44,7 @@ class AuthServiceIntegrationTest {
             assertNull(auth.authenticate(phone, "wrong"));
             auth.recordLogin(user.maNguoiDung());
             try (var c = DriverManager.getConnection(url, dbUser, dbPassword);
-                 var p = c.prepareStatement("select t.username, t.mat_khau_hash, k.so_dien_thoai, t.lan_dang_nhap_cuoi from tai_khoan t join khach_hang k on k.ma_tk=t.ma_tk where t.ma_tk=?")) {
+                 var p = c.prepareStatement("select t.username, t.mat_khau_hash, t.so_dien_thoai, t.lan_dang_nhap_cuoi from tai_khoan t join khach_hang k on k.ma_tk=t.ma_tk where t.ma_tk=?")) {
                 p.setString(1, user.maNguoiDung());
                 try (var r = p.executeQuery()) {
                     assertTrue(r.next()); assertEquals(phone, r.getString(1)); assertEquals(phone, r.getString(3));

@@ -79,7 +79,7 @@
                   "status": "ok",
                   "service": "mini-ong-vang-backend",
                   "database": "connected",
-                  "databaseName": "mini_ong_vang"
+                  "databaseName": "mini_ong_vang_design_v1"
                 }
               }
             }
@@ -7786,7 +7786,7 @@
             "status": "ok",
             "service": "mini-ong-vang-backend",
             "database": "connected",
-            "databaseName": "mini_ong_vang"
+            "databaseName": "mini_ong_vang_design_v1"
           }
         ]
       },

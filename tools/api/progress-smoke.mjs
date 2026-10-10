@@ -55,21 +55,20 @@ class Client {
 }
 const anon = new Client(), customer = new Client(), dispatcher = new Client(), driver = new Client(), other = new Client();
 await dispatcher.login('demo_dispatcher', process.env.DEMO_PASSWORD);
-await driver.login('0800000005', process.env.DEMO_PASSWORD);
+await driver.login('0800000001', process.env.DEMO_PASSWORD);
 await other.login('0800000002', process.env.DEMO_PASSWORD);
 customer.csrf = (await customer.call('/api/auth/csrf')).csrfToken;
 const username = '0' + randomInt(100000000, 999999999), password = randomUUID();
 await customer.call('/api/auth/register', { hoTen: 'T12 HTTP test', soDienThoai: username, password }, 201);
 await customer.login(username, password);
 // Driver 5 starts delivering a seeded order; completing it makes this test independent of T11's drivers.
-await driver.call('/api/orders/DH-DEMO-DELIVERING/transitions', { trangThai: 'HOAN_TAT' }, 200, 'Order');
 const input = { diemLayHang: 'Điểm mẫu A', diemGiaoHang: 'Điểm mẫu B', kienHang: [{ loaiHangHoa: 'Hoa', khoiLuongKg: '1.00' }] };
 async function create() {
   const quote = await customer.call('/api/quotes', input);
   return customer.call('/api/orders', { ...input, maBaoGia: quote.maBaoGia, sdtNguoiNhan: '0901234567' }, 201, 'Order', undefined, { 'Idempotency-Key': randomUUID() });
 }
 const order = await create(), path = '/api/orders/' + order.maDon;
-await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-5' }, 200, 'Order');
+await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-1' }, 200, 'Order');
 const incident = { loaiSuCo: 'KHONG_LIEN_LAC_DUOC', lyDo: 'Không nghe máy' };
 await anon.call(path + '/events', undefined, 401, 'Error', 'AUTH_REQUIRED');
 await anon.call(path + '/transitions', { trangThai: 'DA_LAY_HANG' }, 401, 'Error', 'AUTH_REQUIRED');
@@ -101,7 +100,7 @@ for (const target of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT']) {
     }
     assert.equal((await driver.call(path, undefined, 200, 'Order')).hoanTatLuc, null);
     const busy = await dispatcher.call('/api/drivers?dangBanChuyen=true', undefined, 200, 'DriverPage');
-    assert(busy.items.some(d => d.maTx === 'TX-DEMO-5'));
+    assert(busy.items.some(d => d.maTx === 'TX-DEMO-1'));
   }
   const responses = await Promise.all(Array.from({ length: 8 }, () => driver.raw(path + '/transitions', { trangThai: target })));
   for (const r of responses) { assert.equal(r.status, 200, JSON.stringify(r)); assert(schemas.Order(r.body)); assert.equal(r.body.trangThai, target); checks++; }
@@ -115,7 +114,7 @@ await other.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 404, 'Error',
 await driver.call(path + '/transitions', { trangThai: 'DA_LAY_HANG' }, 409, 'Error', 'ORDER_STATE_CONFLICT');
 await driver.call(path + '/incidents', incident, 409, 'Error', 'ORDER_STATE_CONFLICT');
 const free = await dispatcher.call('/api/drivers?dangBanChuyen=false', undefined, 200, 'DriverPage');
-assert(free.items.some(d => d.maTx === 'TX-DEMO-5'));
+assert(free.items.some(d => d.maTx === 'TX-DEMO-1'));
 const all = await driver.call(path + '/events', undefined, 200, 'EventPage');
 assert.equal(all.items.filter(e => e.tenTrangThai === 'HOAN_TAT').length, 1);
 assert.equal(all.items.find(e => e.tenTrangThai === 'HOAN_TAT').thoiGianGhiNhan, done.hoanTatLuc);
@@ -124,9 +123,9 @@ for (let i = 0; i < all.items.length; i++) {
   assert.deepEqual(page.items, [all.items[i]]); assert.equal(page.totalElements, count);
 }
 const next = await create();
-await dispatcher.call('/api/orders/' + next.maDon + '/assignments', { maTx: 'TX-DEMO-5' }, 200, 'Order');
+await dispatcher.call('/api/orders/' + next.maDon + '/assignments', { maTx: 'TX-DEMO-1' }, 200, 'Order');
 assert.deepEqual(await driver.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 200, 'Order'), done);
 const busy = await dispatcher.call('/api/drivers?dangBanChuyen=true', undefined, 200, 'DriverPage');
-assert(busy.items.some(d => d.maTx === 'TX-DEMO-5'));
+assert(busy.items.some(d => d.maTx === 'TX-DEMO-1'));
 assert.equal((await driver.call(path + '/events', undefined, 200, 'EventPage')).totalElements, count);
 console.log(`T12 progress smoke: ${checks} HTTP checks passed`);

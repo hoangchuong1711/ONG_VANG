@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /** Skeleton infrastructure tests; no application migrations or real payment calls. */
-class PostgreSqlIntegrationTest {
+class SqlServerIntegrationTest {
     private static String url;
 
     @BeforeAll
@@ -31,7 +31,7 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
-    void connectsToDedicatedPostgreSqlDatabase() throws SQLException {
+    void connectsToDedicatedSqlServerDatabase() throws SQLException {
         try (Connection connection = connect(); var statement = connection.createStatement();
              var result = statement.executeQuery("SELECT DB_NAME(), 1")) {
             assertEquals("Microsoft SQL Server", connection.getMetaData().getDatabaseProductName());
