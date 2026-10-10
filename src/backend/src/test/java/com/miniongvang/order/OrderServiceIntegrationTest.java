@@ -33,9 +33,9 @@ class OrderServiceIntegrationTest {
     @BeforeAll static void start() throws Exception {
         String url=System.getenv("TEST_DB_URL");
         if (Boolean.parseBoolean(System.getenv("REQUIRE_TEST_DB"))) assertNotNull(url);
-        assumeTrue(url != null && url.matches("jdbc:postgresql://[^/]+/mini_ong_vang_test"));
+        assumeTrue(url != null && url.matches("jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"));
         try (var c=DriverManager.getConnection(url,System.getenv("TEST_DB_USER"),System.getenv("TEST_DB_PASSWORD"));
-             var s=c.createStatement(); var r=s.executeQuery("select current_database()")) {
+             var s=c.createStatement(); var r=s.executeQuery("select DB_NAME()")) {
             assertTrue(r.next()); assertEquals("mini_ong_vang_test",r.getString(1));
         }
         db=PersistenceContext.start(url,System.getenv("TEST_DB_USER"),System.getenv("TEST_DB_PASSWORD"));
@@ -151,11 +151,10 @@ class OrderServiceIntegrationTest {
     @Test void rollbackOnLateDatabaseFailureAlsoReleasesIdempotencyKey() {
         var r=request(1); String key=key(); var before=counts();
         tx.run(em->{
-            em.createNativeQuery("CREATE FUNCTION t10_fail_event() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RAISE EXCEPTION ''test event failure''; END'").executeUpdate();
-            em.createNativeQuery("CREATE TRIGGER t10_fail_event BEFORE INSERT ON nhat_ky_trang_thai FOR EACH ROW EXECUTE FUNCTION t10_fail_event()").executeUpdate(); return null;
+            em.createNativeQuery("CREATE TRIGGER t10_fail_event ON nhat_ky_trang_thai AFTER INSERT AS BEGIN SET NOCOUNT ON; THROW 51000, 'test event failure', 1; END").executeUpdate(); return null;
         });
         try { assertThrows(RuntimeException.class,()->orders.create(customer(1),key,r)); assertEquals(before,counts()); }
-        finally { tx.run(em->{em.createNativeQuery("DROP TRIGGER t10_fail_event ON nhat_ky_trang_thai").executeUpdate();em.createNativeQuery("DROP FUNCTION t10_fail_event()").executeUpdate();return null;}); }
+        finally { tx.run(em->{em.createNativeQuery("DROP TRIGGER t10_fail_event").executeUpdate();return null;}); }
         assertNotNull(orders.create(customer(1),key,r));
     }
     @Test void idempotencyIsScopedToActorAndCanBeReusedAt24Hours() {

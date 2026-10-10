@@ -101,7 +101,7 @@ public final class AuthService {
 
     private static boolean isUniqueViolation(Throwable error) {
         for (Throwable cause = error; cause != null; cause = cause.getCause()) {
-            if (cause instanceof java.sql.SQLException sql && "23505".equals(sql.getSQLState())) return true;
+            if (cause instanceof java.sql.SQLException sql && (sql.getErrorCode() == 2601 || sql.getErrorCode() == 2627)) return true;
         }
         return false;
     }

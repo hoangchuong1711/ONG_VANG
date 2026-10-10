@@ -24,6 +24,9 @@
         <properties>
             <property name="hibernate.hbm2ddl.auto" value="validate"/>
             <property name="hibernate.jdbc.time_zone" value="UTC"/>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.SQLServerDialect"/>
+            <property name="hibernate.use_nationalized_character_data" value="true"/>
+            <property name="hibernate.type.preferred_instant_jdbc_type" value="TIMESTAMP"/>
         </properties>
     </persistence-unit>
 </persistence>

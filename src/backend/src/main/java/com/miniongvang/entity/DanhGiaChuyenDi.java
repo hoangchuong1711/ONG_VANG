@@ -22,7 +22,7 @@ public class DanhGiaChuyenDi {
     @Column(name="so_sao", nullable=false)
     private Integer soSao;
 
-    @Column(name="nhan_xet", columnDefinition="text")
+    @Column(name="nhan_xet", columnDefinition = "nvarchar(max)")
     private String nhanXet;
 
     @Column(name="thoi_gian_danh_gia", nullable=false)

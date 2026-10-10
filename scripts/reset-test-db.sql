@@ -1,0 +1,33 @@
+-- Test fixture cleanup only. Never run against the development database.
+SET XACT_ABORT ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET ARITHABORT ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET NUMERIC_ROUNDABORT OFF;
+IF DB_NAME() <> N'mini_ong_vang_test'
+    THROW 50000, 'Refusing to reset a non-test database.', 1;
+BEGIN TRANSACTION;
+DELETE FROM dbo.order_creation_request;
+DELETE FROM dbo.bao_gia;
+DELETE FROM dbo.danh_gia_chuyen_di;
+DELETE FROM dbo.thanh_toan;
+DELETE FROM dbo.nhat_ky_trang_thai;
+DELETE FROM dbo.chi_tiet_kien_hang;
+DELETE FROM dbo.phu_thu_don_hang;
+DELETE FROM dbo.snapshot_cuoc_don_hang;
+DELETE FROM dbo.phan_cong_don_hang;
+DELETE FROM dbo.don_hang;
+DELETE FROM dbo.khach_hang_vip;
+DELETE FROM dbo.phuong_tien;
+DELETE FROM dbo.dieu_phoi_vien;
+DELETE FROM dbo.tai_xe;
+DELETE FROM dbo.khach_hang;
+DELETE FROM dbo.cau_hinh_phu_thu;
+DELETE FROM dbo.cau_hinh_cuoc;
+DELETE FROM dbo.hang_thanh_vien;
+DELETE FROM dbo.tai_khoan;
+DELETE FROM dbo.demo_seed_manifest;
+COMMIT;

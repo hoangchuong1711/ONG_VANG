@@ -28,17 +28,17 @@ class DispatchServiceIntegrationTest {
         String url=System.getenv("TEST_DB_URL");
         boolean configured=url!=null && !url.isBlank();
         if (Boolean.parseBoolean(System.getenv("REQUIRE_TEST_DB"))) assertTrue(configured);
-        assumeTrue(configured,"Dedicated PostgreSQL test DB required");
-        assertTrue(url.matches("jdbc:postgresql://[^/]+/mini_ong_vang_test"));
+        assumeTrue(configured,"Dedicated SQL Server test DB required");
+        assertTrue(url.matches("jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"));
         try(var c=DriverManager.getConnection(url,System.getenv("TEST_DB_USER"),System.getenv("TEST_DB_PASSWORD"));
-            var s=c.createStatement();var r=s.executeQuery("select current_database()")) {
+            var s=c.createStatement();var r=s.executeQuery("select DB_NAME()")) {
             assertTrue(r.next());assertEquals("mini_ong_vang_test",r.getString(1));
         }
         db=PersistenceContext.start(url,System.getenv("TEST_DB_USER"),System.getenv("TEST_DB_PASSWORD"));
         tx=new TransactionRunner(db.entityManagerFactory());service=new DispatchService(db.entityManagerFactory(),CLOCK);
     }
     @BeforeEach void reset() {
-        tx.run(em->{em.createNativeQuery("TRUNCATE tai_khoan,cau_hinh_cuoc,cau_hinh_phu_thu,hang_thanh_vien,demo_seed_manifest CASCADE").executeUpdate();return null;});
+        tx.run(em->{em.createNativeQuery("DELETE FROM order_creation_request; DELETE FROM bao_gia; DELETE FROM danh_gia_chuyen_di; DELETE FROM thanh_toan; DELETE FROM nhat_ky_trang_thai; DELETE FROM chi_tiet_kien_hang; DELETE FROM phu_thu_don_hang; DELETE FROM snapshot_cuoc_don_hang; DELETE FROM phan_cong_don_hang; DELETE FROM don_hang; DELETE FROM khach_hang_vip; DELETE FROM phuong_tien; DELETE FROM dieu_phoi_vien; DELETE FROM tai_xe; DELETE FROM khach_hang; DELETE FROM cau_hinh_phu_thu; DELETE FROM cau_hinh_cuoc; DELETE FROM hang_thanh_vien; DELETE FROM tai_khoan; DELETE FROM demo_seed_manifest;").executeUpdate();return null;});
         new DemoSeeder(db.entityManagerFactory(),CLOCK).seed("dispatch-test-only-password");
     }
     @AfterAll static void close() { if(db!=null) db.close(); }
@@ -271,9 +271,9 @@ class DispatchServiceIntegrationTest {
         Throwable error=assertThrows(RuntimeException.class,work);
         while(error.getCause()!=null) error=error.getCause();
         assertInstanceOf(java.sql.SQLException.class,error);
-        assertEquals("P0001",((java.sql.SQLException)error).getSQLState());
+        assertEquals(51000,((java.sql.SQLException)error).getErrorCode());
         assertTrue(error.getMessage().contains("test audit failure"),"Failure must come from the audit trigger, not an earlier check");
     }
-    static void installFailure() {tx.run(em->{em.createNativeQuery("CREATE FUNCTION t11_fail_event() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RAISE EXCEPTION ''test audit failure''; END'").executeUpdate();em.createNativeQuery("CREATE TRIGGER t11_fail_event BEFORE INSERT ON nhat_ky_trang_thai FOR EACH ROW EXECUTE FUNCTION t11_fail_event()").executeUpdate();return null;});}
-    static void removeFailure() {tx.run(em->{em.createNativeQuery("DROP TRIGGER t11_fail_event ON nhat_ky_trang_thai").executeUpdate();em.createNativeQuery("DROP FUNCTION t11_fail_event()").executeUpdate();return null;});}
+    static void installFailure() {tx.run(em->{em.createNativeQuery("CREATE TRIGGER t11_fail_event ON nhat_ky_trang_thai AFTER INSERT AS BEGIN SET NOCOUNT ON; THROW 51000, 'test audit failure', 1; END").executeUpdate();return null;});}
+    static void removeFailure() {tx.run(em->{em.createNativeQuery("DROP TRIGGER t11_fail_event").executeUpdate();return null;});}
 }

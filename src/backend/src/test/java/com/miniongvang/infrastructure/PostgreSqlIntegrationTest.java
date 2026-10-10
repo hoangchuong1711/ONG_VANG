@@ -21,8 +21,8 @@ class PostgreSqlIntegrationTest {
         if (Boolean.parseBoolean(System.getenv("REQUIRE_TEST_DB"))) {
             assertTrue(configured, "CI requires TEST_DB_URL; integration tests must not silently skip");
         }
-        assumeTrue(configured, "Set TEST_DB_URL to run isolated PostgreSQL integration tests");
-        assertTrue(url.matches("jdbc:postgresql://[^/]+/mini_ong_vang_test"),
+        assumeTrue(configured, "Set TEST_DB_URL to run isolated SQL Server integration tests");
+        assertTrue(url.matches("jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"),
                 "Integration tests only accept the dedicated mini_ong_vang_test database");
     }
 
@@ -33,8 +33,8 @@ class PostgreSqlIntegrationTest {
     @Test
     void connectsToDedicatedPostgreSqlDatabase() throws SQLException {
         try (Connection connection = connect(); var statement = connection.createStatement();
-             var result = statement.executeQuery("SELECT current_database(), 1")) {
-            assertEquals("PostgreSQL", connection.getMetaData().getDatabaseProductName());
+             var result = statement.executeQuery("SELECT DB_NAME(), 1")) {
+            assertEquals("Microsoft SQL Server", connection.getMetaData().getDatabaseProductName());
             assertTrue(result.next());
             assertEquals("mini_ong_vang_test", result.getString(1));
             assertEquals(1, result.getInt(2));
@@ -45,18 +45,18 @@ class PostgreSqlIntegrationTest {
     void commitsAndRollsBackWithoutLeakingPartialWrites() throws SQLException {
         try (Connection connection = connect(); var statement = connection.createStatement()) {
             // Temporary table belongs only to this connection and disappears when it closes.
-            statement.execute("CREATE TEMP TABLE t05_transaction_probe (id INTEGER PRIMARY KEY, amount NUMERIC(15,2) NOT NULL)");
+            statement.execute("CREATE TABLE #t05_transaction_probe (id INTEGER PRIMARY KEY, amount NUMERIC(15,2) NOT NULL)");
             connection.setAutoCommit(false);
-            statement.executeUpdate("INSERT INTO t05_transaction_probe VALUES (1, 45000.00)");
+            statement.executeUpdate("INSERT INTO #t05_transaction_probe VALUES (1, 45000.00)");
             connection.commit();
 
-            statement.executeUpdate("INSERT INTO t05_transaction_probe VALUES (2, 10000.00)");
+            statement.executeUpdate("INSERT INTO #t05_transaction_probe VALUES (2, 10000.00)");
             SQLException duplicate = assertThrows(SQLException.class,
-                    () -> statement.executeUpdate("INSERT INTO t05_transaction_probe VALUES (1, 90000.00)"));
-            assertEquals("23505", duplicate.getSQLState());
+                    () -> statement.executeUpdate("INSERT INTO #t05_transaction_probe VALUES (1, 90000.00)"));
+            assertTrue(duplicate.getErrorCode() == 2601 || duplicate.getErrorCode() == 2627);
             connection.rollback();
 
-            try (var result = statement.executeQuery("SELECT count(*), sum(amount) FROM t05_transaction_probe")) {
+            try (var result = statement.executeQuery("SELECT count(*), sum(amount) FROM #t05_transaction_probe")) {
                 assertTrue(result.next());
                 assertEquals(1, result.getInt(1));
                 assertEquals("45000.00", result.getBigDecimal(2).toPlainString());
