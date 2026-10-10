@@ -34,8 +34,8 @@ public final class PersistenceContext implements AutoCloseable {
         HikariDataSource pool = new HikariDataSource(config);
         try {
             Flyway.configure().dataSource(pool).defaultSchema("dbo")
-                    .locations("classpath:db/sqlserver").load().migrate();
-            EntityManagerFactory factory = Persistence.createEntityManagerFactory("mini-ong-vang",
+                    .locations("classpath:db/designV1/sqlserver").load().migrate();
+            EntityManagerFactory factory = Persistence.createEntityManagerFactory("mini-ong-vang-design-v1",
                     Map.of("jakarta.persistence.nonJtaDataSource", pool));
             return new PersistenceContext(pool, factory);
         } catch (RuntimeException failure) {
