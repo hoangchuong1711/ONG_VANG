@@ -21,7 +21,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       SQLCMDPASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
-      DATABASE_NAME: ${MSSQL_DATABASE:-mini_ong_vang}
+      DATABASE_NAME: ${MSSQL_DATABASE:-mini_ong_vang_design_v1}
     volumes:
       - ./scripts/init-sqlserver.sql:/init.sql:ro
     entrypoint: ["/bin/bash", "-ec"]
@@ -38,7 +38,7 @@ services:
       context: ./src/backend
 
     environment:
-      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=${MSSQL_DATABASE:-mini_ong_vang};encrypt=true;trustServerCertificate=true"
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=${MSSQL_DATABASE:-mini_ong_vang_design_v1};encrypt=true;trustServerCertificate=true"
       DB_USER: sa
       DB_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
       DEMO_SEED: ${DEMO_SEED:-false}

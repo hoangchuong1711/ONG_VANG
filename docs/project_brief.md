@@ -6,7 +6,7 @@ Mục tiêu: hoàn thành 12 Use Case theo đề Hệ thống đặt xe / giao h
 
 * Nguồn yêu cầu: Yeu_cau_Cuoi_ky_He_thong_Giao_hang_Mini_Ong_Vang.docx do giảng viên cung cấp. Giữ nguyên 12 UC, các actor, màn hình và quy tắc nghiệp vụ liên quan.
 
-* Quyết định của nhóm: Next.js + Java Servlet + Hibernate + PostgreSQL; VNPay Sandbox; bản đồ giả lập là phương án cơ sở; làm BE trước FE; thành viên tự nhận task theo phụ thuộc.
+* Quyết định của nhóm: Next.js + Java Servlet + Hibernate + SQL Server; VNPay Sandbox; bản đồ giả lập là phương án cơ sở; làm BE trước FE; thành viên tự nhận task theo phụ thuộc.
 
 * Hiện chưa có Class Diagram chính thức. Tên class, method, bảng và endpoint trong kế hoạch chỉ là định hướng; lập thiết kế nền trước phần nghiệp vụ tương ứng rồi cập nhật có kiểm soát. Không coi sơ đồ minh họa là thiết kế đã duyệt.
 
@@ -41,22 +41,22 @@ Bắt buộc theo đề: 3 tầng UI/Presentation → Controller/Service (Busine
 | --------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Frontend              | Next.js, React, TypeScript                            | Khởi tạo trước; phát triển UI nghiệp vụ sau mốc BE. Không đặt nghiệp vụ chính trong Next.js.                                                                                   |
 | Backend               | Java Servlet trên Tomcat, Maven                       | Controller tiếp nhận HTTP; Service xử lý nghiệp vụ; chốt bộ phiên bản Java/Tomcat/Hibernate tương thích tại T02.                                                               |
-| CSDL và ORM           | PostgreSQL + Hibernate/JPA                            | DAO dùng Hibernate; migration SQL có phiên bản; không trộn JDBC thủ công cho CRUD mặc định. Không tự cập nhật schema ngoài kiểm soát.                                   |
+| CSDL và ORM           | SQL Server + Hibernate/JPA                            | DAO dùng Hibernate; migration SQL có phiên bản; không trộn JDBC thủ công cho CRUD mặc định. Không tự cập nhật schema ngoài kiểm soát.                                   |
 | API và xác thực       | REST JSON + session phía server                       | Cookie HttpOnly, Secure trên HTTPS; kiểm tra role và quyền sở hữu tại BE; mật khẩu băm bằng thư viện phù hợp. Chốt CSRF và CORS khi setup. Ưu tiên cùng origin qua proxy /api. |
 | Thanh toán            | VNPay Sandbox + ghi nhận tiền mặt                     | Tích hợp sandbox thật; không dùng tiền thật. Khóa sandbox để ở biến môi trường. Return phục vụ hiển thị; IPN/đối soát server đã xác minh quyết định kết quả.                   |
 | Lộ trình              | RouteProvider + dịch vụ giả lập                       | Bộ địa chỉ và tuyến mẫu cố định, có km/thời gian và tình huống lỗi. Không sinh khoảng cách ngẫu nhiên, không tự đổi sang dữ liệu giả khi API thật lỗi.                         |
 | Bản đồ thật tùy chọn  | Goong Geocoding/Directions                            | Phù hợp để thử tra địa chỉ/lộ trình tại Việt Nam. Chỉ thêm sau phần cơ sở nếu có API key và hạn mức phù hợp; chưa cam kết miễn phí.                                            |
 | Điều phối và tracking | Danh sách tài xế và cập nhật trạng thái               | Gợi ý tài xế theo thời điểm rảnh lâu nhất rồi mã tài xế; điều phối chọn. Gửi đơn qua danh sách trên tài khoản tài xế, làm mới định kỳ; không cần SMS/push/GPS.                 |
-| Báo cáo               | Truy vấn tổng hợp PostgreSQL + Apache POI             | Dùng cùng bộ lọc và quyền truy cập cho màn hình và Excel; không cần hệ thống BI.                                                                                               |
+| Báo cáo               | Truy vấn tổng hợp SQL Server + Apache POI             | Dùng cùng bộ lọc và quyền truy cập cho màn hình và Excel; không cần hệ thống BI.                                                                                               |
 | UI và thiết kế        | Figma + UI Kit nhỏ theo Material Design               | Button, Input, Select, Dialog, Table, Status Badge; cùng màu/chữ/khoảng cách. Có thể dùng MUI để giảm công viết component.                                                     |
-| Kiểm thử              | JUnit, Postman; Jest/React Testing Library khi làm FE | Unit nghiệp vụ; integration Hibernate/PostgreSQL và API; test UI/hệ thống theo UC. JaCoCo xem nhánh quan trọng.                                                                |
-| Môi trường và CI      | Docker Compose + GitHub Actions                       | PostgreSQL và BE chạy lặp lại được; bổ sung FE sau. CI build/test mỗi PR; deploy tự động là tùy chọn.                                                                          |
+| Kiểm thử              | JUnit, Postman; Jest/React Testing Library khi làm FE | Unit nghiệp vụ; integration Hibernate/SQL Server và API; test UI/hệ thống theo UC. JaCoCo xem nhánh quan trọng.                                                                |
+| Môi trường và CI      | Docker Compose + GitHub Actions                       | SQL Server và BE chạy lặp lại được; bổ sung FE sau. CI build/test mỗi PR; deploy tự động là tùy chọn.                                                                          |
 
 Đề cho phép service bản đồ giả lập; dữ liệu đơn, thay đổi trạng thái và giao dịch phải thực sự được xử lý/lưu vào hệ thống. Trên UI và khi bảo vệ, ghi rõ bản đồ đang giả lập và thanh toán đang ở sandbox. OSRM là phương án tìm hiểu khác nếu dùng tọa độ có sẵn; không chọn làm phụ thuộc cơ sở và không xem máy chủ demo công cộng là dịch vụ có bảo đảm.
 
 ## 4. Kiến trúc và cấu trúc mã nguồn
 
-Theo cách gọi trong đề: tầng 1 Presentation = Next.js; tầng 2 Business = Servlet Controller + Service; tầng 3 Data = DAO/Hibernate + PostgreSQL. Controller chỉ điều phối HTTP/DTO, không chứa quy tắc tính cước và không gọi DAO bỏ qua Service. Service gọi DAO hoặc adapter tích hợp. Package entity chứa các Entity và mô hình dữ liệu được đối chiếu với Class Diagram.
+Theo cách gọi trong đề: tầng 1 Presentation = Next.js; tầng 2 Business = Servlet Controller + Service; tầng 3 Data = DAO/Hibernate + SQL Server. Controller chỉ điều phối HTTP/DTO, không chứa quy tắc tính cước và không gọi DAO bỏ qua Service. Service gọi DAO hoặc adapter tích hợp. Package entity chứa các Entity và mô hình dữ liệu được đối chiếu với Class Diagram.
 
 ```
 /src/frontend/                  Next.js, components, API client
@@ -117,7 +117,7 @@ Mọi task phát triển phải kèm test phù hợp, cập nhật API/thiết k
 | T02 | Khởi tạo repository và cả BE/FE    | Trung bình / Cao | —         | Tạo GitHub, develop, /src /docs /tests; Servlet/Maven và Next.js skeleton; chốt phiên bản tương thích, format, biến môi trường mẫu. Chạy build cả hai, BE health check; chưa làm màn hình nghiệp vụ.                     |
 | T03 | Thiết lập CSDL, Hibernate và seed  | Trung bình / Cao | T01, T02  | Tạo migration theo ERD nền, Entity/DAO Hibernate và transaction; seed đủ vai trò, khách thường/VIP/hết hạn, tài xế rảnh/bận/khóa, đơn mẫu. Kiểm tra quan hệ và reset dữ liệu test.                                |
 | T04 | Thống nhất hợp đồng API và lỗi     | Trung bình / Cao | T01, T02  | Lập endpoint/DTO/mã lỗi, phân trang và định dạng tiền/thời gian; OpenAPI hoặc bảng API có ví dụ. Thống nhất session/cookie, CSRF, CORS hoặc proxy. Tạo Postman collection để BE kiểm thử độc lập FE.                     |
-| T05 | CI và môi trường chạy chung        | Trung bình / Cao | T02       | Thiết lập GitHub Actions build/test trên PR, PostgreSQL test tách biệt, Docker Compose và README. Ban đầu kiểm tra skeleton, bổ sung test theo task; không gọi VNPay thật trong mỗi unit test.                           |
+| T05 | CI và môi trường chạy chung        | Trung bình / Cao | T02       | Thiết lập GitHub Actions build/test trên PR, SQL Server test tách biệt, Docker Compose và README. Ban đầu kiểm tra skeleton, bổ sung test theo task; không gọi VNPay thật trong mỗi unit test.                           |
 
 ### B. Backend chức năng và tích hợp
 
@@ -136,7 +136,7 @@ Mọi task phát triển phải kèm test phù hợp, cập nhật API/thiết k
 | T16 | BE lịch sử và chi tiết — UC-19         | Trung bình / Vừa | T10, T12, T13, T14 | Lọc theo thời gian/trạng thái, phân trang, tổng số đơn/cước và chi tiết đơn của khách. Test rỗng, ngày sai, giới hạn phân trang và truy cập đơn người khác.                                                                              |
 | T17 | BE báo cáo và xuất Excel — UC-15       | Trung bình / Vừa | T12, T13, T14      | Truy vấn chỉ tiêu theo quy tắc báo cáo; ngày/tuần/tháng và Excel dùng cùng bộ lọc. Phân quyền quản trị; test ngày sai, dữ liệu 0, join thanh toán không nhân đôi số tiền và lỗi xuất.                                                    |
 | T18 | Hoàn thiện môi trường sandbox và API   | Trung bình / Cao | T05, T15           | Kiểm tra URL HTTPS nhận IPN có thể truy cập từ cổng, cấu hình từng môi trường, README và Postman. Chuẩn bị dữ liệu demo và cách chạy lại; thử timeout/lỗi mạng. Goong là mở rộng tùy chọn, không chặn mốc BE.                            |
-| T19 | Kiểm thử tích hợp BE và sửa lỗi        | Khó / Cao        | T06–T18            | Chạy chuỗi 12 UC trên PostgreSQL; kiểm tra transaction, quyền, đồng thời và sandbox; ghi Expected/Actual/PASS-FAIL. Mọi FAIL có bug và retest. Test đã được viết theo từng task, không bắt đầu từ số 0 ở đây.                            |
+| T19 | Kiểm thử tích hợp BE và sửa lỗi        | Khó / Cao        | T06–T18            | Chạy chuỗi 12 UC trên SQL Server; kiểm tra transaction, quyền, đồng thời và sandbox; ghi Expected/Actual/PASS-FAIL. Mọi FAIL có bug và retest. Test đã được viết theo từng task, không bắt đầu từ số 0 ở đây.                            |
 | T20 | Mốc nghiệm thu backend                 | Trung bình / Cao | T19                | Đối chiếu tiêu chí mục 7; API đủ cho tất cả màn hình, Postman chạy xuyên suốt, sandbox có bằng chứng, build/test đạt; không còn lỗi chặn FE. Nhóm review và ghi kết luận trước khi mở giai đoạn C.                                       |
 
 ### C. Frontend sau khi backend đạt T20
@@ -219,7 +219,7 @@ Nếu học kỳ chỉ còn 10 tuần, giảm công mở rộng Goong và trang 
 
 Mỗi UC: 1 Happy Path + 2 Negative/Invalid + 2 Boundary Value + ít nhất 1 test cho từng Alternative Flow. 72 là mức khởi điểm khi mỗi UC chỉ có một nhánh thay thế. Với 37 nhánh được liệt kê trong đặc tả, dự trù khoảng 97 case nếu tách riêng các nhóm; số cuối theo ma trận bao phủ, không nhân bản test chỉ để đủ số. Test biên phải dựa trên quy tắc có thật và được chốt ở T01.
 
-* Viết case cùng task; unit test cho cước/VIP/thời gian; integration cho Hibernate/PostgreSQL, transaction, quyền và API; hệ thống cho UI + BE; usability là hoạt động riêng.
+* Viết case cùng task; unit test cho cước/VIP/thời gian; integration cho Hibernate/SQL Server, transaction, quyền và API; hệ thống cho UI + BE; usability là hoạt động riêng.
 
 * Test tự động không gọi dịch vụ ngoài cho mọi lần chạy CI: dùng bản mô phỏng kiểm soát được và bộ integration sandbox chạy riêng. Kết quả sandbox thật phải có bằng chứng riêng.
 

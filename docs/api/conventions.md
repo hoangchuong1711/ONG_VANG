@@ -1,13 +1,13 @@
 # Quy ước API v0.2.0
 
-Các quyết định dưới đây là baseline T04 từ SQL v0 và project brief; nhóm có thể sửa có phiên bản khi thiết kế/DB thay đổi. Chưa phải tất cả đã được thực thi bởi BE.
+Các quy ước API hiện tại được đối chiếu với [designV1](../database/designV1.md). Một số nghiệp vụ T13–T20 trong tài liệu vẫn là phạm vi dự kiến, chưa có endpoint chạy thực tế.
 
 ## HTTP, DTO, validation
 
 - Prefix `/api`; JSON UTF-8; tên field tiếng Việt không dấu camelCase tương ứng SQL snake_case. DTO độc lập Entity Hibernate.
-- ID là chuỗi không rỗng tối đa 36 ký tự theo VARCHAR(36), không tự ép UUID. Client không tự đặt ID cho tài nguyên được tạo.
+- ID là chuỗi không rỗng tối đa 36 ký tự theo NVARCHAR(36), không tự ép UUID. Client không tự đặt ID cho tài nguyên được tạo.
 - Request không nhận field lạ. Chuỗi bắt buộc phải trim và không trắng; giới hạn độ dài nằm trong OpenAPI. Optional có thể bỏ; chỉ nhận null khi schema cho phép. Cấm trả password/hash, CCCD hoặc secret cổng thanh toán.
-- SĐT demo: 10 chữ số bắt đầu 0 hoặc +84 và 9 chữ số; normalize về dạng 0xxxxxxxxx trước tra/lưu. Đây là quyết định T04 chặt hơn SQL VARCHAR(15), cần review T01.
+- SĐT: 10 chữ số bắt đầu 0 hoặc +84 và 9 chữ số; normalize về dạng 0xxxxxxxxx trước tra/lưu trong `tai_khoan.so_dien_thoai`.
 - Kiện hàng ít nhất một phần tử; khối lượng bắt buộc và phải >0 theo schema T03. Giới hạn khối lượng/phạm vi/biểu phí/VIP nghiệp vụ lấy từ cấu hình T01, không tự suy ra từ sức chứa DECIMAL.
 - Thành công: object DTO trực tiếp; list có `items,page,size,totalElements,totalPages`; 201 khi tạo tài nguyên, 204 logout không body. Không bọc thêm `success/data`.
 - 0-based page; mặc định size=20, max=100; ngoài miền trả 400, không tự clamp. Trang vượt kết quả trả items rỗng; total vẫn đúng. Không cho sort SQL tùy ý; sort cố định ghi tại operation. totalPages=ceil(totalElements/size), bằng 0 khi rỗng.
@@ -16,11 +16,11 @@ Các quyết định dưới đây là baseline T04 từ SQL v0 và project brie
 ## Tiền và thời gian
 
 - VND, BigDecimal/NUMERIC trong BE/DB; JSON chuỗi như `"45000.00"`. API chỉ giao dịch nguyên đồng, 2 chữ số lẻ luôn `.00`. Không dùng float tính tiền.
-- Tính với độ chính xác decimal, giới hạn giảm không vượt gốc+phụ thu; tổng=max(0,gốc+phụ thu−giảm); HALF_UP nguyên đồng tại bước cuối. Lưu snapshot sau làm tròn; breakdown phải cộng ra đúng tổng (điều chỉnh phần giảm đã làm tròn nếu cần). Tỷ lệ VIP là phần trăm, `"10.00"` = 10%.
-- T03 thống nhất tiền trong snapshot, cấu hình và thanh toán thành NUMERIC(15,2). T09/T14 vẫn phải kiểm tra giới hạn nghiệp vụ và giới hạn cổng thanh toán trước khi lưu/gửi.
+- Tính với độ chính xác decimal, giới hạn giảm không vượt gốc+phụ thu; tổng=gốc+phụ thu−giảm. HALF_UP nguyên đồng cho cước gốc và khoản giảm; breakdown phải cộng ra đúng tổng. Tỷ lệ chính sách thành viên là phần trăm, `"10.00"` = 10%.
+- Cước, phụ thu và thanh toán dùng DECIMAL(15,2). Tổng cước tính từ `cuoc_don_hang` và phiên bản phụ thu tham chiếu; T14 vẫn phải kiểm tra giới hạn cổng thanh toán trước khi gửi.
 - VNPay amount nhân 100 chỉ trong adapter và kiểm tra chữ ký/amount callback; DTO nội bộ luôn VND.
-- Timestamp trả ISO 8601 UTC với Z. DATE như ngày hết hạn và bộ lọc dùng YYYY-MM-DD. Quy ước DATETIME không timezone của SQL tham chiếu được hiểu theo Asia/Ho_Chi_Minh khi chuyển đổi; PostgreSQL nên dùng timestamptz cho thời điểm.
-- Hạn VIP có hiệu lực đến hết ngayHetHan tại Asia/Ho_Chi_Minh; null = không có hạn, nhưng vẫn phải có hạng hợp lệ. Hạng thiếu/hết hạn không giảm, không làm lỗi toàn bộ báo giá.
+- Timestamp trả ISO 8601 UTC với Z, lưu bằng DATETIME2(3); DATE của bộ lọc dùng YYYY-MM-DD. Mốc hiệu lực chính sách/khách là khoảng `[từ, đến)` theo thời điểm UTC.
+- `khach_hang.ma_hang` là enum. Hạng `THUONG` không có khoảng thành viên; hạng cao hơn giảm giá khi còn trong khoảng hiệu lực và có đúng một chính sách công bố áp dụng. Hết hạn thì không giảm, không làm lỗi toàn bộ báo giá.
 - Báo cáo [tuNgay,denNgay) theo Asia/Ho_Chi_Minh; tuần từ thứ Hai. Giá trị đơn hoàn tất theo hoanTatLuc; thực thu theo paid timestamp xác nhận; còn phải thu của mọi đơn đã hoàn tất trước cuối kỳ nhưng chưa thu tính tại cuối kỳ. Không lấy trạng thái hiện tại để suy ra lịch sử thu tiền của kỳ cũ.
 
 ## Lỗi

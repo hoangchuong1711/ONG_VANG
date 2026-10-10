@@ -64,7 +64,7 @@ Docker Compose đọc thông tin database từ file `.env` ở thư mục gốc.
 Copy-Item .env.example .env # Chỉ khi chưa có .env; giữ cấu hình cục bộ hiện tại
 ```
 
-Đặt `MSSQL_SA_PASSWORD` trong `.env` bằng mật khẩu riêng đủ mạnh; giữ `MSSQL_DATABASE=mini_ong_vang`. SQL Server Developer chỉ dùng cho phát triển/test. Xem [cách kết nối SSMS và xử lý lỗi](#kết-nối-database-bằng-ssms) bên dưới. Hướng dẫn chuyển dữ liệu PostgreSQL và rollback nằm trong [tài liệu database](docs/database/README.md#chuyển-dữ-liệu-postgresql-hiện-có).
+Đặt `MSSQL_SA_PASSWORD` trong `.env` bằng mật khẩu riêng đủ mạnh; dùng `MSSQL_DATABASE=mini_ong_vang_design_v1`. SQL Server Developer chỉ dùng cho phát triển/test. Xem [cách kết nối SSMS và xử lý lỗi](#kết-nối-database-bằng-ssms) bên dưới và [hướng dẫn database designV1](docs/database/README.md).
 
 T07 mặc định dùng `ROUTE_PROVIDER=fake`: thử `Quận 1, TP.HCM` → `Quận 3, TP.HCM` để nhận 5.00 km, 900 giây. Các địa chỉ mẫu khác là Quận 5, TP.HCM và Hà Nội (ngoài phạm vi). Có thể dùng tên `Điểm mẫu A/B/C`. Khoảng cách tối đa mặc định là `ROUTE_MAX_DISTANCE_KM=30`. Khi có Goong API key, đặt `ROUTE_PROVIDER=goong` và `GOONG_API_KEY` trong `.env`, rồi tạo lại backend bằng `docker compose up --build -d backend`; Goong dùng `GOONG_TIMEOUT_MS=5000`. Thiếu key ở chế độ Goong làm backend từ chối khởi động; lỗi Goong không chuyển sang kết quả mẫu. Xem [hướng dẫn T07](docs/T07-route-provider.md) và [hướng dẫn T09](docs/T09-quote.md).
 
@@ -121,7 +121,7 @@ Mở **SQL Server Management Studio (SSMS)** → **Connect → Database Engine**
 | Password | Giá trị sau `MSSQL_SA_PASSWORD=` trong file `.env` trên máy của bạn |
 | Trust server certificate | Tích chọn cho SQL Server Docker local |
 
-Nhấn **Connect**, mở **Databases → mini_ong_vang → Tables** để xem các bảng. Nếu đã đổi `MSSQL_DATABASE`, chọn tên database tương ứng. Có thể mở **New Query** và chạy:
+Nhấn **Connect**, mở **Databases → mini_ong_vang_design_v1 → Tables** để xem các bảng. Nếu đã đổi `MSSQL_DATABASE`, chọn tên database tương ứng. Có thể mở **New Query** và chạy:
 
 ```sql
 SELECT @@VERSION AS server_version, DB_NAME() AS current_database;
@@ -158,7 +158,7 @@ Nếu SSMS báo `The remote computer refused the network connection`, `server wa
 | --- | --- |
 | Lỗi chứng chỉ / certificate chain not trusted | Tích **Trust server certificate** trong cửa sổ kết nối SSMS cho môi trường Docker local. |
 | `Login failed for user 'sa'` / lỗi 18456 | Chọn **SQL Server Authentication**, kiểm tra login `sa` và mật khẩu đã dùng để khởi tạo SQL Server. Đổi giá trị trong `.env` không tự đổi mật khẩu `sa` đã lưu trong volume; nếu đã đổi nhầm, dùng lại mật khẩu ban đầu hoặc thực hiện đổi mật khẩu trong SQL Server bằng tài khoản có quyền. |
-| Kết nối được nhưng không thấy `mini_ong_vang` | Refresh mục **Databases**, kiểm tra `MSSQL_DATABASE` trong `.env`, chạy `docker compose up -d backend` rồi xem `docker compose logs --tail 80 db-init backend`. |
+| Kết nối được nhưng không thấy `mini_ong_vang_design_v1` | Refresh mục **Databases**, kiểm tra `MSSQL_DATABASE` trong `.env`, chạy `docker compose up -d backend` rồi xem `docker compose logs --tail 80 db-init backend`. |
 
 Không dùng `docker compose down -v` hoặc xóa volume để thử sửa lỗi kết nối vì có thể mất dữ liệu. Cổng database hiện chỉ mở trên máy chạy Docker (`127.0.0.1`); thành viên chạy dự án trên máy mình dùng cấu hình local của máy đó.
 
