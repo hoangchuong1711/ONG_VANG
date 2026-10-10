@@ -115,7 +115,6 @@ Mở **SQL Server Management Studio (SSMS)** → **Connect → Database Engine**
 
 | Mục | Giá trị |
 | --- | --- |
-| Server type | `Database Engine` |
 | Server name | **`localhost,1433`** hoặc **`tcp:127.0.0.1,1433`** |
 | Authentication | `SQL Server Authentication` |
 | Login / User name | `sa` |
