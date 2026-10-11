@@ -2,7 +2,7 @@
 
 ## Tài liệu và kiểm thử API (T04)
 
-Hiện `/api/health`, các API T06, T07 (`POST /api/routes/estimate`) và T09 (`POST /api/quotes`, dùng chính sách T08) đã triển khai; T10 (`POST /api/orders`), T11 (danh sách/chi tiết đơn, tài xế, gợi ý, gán/từ chối) và T12 (tiến trình, sự cố, nhật ký) đã triển khai; các API còn lại vẫn là hợp đồng chờ triển khai.
+Hiện `/api/health`, các API T06–T12 và thanh toán tiền mặt T14 đã triển khai. VNPay T15 và các API còn lại vẫn là hợp đồng chờ triển khai.
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ designV1 với API](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
@@ -12,10 +12,11 @@ T10: [thiết kế và cách tạo đơn](docs/T10-order-creation.md).
 T11: [thiết kế điều phối/gán/từ chối](docs/T11-driver-dispatch.md).
 
 T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progress.md).
+T14: [nghiệp vụ thanh toán tiền mặt](docs/T14-payment.md).
 
 Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).
 
-Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T12, các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
+Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T12 và tiền mặt T14, các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
 
 ## Công nghệ và phiên bản
 

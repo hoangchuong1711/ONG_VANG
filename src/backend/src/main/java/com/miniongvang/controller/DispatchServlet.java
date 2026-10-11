@@ -20,6 +20,11 @@ public final class DispatchServlet extends HttpServlet {
 
     static void handle(HttpServletRequest req,HttpServletResponse resp) throws IOException {
         resp.setHeader("Cache-Control","no-store");
+        String requestPath=req.getServletPath()+(req.getPathInfo()==null?"":req.getPathInfo());
+        if (requestPath.matches("/api/orders/[^/]+/payments")) {
+            PaymentServlet.handle(req,resp);
+            return;
+        }
         try {
             var persistence=(PersistenceContext)req.getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
             var service=new DispatchService(persistence.entityManagerFactory());

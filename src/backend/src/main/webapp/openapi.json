@@ -1489,7 +1489,7 @@
               "minLength": 1,
               "maxLength": 100
             },
-            "description": "Bắt buộc. Khóa theo user+operation, lưu 24 giờ. Cùng khóa/payload trả lại status/body cũ; khác payload trả 409. Giữ nguyên khóa khi retry do timeout."
+            "description": "Bắt buộc. Khóa theo user+operation và lưu cùng lần thanh toán. Cùng khóa/đơn trả payment hiện tại; dùng lại cho đơn khác trả 409. Giữ nguyên khóa khi retry do timeout."
           }
         ],
         "responses": {
@@ -4282,8 +4282,8 @@
         ],
         "summary": "Tạo yêu cầu thanh toán",
         "operationId": "createPayment",
-        "description": "Chỉ chủ đơn HOAN_TAT. BE lấy số tiền từ snapshot; VNPAY_QR là tên legacy cho luồng redirect VNPay Sandbox, không hứa QR riêng. TIEN_MAT tạo yêu cầu chờ xác nhận. Miễn cước không tạo giao dịch: trả 422 PAYMENT_NOT_REQUIRED, đọc order.thanhToan=MIEN_CUOC. Chỉ một online attempt còn hiệu lực.",
-        "x-implementation-status": "planned",
+        "description": "T14 hỗ trợ TIEN_MAT: chỉ chủ đơn HOAN_TAT, cước lấy từ snapshot, tạo yêu cầu chờ xác nhận. Miễn cước trả 422 PAYMENT_NOT_REQUIRED và không tạo giao dịch. VNPAY_QR chờ T15, hiện trả 501 PAYMENT_METHOD_NOT_IMPLEMENTED.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-08",
           "UC-10"
@@ -4331,12 +4331,12 @@
                   "maGiaoDich": "GD-DEMO-001",
                   "maDon": "DH-DEMO-001",
                   "soTien": "45000.00",
-                  "phuongThuc": "VNPAY_QR",
+                  "phuongThuc": "TIEN_MAT",
                   "trangThai": "CHO_XU_LY",
                   "maGiaoDichDoiTac": null,
                   "taoLuc": "2026-10-05T04:00:00Z",
                   "thoiGianThanhToan": null,
-                  "paymentUrl": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+                  "paymentUrl": null
                 }
               }
             }
@@ -4529,6 +4529,24 @@
               }
             }
           },
+          "501": {
+            "description": "PAYMENT_METHOD_NOT_IMPLEMENTED",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "examples": {
+                  "PAYMENT_METHOD_NOT_IMPLEMENTED": {
+                    "value": {
+                      "code": "PAYMENT_METHOD_NOT_IMPLEMENTED",
+                      "message": "Khong the thuc hien yeu cau: PAYMENT_METHOD_NOT_IMPLEMENTED",
+                      "fieldErrors": [],
+                      "traceId": "trace-demo-001"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "502": {
             "description": "PAYMENT_PROVIDER_ERROR",
             "content": {
@@ -4578,7 +4596,7 @@
                 "$ref": "#/components/schemas/PaymentRequest"
               },
               "example": {
-                "phuongThuc": "VNPAY_QR"
+                "phuongThuc": "TIEN_MAT"
               }
             }
           }
@@ -4611,6 +4629,9 @@
           "500": [
             "INTERNAL_ERROR"
           ],
+          "501": [
+            "PAYMENT_METHOD_NOT_IMPLEMENTED"
+          ],
           "502": [
             "PAYMENT_PROVIDER_ERROR"
           ],
@@ -4626,7 +4647,7 @@
         "summary": "Lịch sử các lần thanh toán",
         "operationId": "listPayments",
         "description": "C?ng quy?n chi ti?t ??n; sort taoLuc DESC,maGiaoDich ASC. T03 ?? cho ph?p nhi?u attempt tr?n m?t ??n.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-08",
           "UC-10"
@@ -4842,7 +4863,7 @@
         "summary": "Đọc kết quả thanh toán",
         "operationId": "getPayment",
         "description": "Kiểm tra quyền trên đơn tương ứng; timeout còn CHO_XU_LY, không tự coi thất bại. Poll tối thiểu 5 giây, dừng khi rời màn hình.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-08",
           "UC-10"
@@ -5026,8 +5047,8 @@
         ],
         "summary": "Xác nhận đã thu tiền mặt",
         "operationId": "confirmCash",
-        "description": "Chỉ TIEN_MAT, đơn HOAN_TAT; tài xế đã thực hiện đơn hoặc tổng đài. Chặn khách tự xác nhận. Số tiền đúng snapshot. Lặp giao dịch đã xác nhận với cùng số tiền trả kết quả cũ; không thu/ghi lần hai.",
-        "x-implementation-status": "planned",
+        "description": "Chỉ TIEN_MAT, đơn HOAN_TAT; tài xế đã thực hiện đơn hoặc tổng đài. Lặp cùng số tiền trả kết quả cũ. Khoản thực thu sai cước vẫn được lưu để đối soát, trả 422 và không xác nhận đủ.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-08"
         ],
@@ -7073,12 +7094,16 @@
           },
           "soTienConPhaiThu": {
             "$ref": "#/components/schemas/Money"
+          },
+          "canDoiSoat": {
+            "type": "boolean"
           }
         },
         "examples": [
           {
             "trangThai": "CHUA_THANH_TOAN",
-            "soTienConPhaiThu": "45000.00"
+            "soTienConPhaiThu": "45000.00",
+            "canDoiSoat": false
           }
         ]
       },
@@ -7524,9 +7549,10 @@
             "type": "string",
             "enum": [
               "CHO_XU_LY",
+              "CHUA_RO_KET_QUA",
               "THANH_CONG",
               "THAT_BAI",
-              "HOAN_TIEN"
+              "DA_HUY"
             ]
           },
           "maGiaoDichDoiTac": {
@@ -7553,6 +7579,18 @@
               "null"
             ],
             "format": "uri"
+          },
+          "daXacNhanDu": {
+            "type": "boolean"
+          },
+          "soTienThucNhan": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Money" },
+              { "type": "null" }
+            ]
+          },
+          "canDoiSoat": {
+            "type": "boolean"
           }
         },
         "examples": [

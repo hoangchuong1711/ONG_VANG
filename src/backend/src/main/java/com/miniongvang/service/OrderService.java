@@ -150,7 +150,11 @@ public final class OrderService {
     }
     public record CreateOrder(String maBaoGia, String maKh, String diemLayHang, String diemGiaoHang,
                               String sdtNguoiNhan, String ghiChuGiaoHang, List<QuoteService.Parcel> kienHang) {}
-    public record PaymentSummary(String trangThai, String soTienConPhaiThu) {}
+    public record PaymentSummary(String trangThai, String soTienConPhaiThu, boolean canDoiSoat) {
+        public PaymentSummary(String trangThai, String soTienConPhaiThu) {
+            this(trangThai, soTienConPhaiThu, false);
+        }
+    }
     public record Order(String maDon, String thoiGianTao, String diemLayHang, String diemGiaoHang, String sdtNguoiNhan,
                         String quangDuongKm, String ghiChuGiaoHang, String trangThai, String maKh, String maTx, String maTkTao,
                         FareCalculator.Fare cuoc, List<QuoteService.Parcel> kienHang, PaymentSummary thanhToan,

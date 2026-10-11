@@ -130,7 +130,8 @@ mkdirSync(target, { recursive: true });
 for (const [name, data] of [['mini-ong-vang.postman_collection.json', collection], ['local.postman_environment.json', environment]]) {
   const file = resolve(target, name), text = JSON.stringify(data, null, 2) + '\n';
   if (check) {
-    if (readFileSync(file, 'utf8') !== text) throw new Error(`${name} is stale; run npm run generate --prefix tools/api`);
+    if (readFileSync(file, 'utf8').replaceAll('\r\n', '\n') !== text.replaceAll('\r\n', '\n'))
+      throw new Error(`${name} is stale; run npm run generate --prefix tools/api`);
   } else writeFileSync(file, text);
 }
 console.log(check ? 'Postman artifacts are in sync.' : 'Generated Postman collection and empty-secret environment.');
