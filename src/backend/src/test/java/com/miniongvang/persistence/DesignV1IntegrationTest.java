@@ -9,6 +9,7 @@ import com.miniongvang.entity.DonHang;
 import com.miniongvang.entity.KhachHang;
 import com.miniongvang.entity.PhanCongDonHang;
 import com.miniongvang.entity.enums.AccountRole;
+import com.miniongvang.entity.enums.AssignmentOutcome;
 import com.miniongvang.entity.enums.OrderEventType;
 import com.miniongvang.entity.enums.OrderStatus;
 import com.miniongvang.entity.enums.MembershipTier;
@@ -280,6 +281,124 @@ class DesignV1IntegrationTest {
                     .setParameter("id", id).getSingleResult();
             assertNotNull(assignment.getKetThucLuc());
             assertEquals(OrderStatus.HOAN_TAT, em.find(DonHang.class, id).getTrangThai());
+            return null;
+        });
+    }
+
+    @Test void customerCancellationRecordsReasonAndEventWithoutChangingFare() {
+        String id = newOrder();
+        var before = dispatch.order(customer(1), id);
+        var cancelled = dispatch.cancel(customer(1), id, "  Đổi kế hoạch  ");
+        assertEquals("DA_HUY", cancelled.trangThai());
+        assertNull(cancelled.maTx());
+        assertNotNull(cancelled.huyLuc());
+        assertEquals(before.cuoc(), cancelled.cuoc());
+        tx.run(em -> {
+            var order = em.find(DonHang.class, id);
+            assertEquals("Đổi kế hoạch", order.getLyDoHuy());
+            assertNotNull(order.getThoiGianHuy());
+            return null;
+        });
+        var events = dispatch.events(customer(1), id, 0, 20).items();
+        assertEquals(2, events.size());
+        assertEquals(OrderStatus.CHO_GAN, events.get(1).trangThaiTruoc());
+        assertEquals(OrderStatus.DA_HUY, events.get(1).trangThaiSau());
+        assertEquals("TK-DEMO-KH-1", events.get(1).maTkThucHien());
+        assertEquals("Đổi kế hoạch", events.get(1).ghiChu());
+        assertEquals("ORDER_STATE_CONFLICT", assertThrows(DispatchService.Conflict.class,
+                () -> dispatch.cancel(customer(1), id, "again")).getMessage());
+        assertEquals(2, dispatch.events(customer(1), id, 0, 20).items().size());
+    }
+
+    @Test void assignedCancellationReleasesDriverAndKeepsAssignmentHistory() {
+        String id = newOrder();
+        dispatch.assign(dispatcher(), id, "TX-DEMO-1");
+        var cancelled = dispatch.cancel(dispatcher(), id, "Khách đổi kế hoạch");
+        assertEquals("DA_HUY", cancelled.trangThai());
+        assertNull(cancelled.maTx());
+        tx.run(em -> {
+            var assignment = em.createQuery("from PhanCongDonHang p where p.donHang.id=:id", PhanCongDonHang.class)
+                    .setParameter("id", id).getSingleResult();
+            assertNotNull(assignment.getKetThucLuc());
+            assertEquals(AssignmentOutcome.HUY_DON, assignment.getKetQuaKetThuc());
+            assertEquals("Khách đổi kế hoạch", assignment.getLyDo());
+            assertNotNull(em.find(com.miniongvang.entity.TaiXe.class, "TX-DEMO-1").getRanhTu());
+            return null;
+        });
+        assertEquals(3, dispatch.events(customer(1), id, 0, 20).items().size());
+    }
+
+    @Test void cancellationChecksOwnerRoleReasonStateAndExactDeadline() {
+        String id = newOrder();
+        assertThrows(java.util.NoSuchElementException.class,
+                () -> dispatch.cancel(customer(2), id, "not mine"));
+        assertThrows(SecurityException.class, () -> dispatch.cancel(driver(), id, "driver"));
+        for (String reason : java.util.Arrays.asList(null, "", "  ", "x".repeat(501)))
+            assertThrows(IllegalArgumentException.class, () -> dispatch.cancel(customer(1), id, reason));
+        Instant created = tx.run(em -> em.find(DonHang.class, id).getThoiGianTao());
+        var justBefore = new DispatchService(db.entityManagerFactory(),
+                Clock.fixed(created.plusMillis(299_999), ZoneOffset.UTC));
+        assertEquals("DA_HUY", justBefore.cancel(customer(1), id, "within window").trangThai());
+        for (int seconds : List.of(300, 301)) {
+            String lateId = newOrder();
+            Instant lateCreated = tx.run(em -> em.find(DonHang.class, lateId).getThoiGianTao());
+            var late = new DispatchService(db.entityManagerFactory(),
+                    Clock.fixed(lateCreated.plusSeconds(seconds), ZoneOffset.UTC));
+            assertEquals("CANCELLATION_WINDOW_EXPIRED", assertThrows(DispatchService.Conflict.class,
+                    () -> late.cancel(customer(1), lateId, "too late")).getMessage());
+        }
+        String inProgress = newOrder();
+        dispatch.assign(dispatcher(), inProgress, "TX-DEMO-1");
+        dispatch.transition(driver(), inProgress, OrderStatus.DA_LAY_HANG);
+        assertEquals("ORDER_STATE_CONFLICT", assertThrows(DispatchService.Conflict.class,
+                () -> dispatch.cancel(customer(1), inProgress, "too late in lifecycle")).getMessage());
+    }
+
+    @Test void concurrentAssignmentAndCancellationLeaveNoActiveAssignment() throws Exception {
+        String id = newOrder();
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var assign = executor.submit(() -> {
+                try { dispatch.assign(dispatcher(), id, "TX-DEMO-1"); return true; }
+                catch (DispatchService.Conflict conflict) {
+                    assertEquals("ORDER_STATE_CONFLICT", conflict.getMessage()); return false;
+                }
+            });
+            var cancel = executor.submit(() -> dispatch.cancel(customer(1), id, "Hủy trước khi lấy hàng"));
+            assertEquals("DA_HUY", cancel.get(20, TimeUnit.SECONDS).trangThai());
+            assign.get(20, TimeUnit.SECONDS);
+        }
+        tx.run(em -> {
+            assertEquals(OrderStatus.DA_HUY, em.find(DonHang.class, id).getTrangThai());
+            assertEquals(0L, em.createQuery("select count(p) from PhanCongDonHang p "
+                    + "where p.donHang.id=:id and p.ketThucLuc is null", Long.class)
+                    .setParameter("id", id).getSingleResult());
+            return null;
+        });
+    }
+
+    @Test void cancellationRollsBackOrderAndAssignmentWhenEventWriteFails() throws Exception {
+        String id = newOrder();
+        dispatch.assign(dispatcher(), id, "TX-DEMO-1");
+        try (var connection = db.dataSource().getConnection(); var statement = connection.createStatement()) {
+            statement.execute("CREATE TRIGGER dbo.trg_test_cancel_rollback ON dbo.nhat_ky_don_hang "
+                    + "AFTER INSERT AS BEGIN THROW 51072, 'Injected event failure', 1; END");
+        }
+        try {
+            assertThrows(RuntimeException.class, () -> dispatch.cancel(customer(1), id, "Hủy thử"));
+        } finally {
+            try (var connection = db.dataSource().getConnection(); var statement = connection.createStatement()) {
+                statement.execute("DROP TRIGGER dbo.trg_test_cancel_rollback");
+            }
+        }
+        assertEquals("DA_GAN", dispatch.order(customer(1), id).trangThai());
+        assertEquals("TX-DEMO-1", dispatch.order(customer(1), id).maTx());
+        assertEquals(2, dispatch.events(customer(1), id, 0, 20).items().size());
+        tx.run(em -> {
+            assertNull(em.find(DonHang.class, id).getThoiGianHuy());
+            var assignment = em.createQuery("from PhanCongDonHang p where p.donHang.id=:id", PhanCongDonHang.class)
+                    .setParameter("id", id).getSingleResult();
+            assertNull(assignment.getKetThucLuc());
+            assertNull(assignment.getKetQuaKetThuc());
             return null;
         });
     }

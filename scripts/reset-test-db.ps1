@@ -20,8 +20,12 @@ if ($LASTEXITCODE -ne 0 -or $databaseName.Trim() -ne 'mini_ong_vang_test') {
     throw 'Database identity check failed; reset cancelled.'
 }
 
-$sql = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'reset-test-db.sql')
-$sql | docker compose -f $composeFile exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test
+$sqlFile = Join-Path $PSScriptRoot 'reset-test-db.sql'
+# Windows PowerShell 5.1 re-encodes text piped to native programs. Copy the SQL
+# file into the disposable test container so sqlcmd reads its original bytes.
+docker compose -f $composeFile cp $sqlFile db-test:/tmp/reset-test-db.sql
+if ($LASTEXITCODE -ne 0) { throw 'Could not copy the test reset SQL into db-test.' }
+docker compose -f $composeFile exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/reset-test-db.sql
 if ($LASTEXITCODE -ne 0) { throw 'Test data reset failed.' }
 
 mvn.cmd --batch-mode --no-transfer-progress -f (Join-Path $projectRoot 'src/backend/pom.xml') `
