@@ -1,6 +1,6 @@
 # T14 — Nghiệp vụ thanh toán UC-08
 
-T14 triển khai yêu cầu và xác nhận thu tiền mặt sau khi đơn `HOAN_TAT`. VNPay Sandbox, chữ ký, IPN và truy vấn đối soát thuộc T15. `VNPAY_QR` hiện trả `501 PAYMENT_METHOD_NOT_IMPLEMENTED` và không tạo lần thanh toán.
+T14 triển khai yêu cầu và xác nhận thu tiền mặt sau khi đơn `HOAN_TAT`. VNPay Sandbox, chữ ký, IPN và truy vấn đối soát đã được triển khai ở [T15](T15-vnpay.md).
 
 ## Luồng API
 
@@ -15,4 +15,4 @@ Mọi thao tác ghi khóa `don_hang` trước khi kiểm tra trạng thái payme
 
 Kiểm thử `DesignV1IntegrationTest` dùng SQL Server cách ly: trước hoàn tất, miễn cước, sai người, sai đơn, retry, sai tiền, hai yêu cầu đồng thời, hai xác nhận đồng thời, rollback và khoản thu thứ hai cần đối soát. Chạy với `TEST_DB_URL`, `TEST_DB_USER`, `TEST_DB_PASSWORD`, `REQUIRE_TEST_DB=true` như hướng dẫn [DB test](database/README.md).
 
-Sau khi build/chạy `backend-test` trên DB test đã seed, đặt `DEMO_PASSWORD` đúng với fixture rồi chạy `npm.cmd --prefix tools/api run smoke:payment`. Smoke kiểm tra 33 bước HTTP, gồm session/CSRF, tạo yêu cầu, quyền xác nhận, retry và trạng thái thanh toán của đơn.
+Sau khi build/chạy `backend-test` trên DB test đã seed, đặt `DEMO_PASSWORD` đúng với fixture rồi chạy `npm.cmd --prefix tools/api run smoke:payment`. Smoke kiểm tra luồng tiền mặt qua HTTP, gồm session/CSRF, tạo yêu cầu, quyền xác nhận, retry và trạng thái thanh toán của đơn.

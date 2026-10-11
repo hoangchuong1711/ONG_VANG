@@ -3,7 +3,7 @@
   "info": {
     "title": "Mini Ong Vàng API",
     "version": "0.5.0",
-    "description": "T06-T12 implemented; remaining operations are marked planned individually."
+    "description": "T06-T12, T14-T15 implemented; remaining operations are marked planned individually."
   },
   "servers": [
     {
@@ -4282,7 +4282,7 @@
         ],
         "summary": "Tạo yêu cầu thanh toán",
         "operationId": "createPayment",
-        "description": "T14 hỗ trợ TIEN_MAT: chỉ chủ đơn HOAN_TAT, cước lấy từ snapshot, tạo yêu cầu chờ xác nhận. Miễn cước trả 422 PAYMENT_NOT_REQUIRED và không tạo giao dịch. VNPAY_QR chờ T15, hiện trả 501 PAYMENT_METHOD_NOT_IMPLEMENTED.",
+        "description": "T14/T15: The owner can create cash or VNPay Sandbox attempts only after the order is complete. Free orders create no attempt. VNPay returns a signed paymentUrl; only a verified IPN or signed query can confirm collection.",
         "x-implementation-status": "implemented",
         "x-uc": [
           "UC-08",
@@ -4529,24 +4529,6 @@
               }
             }
           },
-          "501": {
-            "description": "PAYMENT_METHOD_NOT_IMPLEMENTED",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "examples": {
-                  "PAYMENT_METHOD_NOT_IMPLEMENTED": {
-                    "value": {
-                      "code": "PAYMENT_METHOD_NOT_IMPLEMENTED",
-                      "message": "Khong the thuc hien yeu cau: PAYMENT_METHOD_NOT_IMPLEMENTED",
-                      "fieldErrors": [],
-                      "traceId": "trace-demo-001"
-                    }
-                  }
-                }
-              }
-            }
-          },
           "502": {
             "description": "PAYMENT_PROVIDER_ERROR",
             "content": {
@@ -4628,9 +4610,6 @@
           ],
           "500": [
             "INTERNAL_ERROR"
-          ],
-          "501": [
-            "PAYMENT_METHOD_NOT_IMPLEMENTED"
           ],
           "502": [
             "PAYMENT_PROVIDER_ERROR"
@@ -5327,7 +5306,7 @@
         "summary": "Kiểm tra lại kết quả VNPay",
         "operationId": "reconcilePayment",
         "description": "Chủ đơn hoặc tổng đài. BE gọi đối soát; không nhận trạng thái thành công từ client. Trước retry/chuyển tiền mặt phải giải quyết attempt chưa xác định.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-10"
         ],
@@ -5565,8 +5544,8 @@
         ],
         "summary": "VNPay gọi IPN",
         "operationId": "vnpayIpn",
-        "description": "Server-to-server GET query theo VNPay 2.1.0. Không session/CSRF; xác minh chữ ký, merchant, reference, amount×100, trạng thái. ACK 00 thành công, 01 không tìm thấy, 02 đã xác nhận, 04 sai tiền, 97 sai chữ ký, 99 lỗi khác. Callback lặp/đến muộn không ghi nhận hai lần hay hạ thành công. HTTP 200 kèm ACK cho kết quả xử lý giao thức.",
-        "x-implementation-status": "planned",
+        "description": "VNPay server-to-server GET. Verify HMAC-SHA512, merchant, reference, order and amount; persist every event for deduplication and mismatch evidence. Only a valid exact collection is linked to settlement in one transaction. ACK 00 for persisted events including reconciliation, 01 for unmatched attempts, 02 for duplicates, 97 for invalid signatures.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-10"
         ],
@@ -5712,7 +5691,7 @@
         "summary": "Trang quay về từ VNPay",
         "operationId": "vnpayReturn",
         "description": "Trả trang HTML tối giản cho test BE trước FE: hiển thị đã nhận kết quả/chờ xác minh, không thay đổi trạng thái thu tiền từ query. Không lộ chi tiết riêng tư khi chưa đăng nhập. Không đòi cookie/CSRF khi cổng redirect.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-10"
         ],
@@ -7270,10 +7249,21 @@
           },
           "loaiSuKien": {
             "type": "string",
-            "enum": ["TAO_DON", "CHUYEN_TRANG_THAI", "SU_CO"]
+            "enum": [
+              "TAO_DON",
+              "CHUYEN_TRANG_THAI",
+              "SU_CO"
+            ]
           },
           "trangThaiTruoc": {
-            "anyOf": [{"$ref": "#/components/schemas/OrderStatus"}, {"type": "null"}]
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "trangThaiSau": {
             "$ref": "#/components/schemas/OrderStatus"
@@ -7585,8 +7575,12 @@
           },
           "soTienThucNhan": {
             "oneOf": [
-              { "$ref": "#/components/schemas/Money" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "canDoiSoat": {
