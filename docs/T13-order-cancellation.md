@@ -12,10 +12,10 @@
 
 `DispatchServlet → DispatchService.cancel → DonHangDAO/DispatchDAO` dùng một `TransactionRunner` và một EntityManager. Khóa đơn trước; nếu đơn đã gán thì khóa tài xế, sau đó tài khoản tài xế như T11/T12. Kiểm tra lại phân công hiện hành dưới khóa.
 
-Trong cùng transaction, chuyển đơn thành `DA_HUY`, ghi `thoi_gian_huy`, `ly_do_huy`; nếu đã gán, kết thúc phân công, đặt `ranh_tu`, xóa tài xế hiện hành trên đơn; thêm nhật ký mang danh tính người hủy. Lỗi ở bất kỳ bước nào rollback toàn bộ. Snapshot cước, kiện hàng và payment không đổi. Không xóa lịch sử phân công.
+Trong cùng transaction, chuyển đơn thành `DA_HUY`, ghi `thoi_gian_huy`, `ly_do_huy`; nếu đã gán, kết thúc phân công với kết quả `HUY_DON` và đặt `ranh_tu` cho tài xế; thêm sự kiện đơn hàng mang danh tính người hủy. Tài xế hiện hành được suy ra từ phân công còn hiệu lực, không lưu trực tiếp trên đơn. Lỗi ở bất kỳ bước nào rollback toàn bộ. Cước chốt, kiện hàng và thanh toán không đổi. Không xóa lịch sử phân công.
 
 Gán và hủy cùng đơn phải tuần tự qua khóa đơn: gán trước thì hủy giải phóng tài xế; hủy trước thì gán trả 409. Hủy cạnh tranh với cập nhật tiến trình cũng dùng cùng khóa; nếu tài xế đã lấy hàng, hủy trả 409.
 
 ## Bàn giao
 
-OpenAPI đánh dấu `cancelOrder` là implemented, Postman sinh từ spec. Test PostgreSQL kiểm tra quyền, trạng thái, mốc 299/300/301 giây, lịch sử, rollback và gán–hủy đồng thời. HTTP smoke T13 cần chạy trên DB test riêng sau reset/seed. PR vào `develop` chỉ merge sau CI và review theo CONTRIBUTING.
+OpenAPI đánh dấu `cancelOrder` là implemented, Postman sinh từ spec. Test T13 nằm trong `DesignV1IntegrationTest` trên SQL Server, kiểm tra quyền, trạng thái, mốc 299.999/300/301 giây, lịch sử phân công, cạnh tranh gán–hủy và rollback. HTTP smoke T13 cần chạy trên DB test riêng sau reset/seed. PR vào `develop` chỉ merge sau CI và review theo CONTRIBUTING.

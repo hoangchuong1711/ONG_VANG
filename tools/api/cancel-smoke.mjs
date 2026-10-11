@@ -62,5 +62,6 @@ assert.equal(assignedCancelled.trangThai, 'DA_HUY');assert.equal(assignedCancell
 const drivers = await dispatcher.call('/api/drivers?dangBanChuyen=false');
 assert(drivers.items.some(item => item.maTx === driverId));
 const events = await customer.call(assigned + '/events');
-assert.equal(events.items.at(-1).tenTrangThai, 'DA_HUY');
+assert.equal(events.items.at(-1).trangThaiSau, 'DA_HUY');
+assert.equal(events.items.at(-1).ghiChu, 'Khách đổi kế hoạch');
 console.log(`T13 cancellation smoke: ${checks} HTTP checks passed`);

@@ -5,7 +5,7 @@ Phiên bản hợp đồng: **0.5.0** theo [designV1](../database/designV1.md). 
 ## Trạng thái thực tế
 
 - `POST /api/auth/register` cho khách hàng tự đăng ký có trong OpenAPI, Swagger và Postman. Xem [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06).
-- Đã triển khai: `/api/health`, 5 operation T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng chính sách T08). T10 đã triển khai `POST /api/orders`; T11 đã triển khai listOrders/getOrder/listDrivers/suggestDrivers/assignDriver/rejectOrder; T12 đã triển khai listOrderEvents/transitionOrder/recordIncident ([hướng dẫn](../T12-delivery-progress.md)). Danh sách khách và các API T13–T18 còn lại vẫn planned.
+- Đã triển khai: `/api/health`, 5 operation T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng chính sách T08). T10 đã triển khai `POST /api/orders`; T11 đã triển khai listOrders/getOrder/listDrivers/suggestDrivers/assignDriver/rejectOrder; T12 đã triển khai listOrderEvents/transitionOrder/recordIncident ([hướng dẫn](../T12-delivery-progress.md)); T13 có cancelOrder ([hướng dẫn](../T13-order-cancellation.md)). Danh sách khách và các API T14–T18 còn lại vẫn planned.
 - Schema nghiệp vụ hiện do Flyway designV1 tạo; API thanh toán vẫn thuộc T13–T20.
 - Swagger UI là công cụ tài liệu/test BE, không phải FE nghiệp vụ T21–T28.
 

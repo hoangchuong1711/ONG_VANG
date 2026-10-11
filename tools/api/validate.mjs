@@ -47,6 +47,8 @@ for (const [path, methods] of Object.entries(spec.paths)) for (const [method, op
 assert.deepEqual([...ucs].sort(), ['UC-01','UC-02','UC-03','UC-04','UC-05','UC-08','UC-10','UC-12','UC-13','UC-14','UC-15','UC-19']);
 // Check vendored files against the pinned package, including license attribution.
 for (const name of ['swagger-ui.css','swagger-ui-bundle.js','LICENSE','NOTICE']) {
-  assert(readFileSync(resolve(root, 'src/backend/src/main/webapp/swagger-ui/vendor', name)).equals(readFileSync(resolve(root, 'tools/api/node_modules/swagger-ui-dist', name))), `${name}: vendor drift`);
+  const committed = readFileSync(resolve(root, 'src/backend/src/main/webapp/swagger-ui/vendor', name), 'utf8');
+  const installed = readFileSync(resolve(root, 'tools/api/node_modules/swagger-ui-dist', name), 'utf8');
+  assert.equal(committed.replace(/\r\n/g, '\n'), installed.replace(/\r\n/g, '\n'), `${name}: vendor drift`);
 }
 console.log(`OpenAPI valid: ${ids.size} operations, ${ucs.size} UCs, ${exampleCount} schema-checked examples.`);

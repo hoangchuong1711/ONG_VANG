@@ -136,26 +136,30 @@ public final class DispatchService {
             if (order.getTrangThai()!=OrderStatus.CHO_GAN && order.getTrangThai()!=OrderStatus.DA_GAN)
                 throw new Conflict("ORDER_STATE_CONFLICT");
             Instant now=clock.instant();
-            long age=Duration.between(order.getThoiGianTao(),now).getSeconds();
-            if (age<0 || age>=300) throw new Conflict("CANCELLATION_WINDOW_EXPIRED");
+            Duration age=Duration.between(order.getThoiGianTao(),now);
+            if (age.isNegative() || age.compareTo(Duration.ofSeconds(300))>=0)
+                throw new Conflict("CANCELLATION_WINDOW_EXPIRED");
             var dao=new DispatchDAO(em);
+            OrderStatus previous=order.getTrangThai();
             if (order.getTrangThai()==OrderStatus.DA_GAN) {
-                if (order.getTaiXe()==null) throw new Conflict("ORDER_STATE_CONFLICT");
-                TaiXe driver=new TaiXeDAO(em).findForUpdate(order.getTaiXe().getId());
+                PhanCongDonHang assignment=dao.activeOrder(orderId);
+                if (assignment==null) throw new Conflict("ORDER_STATE_CONFLICT");
+                TaiXe driver=new TaiXeDAO(em).findForUpdate(assignment.getTaiXe().getId());
                 em.refresh(driver,LockModeType.PESSIMISTIC_WRITE);
                 TaiKhoan driverAccount=em.find(TaiKhoan.class,driver.getTaiKhoan().getId(),LockModeType.PESSIMISTIC_WRITE);
                 em.refresh(driverAccount,LockModeType.PESSIMISTIC_WRITE);
-                PhanCongDonHang assignment=dao.activeOrder(orderId);
+                assignment=dao.activeOrder(orderId);
                 if (assignment==null || !assignment.getTaiXe().getId().equals(driver.getId()))
                     throw new Conflict("ORDER_STATE_CONFLICT");
-                assignment.setKetThucLuc(now); assignment.setLyDoKetThuc(normalized); assignment.setTuChoi(false);
-                driver.setRanhTu(now); order.setTaiXe(null);
-            } else if (order.getTaiXe()!=null || dao.activeOrder(orderId)!=null) {
+                assignment.setKetThucLuc(now); assignment.setLyDo(normalized);
+                assignment.setKetQuaKetThuc(AssignmentOutcome.HUY_DON);
+                driver.setRanhTu(now);
+            } else if (dao.activeOrder(orderId)!=null) {
                 throw new Conflict("ORDER_STATE_CONFLICT");
             }
             order.setTrangThai(OrderStatus.DA_HUY);
             order.setThoiGianHuy(now); order.setLyDoHuy(normalized);
-            event(em,order,account,now,normalized);
+            event(em,order,account,now,previous,normalized);
             em.flush(); return view(em,orderId);
         });
     }

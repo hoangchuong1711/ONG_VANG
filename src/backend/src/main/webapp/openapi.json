@@ -4054,7 +4054,7 @@
                   "sdtNguoiNhan": "0901234567",
                   "quangDuongKm": "5.00",
                   "ghiChuGiaoHang": null,
-                  "trangThai": "CHO_GAN",
+                  "trangThai": "DA_HUY",
                   "maKh": "KH-DEMO-001",
                   "maTx": null,
                   "cuoc": {
@@ -4077,7 +4077,7 @@
                     "soTienConPhaiThu": "45000.00"
                   },
                   "hoanTatLuc": null,
-                  "huyLuc": null,
+                  "huyLuc": "2026-10-05T03:04:00Z",
                   "maTkTao": "TK-DEMO-KH-1"
                 }
               }
