@@ -5833,8 +5833,8 @@
         ],
         "summary": "Báo cáo giá trị hoàn tất và thực thu",
         "operationId": "getRevenueReport",
-        "description": "Khoảng [tuNgay,denNgay), Asia/Ho_Chi_Minh. Giá trị theo hoanTatLuc, thực thu theo thoiGianThanhToan thành công, còn phải thu tính đến cuối kỳ trên tất cả đơn hoàn tất trước cuối kỳ (gồm trước đầu kỳ). Không cộng giá trị và thực thu. Không có dữ liệu trả các số 0.",
-        "x-implementation-status": "planned",
+        "description": "Khoảng [tuNgay,denNgay), Asia/Ho_Chi_Minh; tuần bắt đầu thứ Hai. Giá trị đơn theo thoi_gian_hoan_tat, toàn bộ tiền thực thu theo thu_luc; tienThuChuaPhanBo là phần thực thu chưa có liên kết xác nhận đủ tiền. Công nợ ở cuối mỗi mốc gồm mọi đơn đã hoàn tất trước mốc và chưa được xác nhận thu đủ trước mốc đó. Thu ở kỳ sau không xóa công nợ kỳ trước. Tổng công nợ là số dư cuối kỳ, không cộng các bucket. Nhóm đầu/cuối được cắt theo bộ lọc; kỳ rỗng vẫn có bucket với số 0.",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-15"
         ],
@@ -5901,7 +5901,8 @@
                     "tienThucThu": "45000.00",
                     "cuocConPhaiThuCuoiKy": "0.00",
                     "soDonHoanTat": 1,
-                    "soDonHuy": 0
+                    "soDonHuy": 0,
+                    "tienThuChuaPhanBo": "0.00"
                   },
                   "items": [
                     {
@@ -5912,7 +5913,8 @@
                         "tienThucThu": "45000.00",
                         "cuocConPhaiThuCuoiKy": "0.00",
                         "soDonHoanTat": 1,
-                        "soDonHuy": 0
+                        "soDonHuy": 0,
+                        "tienThuChuaPhanBo": "0.00"
                       }
                     }
                   ]
@@ -6043,7 +6045,7 @@
         "summary": "Xuất báo cáo Excel",
         "operationId": "exportRevenueReport",
         "description": "Cùng quyền, bộ lọc và phép tính báo cáo JSON. Lỗi xuất không làm thay đổi báo cáo.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-15"
         ],
@@ -7670,7 +7672,8 @@
               "tienThucThu": "45000.00",
               "cuocConPhaiThuCuoiKy": "0.00",
               "soDonHoanTat": 1,
-              "soDonHuy": 0
+              "soDonHuy": 0,
+              "tienThuChuaPhanBo": "0.00"
             },
             "items": [
               {
@@ -7681,7 +7684,8 @@
                   "tienThucThu": "45000.00",
                   "cuocConPhaiThuCuoiKy": "0.00",
                   "soDonHoanTat": 1,
-                  "soDonHuy": 0
+                  "soDonHuy": 0,
+                  "tienThuChuaPhanBo": "0.00"
                 }
               }
             ]
@@ -7696,7 +7700,8 @@
           "tienThucThu",
           "cuocConPhaiThuCuoiKy",
           "soDonHoanTat",
-          "soDonHuy"
+          "soDonHuy",
+          "tienThuChuaPhanBo"
         ],
         "properties": {
           "giaTriDonHoanTat": {
@@ -7715,6 +7720,10 @@
           "soDonHuy": {
             "type": "integer",
             "minimum": 0
+          },
+          "tienThuChuaPhanBo": {
+            "$ref": "#/components/schemas/Money",
+            "description": "Phần tiền thực thu chưa liên kết xác nhận đủ tiền; là tập con của tienThucThu, không cộng thêm."
           }
         },
         "examples": [
@@ -7723,7 +7732,8 @@
             "tienThucThu": "45000.00",
             "cuocConPhaiThuCuoiKy": "0.00",
             "soDonHoanTat": 1,
-            "soDonHuy": 0
+            "soDonHuy": 0,
+            "tienThuChuaPhanBo": "0.00"
           }
         ]
       },
@@ -7757,7 +7767,8 @@
               "tienThucThu": "45000.00",
               "cuocConPhaiThuCuoiKy": "0.00",
               "soDonHoanTat": 1,
-              "soDonHuy": 0
+              "soDonHuy": 0,
+              "tienThuChuaPhanBo": "0.00"
             }
           }
         ]

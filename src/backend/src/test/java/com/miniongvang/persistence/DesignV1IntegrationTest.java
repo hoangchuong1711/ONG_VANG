@@ -898,4 +898,92 @@ class DesignV1IntegrationTest {
                     .executeUpdate(); return null;
         }));
     }
+
+    private static com.miniongvang.service.ReportService reports() { return new com.miniongvang.service.ReportService(db.entityManagerFactory()); }
+    private static com.miniongvang.service.ReportService.Report report(String from,String to,com.miniongvang.service.ReportService.Group group) {
+        return reports().revenue(admin(),java.time.LocalDate.parse(from),java.time.LocalDate.parse(to),group);
+    }
+    private static void t17OrderTime(String id,String completed) {
+        tx.run(em -> { var d=em.find(DonHang.class,id);var time=Instant.parse(completed);
+            d.setThoiGianTao(time.minusSeconds(60));d.setThoiGianHoanTat(time);return null; });
+    }
+    private static void t17PaymentTime(String id,String received) {
+        tx.run(em -> { var p=em.find(com.miniongvang.entity.LanThanhToan.class,id);var time=Instant.parse(received);
+            p.setTaoLuc(time.minusSeconds(1));p.setGiaiQuyetLuc(time);p.setThuLuc(time);return null; });
+    }
+    @Test void t17ReportsRequireActiveAdministratorAndValidDates() {
+        var from=java.time.LocalDate.of(2026,10,1); var to=from.plusDays(1);
+        assertThrows(SecurityException.class,()->reports().revenue(customer(1),from,to,com.miniongvang.service.ReportService.Group.NGAY));
+        assertThrows(SecurityException.class,()->reports().revenue(dispatcher(),from,to,com.miniongvang.service.ReportService.Group.NGAY));
+        assertThrows(SecurityException.class,()->reports().revenue(driver(),from,to,com.miniongvang.service.ReportService.Group.NGAY));
+        assertThrows(SecurityException.class,()->reports().revenue(null,from,to,com.miniongvang.service.ReportService.Group.NGAY));
+        assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),to,from,com.miniongvang.service.ReportService.Group.NGAY));
+        assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),from,from,com.miniongvang.service.ReportService.Group.NGAY));
+        assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),null,to,com.miniongvang.service.ReportService.Group.NGAY));
+        tx.run(em->{em.find(com.miniongvang.entity.TaiKhoan.class,admin().maNguoiDung()).setTrangThai(com.miniongvang.entity.enums.AccountStatus.KHOA);return null;});
+        assertThrows(SecurityException.class,()->reports().revenue(admin(),from,to,com.miniongvang.service.ReportService.Group.NGAY));
+    }
+    @Test void t17EmptyPeriodIsZeroAndGroupingClipsCalendarBoundaries() {
+        var day=report("2026-10-01","2026-10-03",com.miniongvang.service.ReportService.Group.NGAY);
+        assertEquals(2,day.items().size());assertEquals("2026-09-30T17:00:00Z",day.items().getFirst().batDau());
+        assertEquals("0.00",day.tong().giaTriDonHoanTat());assertEquals("0.00",day.tong().tienThucThu());
+        assertEquals("0.00",day.tong().tienThuChuaPhanBo());assertEquals("0.00",day.tong().cuocConPhaiThuCuoiKy());
+        assertEquals(0,day.tong().soDonHoanTat());assertEquals(0,day.tong().soDonHuy());
+        var week=report("2026-10-01","2026-10-13",com.miniongvang.service.ReportService.Group.TUAN);
+        assertEquals(3,week.items().size());assertEquals("2026-10-04T17:00:00Z",week.items().getFirst().ketThuc());
+        assertEquals("2026-10-12T17:00:00Z",week.items().getLast().ketThuc());
+        var month=report("2026-09-29","2026-11-02",com.miniongvang.service.ReportService.Group.THANG);
+        assertEquals(3,month.items().size());assertEquals("2026-09-30T17:00:00Z",month.items().getFirst().ketThuc());
+    }
+    @Test void t17LaterReceiptDoesNotEraseEarlierReceivable() {
+        String id=completedOrder();String fare=dispatch.order(customer(1),id).cuoc().tongCuoc();
+        var payment=payments.createCash(customer(1),id,"t17-later");
+        payments.confirmCash(driver(),payment.maGiaoDich(),new BigDecimal(fare));
+        t17OrderTime(id,"2026-10-05T03:00:00Z");t17PaymentTime(payment.maGiaoDich(),"2026-10-07T03:00:00Z");
+        var early=report("2026-10-05","2026-10-06",com.miniongvang.service.ReportService.Group.NGAY);
+        assertEquals(fare,early.tong().giaTriDonHoanTat());assertEquals("0.00",early.tong().tienThucThu());
+        assertEquals(fare,early.tong().cuocConPhaiThuCuoiKy());
+        var beforeReceipt=report("2026-10-06","2026-10-07",com.miniongvang.service.ReportService.Group.NGAY);
+        assertEquals("0.00",beforeReceipt.tong().giaTriDonHoanTat());assertEquals(fare,beforeReceipt.tong().cuocConPhaiThuCuoiKy());
+        var late=report("2026-10-07","2026-10-08",com.miniongvang.service.ReportService.Group.NGAY);
+        assertEquals("0.00",late.tong().giaTriDonHoanTat());assertEquals(fare,late.tong().tienThucThu());
+        assertEquals("0.00",late.tong().tienThuChuaPhanBo());assertEquals("0.00",late.tong().cuocConPhaiThuCuoiKy());
+        var whole=report("2026-10-05","2026-10-08",com.miniongvang.service.ReportService.Group.NGAY);
+        assertEquals("0.00",whole.tong().cuocConPhaiThuCuoiKy());
+        assertEquals(fare,whole.items().getFirst().chiTieu().cuocConPhaiThuCuoiKy());
+    }
+    @Test void t17UnallocatedReceiptAndManyChildrenDoNotMultiplyFare() {
+        tx.run(em->{var p=new ChinhSachPhuThu();p.setId("PHU-T17-2");p.setMaLoaiPhuThu("BAO_QUAN");p.setTenPhuThu("Bảo quản");
+            p.setSoTien(new BigDecimal("7000.00"));p.setHieuLucTu(Instant.now().minusSeconds(60));p.setTrangThai(PolicyStatus.CONG_BO);em.persist(p);return null;});
+        var parcels=List.of(new QuoteService.Parcel("Hoa",null,"1.00"),new QuoteService.Parcel("Tài liệu",null,"2.00"));
+        var q=quotes.create(customer(1),null,"Quận 1","Quận 3",parcels);
+        String id=orders.create(customer(1),UUID.randomUUID().toString(),new OrderService.CreateOrder(q.maBaoGia(),null,"Quận 1","Quận 3","0901234567",null,parcels)).maDon();
+        dispatch.assign(dispatcher(),id,"TX-DEMO-1");dispatch.transition(driver(),id,OrderStatus.DA_LAY_HANG);
+        dispatch.transition(driver(),id,OrderStatus.DANG_GIAO);dispatch.transition(driver(),id,OrderStatus.HOAN_TAT);
+        var partial=payments.createCash(customer(1),id,"t17-partial");payments.confirmCash(driver(),partial.maGiaoDich(),new BigDecimal("5000.00"));
+        var full=payments.createCash(customer(1),id,"t17-full");payments.confirmCash(driver(),full.maGiaoDich(),new BigDecimal(full.soTien()));
+        t17OrderTime(id,"2026-10-05T03:00:00Z");t17PaymentTime(partial.maGiaoDich(),"2026-10-05T04:00:00Z");t17PaymentTime(full.maGiaoDich(),"2026-10-05T05:00:00Z");
+        tx.run(em->{ for(int i=0;i<3;i++){var e=new com.miniongvang.entity.SuKienThanhToan();e.setId(UUID.randomUUID().toString());
+            e.setLanThanhToan(em.find(com.miniongvang.entity.LanThanhToan.class,full.maGiaoDich()));e.setNguon(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN);
+            e.setKhoaSuKien(UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""));e.setNhanLuc(Instant.now());e.setChuKyHopLe(true);e.setKetQuaXuLy(PaymentEventResult.DA_AP_DUNG);e.setNoiDungJson("{}");em.persist(e);}return null;});
+        var result=report("2026-10-05","2026-10-06",com.miniongvang.service.ReportService.Group.NGAY).tong();
+        assertEquals(full.soTien(),result.giaTriDonHoanTat());assertEquals(1,result.soDonHoanTat());
+        assertEquals(new BigDecimal(full.soTien()).add(new BigDecimal("5000.00")).toPlainString(),result.tienThucThu());
+        assertEquals("5000.00",result.tienThuChuaPhanBo());assertEquals("0.00",result.cuocConPhaiThuCuoiKy());
+    }
+    @Test void t17EndBoundaryExcludesCompletionAndReceiptExactlyAtEnd() {
+        String id=completedOrder();var p=payments.createCash(customer(1),id,"t17-boundary");payments.confirmCash(driver(),p.maGiaoDich(),new BigDecimal(p.soTien()));
+        t17OrderTime(id,"2026-10-05T17:00:00Z");t17PaymentTime(p.maGiaoDich(),"2026-10-05T17:00:00Z");
+        var before=report("2026-10-05","2026-10-06",com.miniongvang.service.ReportService.Group.NGAY).tong();
+        assertEquals(0,before.soDonHoanTat());assertEquals("0.00",before.tienThucThu());assertEquals("0.00",before.cuocConPhaiThuCuoiKy());
+        var after=report("2026-10-06","2026-10-07",com.miniongvang.service.ReportService.Group.NGAY).tong();
+        assertEquals(1,after.soDonHoanTat());assertEquals(p.soTien(),after.tienThucThu());
+    }
+    @Test void t17CancelledAndPendingOrdersDoNotCreateRevenueOrDebt() {
+        String id=newOrder();dispatch.cancel(customer(1),id,"Hủy kiểm thử");newOrder();
+        tx.run(em->{var d=em.find(DonHang.class,id);d.setThoiGianTao(Instant.parse("2026-10-05T02:00:00Z"));d.setThoiGianHuy(Instant.parse("2026-10-05T03:00:00Z"));return null;});
+        var result=report("2026-10-05","2026-10-06",com.miniongvang.service.ReportService.Group.NGAY).tong();
+        assertEquals(1,result.soDonHuy());assertEquals(0,result.soDonHoanTat());assertEquals("0.00",result.giaTriDonHoanTat());
+        assertEquals("0.00",result.cuocConPhaiThuCuoiKy());
+    }
 }

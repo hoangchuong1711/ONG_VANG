@@ -15,6 +15,8 @@ T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progre
 T13: [thiết kế hủy đơn](docs/T13-order-cancellation.md), [phạm vi kiểm thử](tests/T13-validation.md).
 T14: [nghiệp vụ thanh toán tiền mặt](docs/T14-payment.md).
 T15: [tích hợp VNPay Sandbox](docs/T15-vnpay.md).
+T16: [lịch sử và chi tiết đơn hàng](docs/T16-order-history.md).
+T17: [báo cáo doanh thu và xuất Excel](docs/T17-revenue-reports.md).
 
 Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).
 

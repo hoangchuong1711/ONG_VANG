@@ -1749,6 +1749,129 @@
           "response": []
         },
         {
+          "name": "getRevenueReport",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/revenue?tuNgay={{fromDate}}&denNgay={{toDate}}&nhomTheo=NGAY",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "tuNgay",
+                  "value": "{{fromDate}}",
+                  "disabled": false,
+                  "description": "Ngày đầu bao gồm, Asia/Ho_Chi_Minh"
+                },
+                {
+                  "key": "denNgay",
+                  "value": "{{toDate}}",
+                  "disabled": false,
+                  "description": "Ngày cuối không bao gồm; phải lớn hơn tuNgay"
+                },
+                {
+                  "key": "nhomTheo",
+                  "value": "NGAY",
+                  "disabled": false,
+                  "description": "Tuần bắt đầu thứ Hai"
+                }
+              ]
+            },
+            "description": "Báo cáo giá trị hoàn tất và thực thu\n\nKhoảng [tuNgay,denNgay), Asia/Ho_Chi_Minh; tuần bắt đầu thứ Hai. Giá trị đơn theo thoi_gian_hoan_tat, toàn bộ tiền thực thu theo thu_luc; tienThuChuaPhanBo là phần thực thu chưa có liên kết xác nhận đủ tiền. Công nợ ở cuối mỗi mốc gồm mọi đơn đã hoàn tất trước mốc và chưa được xác nhận thu đủ trước mốc đó. Thu ở kỳ sau không xóa công nợ kỳ trước. Tổng công nợ là số dư cuối kỳ, không cộng các bucket. Nhóm đầu/cuối được cắt theo bộ lọc; kỳ rỗng vẫn có bucket với số 0.\n\nStatus: implemented; UC: UC-15; roles: CHU_DOI_XE"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has tuNgay', () => pm.expect(body).to.have.property('tuNgay'));",
+                  "  pm.test('Response has denNgay', () => pm.expect(body).to.have.property('denNgay'));",
+                  "  pm.test('Response has muiGio', () => pm.expect(body).to.have.property('muiGio'));",
+                  "  pm.test('Response has nhomTheo', () => pm.expect(body).to.have.property('nhomTheo'));",
+                  "  pm.test('Response has tong', () => pm.expect(body).to.have.property('tong'));",
+                  "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "exportRevenueReport",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/revenue/export?tuNgay={{fromDate}}&denNgay={{toDate}}&nhomTheo=NGAY",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "revenue",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "tuNgay",
+                  "value": "{{fromDate}}",
+                  "disabled": false,
+                  "description": "Ngày đầu bao gồm, Asia/Ho_Chi_Minh"
+                },
+                {
+                  "key": "denNgay",
+                  "value": "{{toDate}}",
+                  "disabled": false,
+                  "description": "Ngày cuối không bao gồm; phải lớn hơn tuNgay"
+                },
+                {
+                  "key": "nhomTheo",
+                  "value": "NGAY",
+                  "disabled": false,
+                  "description": "Tuần bắt đầu thứ Hai"
+                }
+              ]
+            },
+            "description": "Xuất báo cáo Excel\n\nCùng quyền, bộ lọc và phép tính báo cáo JSON. Lỗi xuất không làm thay đổi báo cáo.\n\nStatus: implemented; UC: UC-15; roles: CHU_DOI_XE"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "register",
           "request": {
             "method": "POST",
@@ -1890,158 +2013,6 @@
                       "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
                       "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
                       "}"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            }
-          ]
-        },
-        {
-          "name": "Reports",
-          "item": [
-            {
-              "name": "getRevenueReport",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/reports/revenue?tuNgay={{fromDate}}&denNgay={{toDate}}&nhomTheo=NGAY",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "reports",
-                    "revenue"
-                  ],
-                  "query": [
-                    {
-                      "key": "tuNgay",
-                      "value": "{{fromDate}}",
-                      "disabled": false,
-                      "description": "Ngày đầu bao gồm, Asia/Ho_Chi_Minh"
-                    },
-                    {
-                      "key": "denNgay",
-                      "value": "{{toDate}}",
-                      "disabled": false,
-                      "description": "Ngày cuối không bao gồm; phải lớn hơn tuNgay"
-                    },
-                    {
-                      "key": "nhomTheo",
-                      "value": "NGAY",
-                      "disabled": false,
-                      "description": "Tuần bắt đầu thứ Hai"
-                    }
-                  ]
-                },
-                "description": "Báo cáo giá trị hoàn tất và thực thu\n\nKhoảng [tuNgay,denNgay), Asia/Ho_Chi_Minh. Giá trị theo hoanTatLuc, thực thu theo thoiGianThanhToan thành công, còn phải thu tính đến cuối kỳ trên tất cả đơn hoàn tất trước cuối kỳ (gồm trước đầu kỳ). Không cộng giá trị và thực thu. Không có dữ liệu trả các số 0.\n\nStatus: planned; UC: UC-15; roles: CHU_DOI_XE"
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
-                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                      "  const body = pm.response.json();",
-                      "  pm.test('Response has tuNgay', () => pm.expect(body).to.have.property('tuNgay'));",
-                      "  pm.test('Response has denNgay', () => pm.expect(body).to.have.property('denNgay'));",
-                      "  pm.test('Response has muiGio', () => pm.expect(body).to.have.property('muiGio'));",
-                      "  pm.test('Response has nhomTheo', () => pm.expect(body).to.have.property('nhomTheo'));",
-                      "  pm.test('Response has tong', () => pm.expect(body).to.have.property('tong'));",
-                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
-                      "}"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            },
-            {
-              "name": "exportRevenueReport",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/reports/revenue/export?tuNgay={{fromDate}}&denNgay={{toDate}}&nhomTheo=NGAY",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "reports",
-                    "revenue",
-                    "export"
-                  ],
-                  "query": [
-                    {
-                      "key": "tuNgay",
-                      "value": "{{fromDate}}",
-                      "disabled": false,
-                      "description": "Ngày đầu bao gồm, Asia/Ho_Chi_Minh"
-                    },
-                    {
-                      "key": "denNgay",
-                      "value": "{{toDate}}",
-                      "disabled": false,
-                      "description": "Ngày cuối không bao gồm; phải lớn hơn tuNgay"
-                    },
-                    {
-                      "key": "nhomTheo",
-                      "value": "NGAY",
-                      "disabled": false,
-                      "description": "Tuần bắt đầu thứ Hai"
-                    }
-                  ]
-                },
-                "description": "Xuất báo cáo Excel\n\nCùng quyền, bộ lọc và phép tính báo cáo JSON. Lỗi xuất không làm thay đổi báo cáo.\n\nStatus: planned; UC: UC-15; roles: CHU_DOI_XE"
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));"
                     ]
                   }
                 }
