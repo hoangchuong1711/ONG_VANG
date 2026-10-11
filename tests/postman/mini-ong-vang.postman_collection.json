@@ -314,7 +314,7 @@
               ],
               "query": []
             },
-            "description": "Chuẩn hóa địa chỉ và ước tính lộ trình\n\nMặc định dùng bộ tuyến T07 cố định: Quận 1, Quận 3, Quận 5 (TP.HCM); Hà Nội là fixture vượt phạm vi. ROUTE_PROVIDER=goong dùng Geocode/Directions V2 và yêu cầu GOONG_API_KEY. Không đổi sang dữ liệu giả khi provider thật lỗi.\n\nStatus: implemented; UC: UC-04; roles: KHACH_HANG, TONG_DAI",
+            "description": "Chuẩn hóa địa chỉ và ước tính lộ trình\n\nMặc định dùng bộ tuyến T07 cố định: Quận 1, Quận 3, Quận 5 (TP.HCM); Hà Nội là fixture vượt phạm vi. ROUTE_PROVIDER=goong dùng Geocode/Directions V2 và yêu cầu GOONG_API_KEY. GOONG_VEHICLE mặc định car (ước tính theo tuyến ô tô); có thể cấu hình phương tiện khác nếu Goong hỗ trợ. Không đổi sang dữ liệu giả khi provider thật lỗi.\n\nStatus: implemented; UC: UC-04; roles: KHACH_HANG, TONG_DAI",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\"\n}",
