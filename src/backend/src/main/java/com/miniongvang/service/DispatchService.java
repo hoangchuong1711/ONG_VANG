@@ -321,6 +321,8 @@ public final class DispatchService {
         boolean paid=payments.confirmed(id);
         boolean pending=attempts.stream().anyMatch(p->p.getTrangThai()==PaymentStatus.CHO_XU_LY
                 || p.getTrangThai()==PaymentStatus.CHUA_RO_KET_QUA);
+        boolean reconcile=attempts.stream().anyMatch(p->p.getTrangThai()==PaymentStatus.THANH_CONG
+                && !payments.confirmedBy(id,p.getId()));
         String state=total.signum()==0?"MIEN_CUOC":paid?"DA_THANH_TOAN":pending?"DANG_XU_LY":"CHUA_THANH_TOAN";
         var dispatch=new DispatchDAO(em);
         PhanCongDonHang assignment=dispatch.activeOrder(id);
@@ -330,7 +332,7 @@ public final class DispatchService {
                 order.getDiemGiaoHang(),order.getSdtNguoiNhan(),money(order.getQuangDuongKm()),order.getGhiChuGiaoHang(),
                 order.getTrangThai().name(),order.getKhachHang().getId(),assignment==null?null:assignment.getTaiXe().getId(),
                 order.getTaiKhoanTao().getId(),fare,parcels,
-                new OrderService.PaymentSummary(state,total.signum()==0||paid?"0.00":fare.tongCuoc()),
+                new OrderService.PaymentSummary(state,total.signum()==0||paid?"0.00":fare.tongCuoc(),reconcile),
                 order.getThoiGianHoanTat()==null?null:order.getThoiGianHoanTat().toString(),order.getThoiGianHuy()==null?null:order.getThoiGianHuy().toString());
     }
     private static DriverPage driverPage(EntityManager em,DispatchDAO.Drivers result,int page,int size) {

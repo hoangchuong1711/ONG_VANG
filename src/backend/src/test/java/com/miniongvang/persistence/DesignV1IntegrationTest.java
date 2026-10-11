@@ -22,6 +22,7 @@ import com.miniongvang.service.DispatchService;
 import com.miniongvang.service.OrderService;
 import com.miniongvang.service.MembershipPolicyService;
 import com.miniongvang.service.PolicyPublicationService;
+import com.miniongvang.service.PaymentService;
 import com.miniongvang.service.QuoteService;
 import com.miniongvang.service.RouteService;
 import com.miniongvang.service.TransactionRunner;
@@ -37,6 +38,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -51,6 +53,7 @@ class DesignV1IntegrationTest {
     private static QuoteService quotes;
     private static OrderService orders;
     private static DispatchService dispatch;
+    private static PaymentService payments;
     private static String url;
 
     private static AuthService.User customer(int n) {
@@ -94,6 +97,7 @@ class DesignV1IntegrationTest {
         quotes = new QuoteService(db.entityManagerFactory(), routes);
         orders = new OrderService(db.entityManagerFactory(), routes);
         dispatch = new DispatchService(db.entityManagerFactory());
+        payments = new PaymentService(db.entityManagerFactory());
     }
 
     @AfterAll static void stop() { if (db != null) db.close(); }
@@ -564,6 +568,163 @@ class DesignV1IntegrationTest {
     private static boolean assignOrConflict(String id, String driver) {
         try { dispatch.assign(dispatcher(), id, driver); return true; }
         catch (DispatchService.Conflict conflict) { return false; }
+    }
+
+    private static String completedOrder() {
+        String id = newOrder();
+        dispatch.assign(dispatcher(), id, "TX-DEMO-1");
+        dispatch.transition(driver(), id, OrderStatus.DA_LAY_HANG);
+        dispatch.transition(driver(), id, OrderStatus.DANG_GIAO);
+        dispatch.transition(driver(), id, OrderStatus.HOAN_TAT);
+        return id;
+    }
+
+    @Test void cashPaymentRequiresCompletionAndCorrectConfirmer() {
+        String id = newOrder();
+        assertEquals("ORDER_STATE_CONFLICT", assertThrows(PaymentService.Conflict.class,
+                () -> payments.createCash(customer(1), id, "early")).getMessage());
+        dispatch.assign(dispatcher(), id, "TX-DEMO-1");
+        dispatch.transition(driver(), id, OrderStatus.DA_LAY_HANG);
+        dispatch.transition(driver(), id, OrderStatus.DANG_GIAO);
+        dispatch.transition(driver(), id, OrderStatus.HOAN_TAT);
+        var payment = payments.createCash(customer(1), id, "cash-key");
+        assertEquals(payment.maGiaoDich(), payments.createCash(customer(1), id, "cash-key").maGiaoDich());
+        String otherOrder = newOrder();
+        assertEquals("IDEMPOTENCY_CONFLICT", assertThrows(PaymentService.Conflict.class,
+                () -> payments.createCash(customer(1), otherOrder, "cash-key")).getMessage());
+        assertEquals("PAYMENT_PENDING", assertThrows(PaymentService.Conflict.class,
+                () -> payments.createCash(customer(1), id, "another-key")).getMessage());
+        assertThrows(SecurityException.class, () -> payments.confirmCash(customer(1), payment.maGiaoDich(),
+                new BigDecimal(payment.soTien())));
+        var wrongDriver = new AuthService.User("TK-DEMO-TX-2", "Other", AccountRole.TAI_XE, null, "TX-DEMO-2");
+        assertThrows(SecurityException.class, () -> payments.confirmCash(wrongDriver, payment.maGiaoDich(),
+                new BigDecimal(payment.soTien())));
+        assertFalse(payments.confirmCash(driver(), payment.maGiaoDich(), new BigDecimal(payment.soTien())).canDoiSoat());
+        assertEquals("DA_THANH_TOAN", dispatch.order(customer(1), id).thanhToan().trangThai());
+        assertEquals("0.00", dispatch.order(customer(1), id).thanhToan().soTienConPhaiThu());
+        assertEquals("PAYMENT_ALREADY_PAID", assertThrows(PaymentService.Conflict.class,
+                () -> payments.createCash(customer(1), id, "paid-again")).getMessage());
+        assertFalse(payments.confirmCash(dispatcher(), payment.maGiaoDich(), new BigDecimal(payment.soTien())).canDoiSoat());
+    }
+
+    @Test void wrongCashAmountIsPreservedForReconciliation() {
+        String id = completedOrder();
+        var payment = payments.createCash(customer(1), id, "wrong-amount");
+        BigDecimal wrong = new BigDecimal(payment.soTien()).add(new BigDecimal("1.00"));
+        assertTrue(payments.confirmCash(dispatcher(), payment.maGiaoDich(), wrong).canDoiSoat());
+        assertTrue(payments.get(customer(1), payment.maGiaoDich()).canDoiSoat());
+        assertEquals(wrong, new BigDecimal(payments.get(customer(1), payment.maGiaoDich()).soTienThucNhan()));
+        assertEquals("CHUA_THANH_TOAN", dispatch.order(customer(1), id).thanhToan().trangThai());
+        assertTrue(dispatch.order(customer(1), id).thanhToan().canDoiSoat());
+        assertEquals(1, payments.list(customer(1), id, 0, 20).totalElements());
+        assertThrows(NoSuchElementException.class, () -> payments.get(customer(2), payment.maGiaoDich()));
+    }
+
+    @Test void freeOrderDoesNotCreatePayment() {
+        String id = completedOrder();
+        tx.run(em -> {
+            var details = new com.miniongvang.DAO.DonHangDAO(em).findDetailsV1(id);
+            BigDecimal extras = details.surcharges().stream()
+                    .map(p -> p.getChinhSachPhuThu().getSoTien()).reduce(BigDecimal.ZERO, BigDecimal::add);
+            details.fare().setTienGiamGia(details.fare().getCuocGoc().add(extras));
+            return null;
+        });
+        assertThrows(PaymentService.NotRequired.class,
+                () -> payments.createCash(customer(1), id, "free-order"));
+        assertEquals(0, payments.list(customer(1), id, 0, 20).totalElements());
+        assertEquals("MIEN_CUOC", dispatch.order(customer(1), id).thanhToan().trangThai());
+    }
+
+    @Test void simultaneousCashRequestsLeaveOneUnresolvedAttempt() throws Exception {
+        String id = completedOrder();
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var start = new java.util.concurrent.CountDownLatch(1);
+            var first = pool.submit(() -> { start.await(); return createCashOrConflict(id, "parallel-1"); });
+            var second = pool.submit(() -> { start.await(); return createCashOrConflict(id, "parallel-2"); });
+            start.countDown();
+            assertNotEquals(first.get(15, TimeUnit.SECONDS), second.get(15, TimeUnit.SECONDS));
+            assertEquals(1, payments.list(customer(1), id, 0, 20).totalElements());
+        } finally { pool.shutdownNow(); }
+    }
+
+    @Test void simultaneousCashConfirmationsSettleOnce() throws Exception {
+        String id = completedOrder();
+        var payment = payments.createCash(customer(1), id, "confirm-parallel");
+        BigDecimal due = new BigDecimal(payment.soTien());
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var start = new java.util.concurrent.CountDownLatch(1);
+            var first = pool.submit(() -> { start.await(); return payments.confirmCash(driver(), payment.maGiaoDich(), due); });
+            var second = pool.submit(() -> { start.await(); return payments.confirmCash(dispatcher(), payment.maGiaoDich(), due); });
+            start.countDown();
+            assertFalse(first.get(15, TimeUnit.SECONDS).canDoiSoat());
+            assertFalse(second.get(15, TimeUnit.SECONDS).canDoiSoat());
+            assertEquals(1L, (long) tx.run(em -> em.createQuery(
+                    "select count(c) from XacNhanThanhToanDonHang c where c.donHang.id=:id", Long.class)
+                    .setParameter("id", id).getSingleResult()));
+        } finally { pool.shutdownNow(); }
+    }
+
+    @Test void secondRealCollectionRemainsUnallocated() {
+        String id = completedOrder();
+        var first = payments.createCash(customer(1), id, "first-collection");
+        BigDecimal due = new BigDecimal(first.soTien());
+        payments.confirmCash(driver(), first.maGiaoDich(), due);
+        String extraId = UUID.randomUUID().toString();
+        tx.run(em -> {
+            em.createNativeQuery("""
+                    INSERT INTO thanh_toan(ma_giao_dich,ma_don,ma_tham_chieu,phuong_thuc,trang_thai,
+                      tao_luc,giai_quyet_luc,so_tien_thuc_nhan,thu_luc,ma_tk_xac_nhan)
+                    VALUES (:id,:orderId,:reference,'TIEN_MAT','THANH_CONG',
+                      SYSUTCDATETIME(),SYSUTCDATETIME(),:amount,SYSUTCDATETIME(),'TK-DEMO-NV')
+                    """).setParameter("id", extraId).setParameter("orderId", id)
+                    .setParameter("reference", "EXTRA-" + extraId).setParameter("amount", due).executeUpdate();
+            return null;
+        });
+        assertTrue(payments.get(dispatcher(), extraId).canDoiSoat());
+        assertTrue(dispatch.order(customer(1), id).thanhToan().canDoiSoat());
+        assertEquals("DA_THANH_TOAN", dispatch.order(customer(1), id).thanhToan().trangThai());
+    }
+
+    @Test void failedConfirmationRollsBackCollection() throws Exception {
+        String id = completedOrder();
+        var payment = payments.createCash(customer(1), id, "rollback-collection");
+        try (var connection = db.dataSource().getConnection(); var statement = connection.createStatement()) {
+            statement.execute("CREATE TRIGGER dbo.trg_test_payment_rollback ON dbo.xac_nhan_thanh_toan_don_hang "
+                    + "AFTER INSERT AS BEGIN THROW 51072, 'Injected confirmation failure', 1; END");
+        }
+        try {
+            assertThrows(RuntimeException.class, () -> payments.confirmCash(driver(), payment.maGiaoDich(),
+                    new BigDecimal(payment.soTien())));
+        } finally {
+            try (var connection = db.dataSource().getConnection(); var statement = connection.createStatement()) {
+                statement.execute("DROP TRIGGER dbo.trg_test_payment_rollback");
+            }
+        }
+        assertEquals("CHO_XU_LY", payments.get(customer(1), payment.maGiaoDich()).trangThai().name());
+        assertEquals("DANG_XU_LY", dispatch.order(customer(1), id).thanhToan().trangThai());
+    }
+
+    @Test void paymentCannotSettleAnotherOrder() {
+        String firstOrder = completedOrder();
+        String secondOrder = completedOrder();
+        var payment = payments.createCash(customer(1), firstOrder, "wrong-order-link");
+        assertThrows(RuntimeException.class, () -> tx.run(em -> {
+            em.createNativeQuery("""
+                    INSERT INTO xac_nhan_thanh_toan_don_hang(ma_don,ma_giao_dich)
+                    VALUES (:orderId,:paymentId)
+                    """).setParameter("orderId", secondOrder)
+                    .setParameter("paymentId", payment.maGiaoDich()).executeUpdate();
+            return null;
+        }));
+        payments.confirmCash(driver(), payment.maGiaoDich(), new BigDecimal(payment.soTien()));
+        assertEquals("CHUA_THANH_TOAN", dispatch.order(customer(1), secondOrder).thanhToan().trangThai());
+    }
+
+    private static String createCashOrConflict(String id, String key) {
+        try { payments.createCash(customer(1), id, key); return "CREATED"; }
+        catch (PaymentService.Conflict conflict) { return conflict.getMessage(); }
     }
 
     @Test void paymentIndexRejectsSecondPendingAttemptOfSameState() {

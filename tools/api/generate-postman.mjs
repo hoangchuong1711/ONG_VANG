@@ -130,7 +130,7 @@ mkdirSync(target, { recursive: true });
 for (const [name, data] of [['mini-ong-vang.postman_collection.json', collection], ['local.postman_environment.json', environment]]) {
   const file = resolve(target, name), text = JSON.stringify(data, null, 2) + '\n';
   if (check) {
-    if (readFileSync(file, 'utf8').replace(/\r\n/g, '\n') !== text)
+    if (readFileSync(file, 'utf8').replace(/\r\n/g, '\n') !== text.replace(/\r\n/g, '\n'))
       throw new Error(`${name} is stale; run npm run generate --prefix tools/api`);
   } else writeFileSync(file, text);
 }
