@@ -850,7 +850,7 @@
         ],
         "summary": "Chuẩn hóa địa chỉ và ước tính lộ trình",
         "operationId": "estimateRoute",
-        "description": "Mặc định dùng bộ tuyến T07 cố định: Quận 1, Quận 3, Quận 5 (TP.HCM); Hà Nội là fixture vượt phạm vi. ROUTE_PROVIDER=goong dùng Geocode/Directions V2 và yêu cầu GOONG_API_KEY. Không đổi sang dữ liệu giả khi provider thật lỗi.",
+        "description": "Mặc định dùng bộ tuyến T07 cố định: Quận 1, Quận 3, Quận 5 (TP.HCM); Hà Nội là fixture vượt phạm vi. ROUTE_PROVIDER=goong dùng Geocode/Directions V2 và yêu cầu GOONG_API_KEY. GOONG_VEHICLE mặc định car (ước tính theo tuyến ô tô); có thể cấu hình phương tiện khác nếu Goong hỗ trợ. Không đổi sang dữ liệu giả khi provider thật lỗi.",
         "x-implementation-status": "implemented",
         "x-uc": [
           "UC-04"

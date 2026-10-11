@@ -16,7 +16,7 @@ public final class RouteConfiguration {
 
     public static RouteService fromEnvironment() {
         Map<String, String> settings = new HashMap<>();
-        for (String name : new String[]{"ROUTE_PROVIDER", "GOONG_API_KEY", "GOONG_TIMEOUT_MS", "ROUTE_MAX_DISTANCE_KM"}) {
+        for (String name : new String[]{"ROUTE_PROVIDER", "GOONG_API_KEY", "GOONG_TIMEOUT_MS", "GOONG_VEHICLE", "ROUTE_MAX_DISTANCE_KM"}) {
             String value = System.getenv(name);
             if (value != null) settings.put(name, value);
         }
@@ -32,7 +32,8 @@ public final class RouteConfiguration {
                 String key = env.get("GOONG_API_KEY");
                 if (key == null || key.isBlank()) throw new IllegalArgumentException("GOONG_API_KEY is required when ROUTE_PROVIDER=goong");
                 long timeout = positiveLong(env.getOrDefault("GOONG_TIMEOUT_MS", "5000"), "GOONG_TIMEOUT_MS");
-                yield new GoongRouteProvider(key, Duration.ofMillis(timeout));
+                String vehicle = env.getOrDefault("GOONG_VEHICLE", "car").strip().toLowerCase(Locale.ROOT);
+                yield new GoongRouteProvider(key, Duration.ofMillis(timeout), vehicle);
             }
             default -> throw new IllegalArgumentException("ROUTE_PROVIDER must be fake or goong");
         };

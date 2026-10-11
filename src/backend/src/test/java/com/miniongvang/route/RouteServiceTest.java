@@ -49,6 +49,8 @@ class RouteServiceTest {
                 () -> RouteConfiguration.from(Map.of("ROUTE_MAX_DISTANCE_KM", "0")));
         assertThrows(IllegalArgumentException.class,
                 () -> RouteConfiguration.from(Map.of("ROUTE_PROVIDER", "goong", "GOONG_API_KEY", "test", "GOONG_TIMEOUT_MS", "0")));
+        assertThrows(IllegalArgumentException.class,
+                () -> RouteConfiguration.from(Map.of("ROUTE_PROVIDER", "goong", "GOONG_API_KEY", "test", "GOONG_VEHICLE", "unsupported")));
     }
 
     @Test void providerResultsAreValidatedBeforePublishing() {

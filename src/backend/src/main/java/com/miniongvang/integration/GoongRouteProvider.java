@@ -17,21 +17,32 @@ public final class GoongRouteProvider implements RouteProvider {
     private final HttpClient client;
     private final URI baseUri;
     private final String apiKey;
+    private final String vehicle;
     private final Duration timeout;
 
     public GoongRouteProvider(String apiKey, Duration timeout) {
+        this(apiKey, timeout, "car");
+    }
+
+    public GoongRouteProvider(String apiKey, Duration timeout, String vehicle) {
         this(HttpClient.newBuilder().connectTimeout(timeout).build(),
-                URI.create("https://rsapi.goong.io/v2/"), apiKey, timeout);
+                URI.create("https://rsapi.goong.io/v2/"), apiKey, timeout, vehicle);
     }
 
     /** Injectable transport and base URL let tests exercise the adapter without a real key. */
     public GoongRouteProvider(HttpClient client, URI baseUri, String apiKey, Duration timeout) {
+        this(client, baseUri, apiKey, timeout, "car");
+    }
+
+    public GoongRouteProvider(HttpClient client, URI baseUri, String apiKey, Duration timeout, String vehicle) {
         if (client == null || baseUri == null || apiKey == null || apiKey.isBlank()
-                || timeout == null || timeout.isNegative() || timeout.isZero())
+                || timeout == null || timeout.isNegative() || timeout.isZero()
+                || vehicle == null || !java.util.Set.of("car", "bike", "motorcycle", "truck").contains(vehicle))
             throw new IllegalArgumentException("Invalid Goong configuration");
         this.client = client;
         this.baseUri = baseUri;
         this.apiKey = apiKey;
+        this.vehicle = vehicle;
         this.timeout = timeout;
     }
 
@@ -39,7 +50,7 @@ public final class GoongRouteProvider implements RouteProvider {
         Location start = geocode(origin);
         Location end = geocode(destination);
         JsonNode response = get("direction?origin=" + encode(start.coordinates())
-                + "&destination=" + encode(end.coordinates()) + "&vehicle=motorcycle&api_key=" + encode(apiKey));
+                + "&destination=" + encode(end.coordinates()) + "&vehicle=" + vehicle + "&api_key=" + encode(apiKey));
         JsonNode routes = response.path("routes");
         if (!routes.isArray() || routes.isEmpty())
             throw new RouteFailure(RouteFailure.Kind.ADDRESS_NOT_FOUND);
