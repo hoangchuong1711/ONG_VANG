@@ -4,6 +4,9 @@ import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
 import com.miniongvang.service.AuthService;
 import com.miniongvang.service.PaymentService;
+import com.miniongvang.service.VnpayPaymentService;
+import com.miniongvang.integration.VnpayGateway;
+import com.miniongvang.entity.enums.PaymentEventResult;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
@@ -32,6 +35,26 @@ public final class PaymentServlet extends HttpServlet {
             String[] parts = path.split("/", -1);
             boolean get = "GET".equals(req.getMethod()) || "HEAD".equals(req.getMethod());
             boolean post = "POST".equals(req.getMethod());
+            if (path.equals("/api/payments/vnpay/ipn") && "GET".equals(req.getMethod())) {
+                var result = new VnpayPaymentService(persistence.entityManagerFactory(), VnpayGateway.fromEnvironment())
+                        .ipn(req.getQueryString());
+                String code = switch (result.result()) {
+                    case KHONG_HOP_LE -> "97";
+                    case KHONG_KHOP -> "01";
+                    default -> result.duplicate() ? "02" : "00";
+                };
+                send(resp, 200, new IpnResponse(code, result.result().name()));
+                return;
+            }
+            if (path.equals("/api/payments/vnpay/return") && "GET".equals(req.getMethod())) {
+                new VnpayPaymentService(persistence.entityManagerFactory(), VnpayGateway.fromEnvironment())
+                        .browserReturn(req.getQueryString());
+                resp.setStatus(200);
+                resp.setContentType("text/html;charset=UTF-8");
+                resp.getWriter().write("<!doctype html><html lang=\"vi\"><meta charset=\"utf-8\"><title>VNPay</title>"
+                        + "<p>Đã nhận phản hồi từ VNPay. Vui lòng kiểm tra trạng thái thanh toán trong ứng dụng.</p></html>");
+                return;
+            }
             if (parts.length == 5 && parts[2].equals("orders") && parts[4].equals("payments")) {
                 if (get) send(resp, 200, service.list(actor, parts[3], integer(req, "page", 0), integer(req, "size", 20)));
                 else if (post) {
@@ -39,8 +62,10 @@ public final class PaymentServlet extends HttpServlet {
                     String method = body.get("phuongThuc").textValue();
                     if (!"TIEN_MAT".equals(method) && !"VNPAY_QR".equals(method))
                         throw new IllegalArgumentException("Invalid payment method");
-                    if ("VNPAY_QR".equals(method)) throw new Unsupported();
-                    send(resp, 201, service.createCash(actor, parts[3], req.getHeader("Idempotency-Key")));
+                    send(resp, 201, "VNPAY_QR".equals(method)
+                            ? service.createOnline(actor, parts[3], req.getHeader("Idempotency-Key"),
+                                    req.getRemoteAddr(), VnpayGateway.fromEnvironment())
+                            : service.createCash(actor, parts[3], req.getHeader("Idempotency-Key")));
                 } else throw new NoSuchElementException();
             } else if (parts.length == 4 && parts[2].equals("payments") && get) {
                 send(resp, 200, service.get(actor, parts[3]));
@@ -54,9 +79,16 @@ public final class PaymentServlet extends HttpServlet {
                 send(resp, result.canDoiSoat() ? 422 : 200, result.canDoiSoat()
                         ? new ErrorDto("PAYMENT_AMOUNT_MISMATCH", "Khoan thu can doi soat", new Object[0], UUID.randomUUID().toString())
                         : result.payment());
+            } else if (parts.length == 5 && parts[2].equals("payments")
+                    && parts[4].equals("reconcile") && post) {
+                send(resp, 200, new VnpayPaymentService(persistence.entityManagerFactory(), VnpayGateway.fromEnvironment())
+                        .reconcile(actor, parts[3]));
             } else throw new NoSuchElementException();
         } catch (InvalidJson invalid) { error(resp, 400, "JSON_INVALID"); }
-        catch (Unsupported invalid) { error(resp, 501, "PAYMENT_METHOD_NOT_IMPLEMENTED"); }
+        catch (IllegalStateException unavailable) {
+            if ("VNPAY_CONFIG_MISSING".equals(unavailable.getMessage())) error(resp, 503, "VNPAY_CONFIG_MISSING");
+            else { req.getServletContext().log("Payment request failed", unavailable); error(resp, 500, "INTERNAL_ERROR"); }
+        }
         catch (IllegalArgumentException invalid) { error(resp, 400, "VALIDATION_ERROR"); }
         catch (PaymentService.NotRequired invalid) { error(resp, 422, "PAYMENT_NOT_REQUIRED"); }
         catch (PaymentService.Conflict conflict) { error(resp, 409, conflict.getMessage()); }
@@ -96,6 +128,6 @@ public final class PaymentServlet extends HttpServlet {
         send(resp, status, new ErrorDto(code, "Khong the thuc hien yeu cau: " + code, new Object[0], UUID.randomUUID().toString()));
     }
     private record ErrorDto(String code, String message, Object[] fieldErrors, String traceId) {}
+    private record IpnResponse(String RspCode, String Message) {}
     private static final class InvalidJson extends RuntimeException {}
-    private static final class Unsupported extends RuntimeException {}
 }

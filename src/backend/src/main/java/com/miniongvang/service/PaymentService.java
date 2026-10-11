@@ -3,6 +3,7 @@ package com.miniongvang.service;
 import com.miniongvang.DAO.DispatchDAO;
 import com.miniongvang.DAO.DonHangDAO;
 import com.miniongvang.DAO.LanThanhToanDAO;
+import com.miniongvang.integration.VnpayGateway;
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
 import jakarta.persistence.EntityManager;
@@ -46,6 +47,8 @@ public final class PaymentService {
                     throw new Conflict("IDEMPOTENCY_CONFLICT");
                 return view(em, replay);
             }
+            if (payments.findByReference(reference.replace("CASH-", "VNP")) != null)
+                throw new Conflict("IDEMPOTENCY_CONFLICT");
             if (order.getTrangThai() != OrderStatus.HOAN_TAT) throw new Conflict("ORDER_STATE_CONFLICT");
             BigDecimal due = fare(em, orderId);
             if (due.signum() == 0) throw new NotRequired();
@@ -61,6 +64,43 @@ public final class PaymentService {
             em.persist(payment);
             em.flush();
             return view(em, payment);
+        });
+    }
+
+    public Payment createOnline(AuthService.User actor, String orderId, String key, String clientIp, VnpayGateway gateway) {
+        id(orderId);
+        if (key == null || key.isBlank() || key.length() > 100 || !key.equals(key.strip()) || gateway == null)
+            throw new IllegalArgumentException("Invalid online request");
+        return transactions.run(em -> {
+            account(em,actor,AccountRole.KHACH_HANG);
+            DonHang order=new DonHangDAO(em).findForUpdate(orderId);
+            if (order==null || !order.getKhachHang().getId().equals(actor.maKh()))
+                throw new NoSuchElementException("Order not found");
+            var dao=new LanThanhToanDAO(em);
+            String cashReference=reference(actor.maNguoiDung(),key);
+            String idempotency=cashReference.replace("CASH-","VNP");
+            LanThanhToan replay=dao.findByReference(idempotency);
+            if (replay!=null) {
+                if (!replay.getDonHang().getId().equals(orderId) || replay.getPhuongThuc()!=PaymentMethod.VNPAY_QR)
+                    throw new Conflict("IDEMPOTENCY_CONFLICT");
+                return view(em,replay);
+            }
+            if (dao.findByReference(cashReference)!=null) throw new Conflict("IDEMPOTENCY_CONFLICT");
+            if (order.getTrangThai()!=OrderStatus.HOAN_TAT) throw new Conflict("ORDER_STATE_CONFLICT");
+            BigDecimal due=fare(em,orderId);
+            if (due.signum()==0) throw new NotRequired();
+            if (dao.confirmed(orderId)) throw new Conflict("PAYMENT_ALREADY_PAID");
+            if (dao.hasUnresolved(orderId)) throw new Conflict("PAYMENT_PENDING");
+            LanThanhToan payment=new LanThanhToan();
+            payment.setId(UUID.randomUUID().toString()); payment.setDonHang(order);
+            // The provider reference is stable for this idempotency key and alphanumeric for VNPay.
+            payment.setMaThamChieu(idempotency);
+            payment.setPhuongThuc(PaymentMethod.VNPAY_QR);
+            payment.setTrangThai(PaymentStatus.CHO_XU_LY);
+            payment.setTaoLuc(clock.instant());
+            payment.setPaymentUrl(gateway.paymentUrl(payment.getMaThamChieu(),orderId,due,payment.getTaoLuc(),clientIp));
+            em.persist(payment); em.flush();
+            return view(em,payment);
         });
     }
 
@@ -137,7 +177,7 @@ public final class PaymentService {
         });
     }
 
-    private static BigDecimal fare(EntityManager em, String orderId) {
+    static BigDecimal fare(EntityManager em, String orderId) {
         var details = new DonHangDAO(em).findDetailsV1(orderId);
         if (details == null || details.fare() == null) throw new IllegalStateException("Order fare missing");
         BigDecimal extras = details.surcharges().stream()
@@ -145,13 +185,13 @@ public final class PaymentService {
         return details.fare().getCuocGoc().add(extras).subtract(details.fare().getTienGiamGia());
     }
 
-    private static Payment view(EntityManager em, LanThanhToan payment) {
+    static Payment view(EntityManager em, LanThanhToan payment) {
         String orderId = payment.getDonHang().getId();
         boolean confirmed = new LanThanhToanDAO(em).confirmedBy(orderId, payment.getId());
         return new Payment(payment.getId(), orderId, fare(em, orderId).setScale(2).toPlainString(),
                 payment.getPhuongThuc(), payment.getTrangThai(), payment.getMaGiaoDichDoiTac(),
                 payment.getTaoLuc().toString(), payment.getThuLuc() == null ? null : payment.getThuLuc().toString(),
-                null, confirmed, payment.getSoTienThucNhan() == null ? null
+                payment.getPaymentUrl(), confirmed, payment.getSoTienThucNhan() == null ? null
                 : payment.getSoTienThucNhan().setScale(2).toPlainString(),
                 payment.getTrangThai() == PaymentStatus.THANH_CONG && !confirmed);
     }
@@ -165,7 +205,7 @@ public final class PaymentService {
         };
     }
 
-    private static TaiKhoan account(EntityManager em, AuthService.User actor, AccountRole... roles) {
+    static TaiKhoan account(EntityManager em, AuthService.User actor, AccountRole... roles) {
         if (actor == null) throw new SecurityException("Missing actor");
         boolean allowed = false;
         for (AccountRole role : roles) if (role == actor.vaiTro()) allowed = true;

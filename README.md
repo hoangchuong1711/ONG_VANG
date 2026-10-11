@@ -2,7 +2,7 @@
 
 ## Tài liệu và kiểm thử API (T04)
 
-Hiện `/api/health`, các API T06–T12 và thanh toán tiền mặt T14 đã triển khai. VNPay T15 và các API còn lại vẫn là hợp đồng chờ triển khai.
+Hiện `/api/health`, các API T06–T12, thanh toán tiền mặt T14 và VNPay Sandbox T15 đã triển khai. Các API còn lại vẫn là hợp đồng chờ triển khai.
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ designV1 với API](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
@@ -13,10 +13,11 @@ T11: [thiết kế điều phối/gán/từ chối](docs/T11-driver-dispatch.md)
 
 T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progress.md).
 T14: [nghiệp vụ thanh toán tiền mặt](docs/T14-payment.md).
+T15: [tích hợp VNPay Sandbox](docs/T15-vnpay.md).
 
 Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).
 
-Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T12 và tiền mặt T14, các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
+Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T12, tiền mặt T14 và VNPay Sandbox T15, các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
 
 ## Công nghệ và phiên bản
 
@@ -100,6 +101,26 @@ docker compose down
 ```
 
 Lệnh `docker compose down` giữ dữ liệu database trong Docker volume. Không thêm `-v` nếu bạn chưa muốn xóa dữ liệu database.
+
+## Cả nhóm test VNPay Sandbox bằng Postman
+
+Khi dự án còn chạy local, dùng **một backend và database test chung** trên máy của người mở ngrok. VNPay gửi IPN đến URL đã đăng ký, nên người tạo lần thanh toán và nơi nhận IPN phải dùng cùng database. Các thành viên khác gọi backend này qua ngrok; không cần chạy ngrok hoặc nhận authtoken/VNPay Hash Secret.
+
+**Người host:**
+
+1. Trong `.env` riêng trên máy, đặt `DEMO_SEED=true`, `DEMO_PASSWORD`, `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` và `VNPAY_RETURN_URL=https://<domain-ngrok>/api/payments/vnpay/return`. Không commit `.env`.
+2. Chạy `docker compose up --build -d backend`, kiểm tra `http://localhost:8081/api/health`, rồi chạy `ngrok http 8081`. Giữ Docker, ngrok và máy host hoạt động trong lúc nhóm test.
+3. Đảm bảo VNPay đã cấu hình IPN là `https://<domain-ngrok>/api/payments/vnpay/ipn`. Nếu domain đổi, cập nhật IPN với VNPay, sửa `VNPAY_RETURN_URL` và khởi động lại backend trước khi test.
+4. Gửi cho nhóm **URL HTTPS gốc** của ngrok (không kèm `/api/...`), mật khẩu demo và thông tin thẻ **Sandbox** qua kênh nội bộ. Không gửi authtoken hoặc VNPay Hash Secret.
+
+**Thành viên test:**
+
+1. Pull nhánh có T15. Import `tests/postman/mini-ong-vang.postman_collection.json` và `tests/postman/local.postman_environment.json` vào Postman; chọn environment vừa import.
+2. Đổi `baseUrl` trong environment thành `https://<domain-ngrok>` (không có `/` cuối), giữ `runPlanned=false`. Không dùng `localhost:8081`: địa chỉ đó sẽ trỏ về máy của chính bạn.
+3. Dùng tài khoản demo để đi theo luồng `getCsrf` → `login` → `getCsrf` → `createQuote` → `createOrder` → tổng đài `assignDriver` → tài xế chuyển đơn đến `HOAN_TAT` → khách `createPayment`. Khi đổi vai trò, đăng xuất rồi đăng nhập/lấy CSRF mới. Mỗi người tạo **đơn mới và Idempotency-Key mới**, tránh dùng chung mã đơn/lần thanh toán.
+4. Mở `paymentUrl` từ `createPayment`, thanh toán bằng thẻ Sandbox, rồi gọi `getPayment` bằng `maGiaoDich`. Chỉ coi là đã thu khi backend báo `trangThai=THANH_CONG`, `daXacNhanDu=true` và đơn `DA_THANH_TOAN`; trang Return của VNPay không tự xác nhận thanh toán. Nếu chưa có IPN, báo người host kiểm tra ngrok và dùng `reconcilePayment` để tra cứu khi cần.
+
+Đây là **một database test chung**: nên test theo lượt hoặc dùng tài khoản/đơn riêng để tránh làm thay đổi dữ liệu của nhau. Khi máy host hoặc tunnel tắt, nhóm không test Sandbox trực tiếp được. Xem [hướng dẫn T15](docs/T15-vnpay.md) và [hướng dẫn Postman](tests/postman/README.md) để biết chi tiết request, tài khoản demo và cách kiểm tra IPN.
 
 ## Kết nối database bằng SSMS
 

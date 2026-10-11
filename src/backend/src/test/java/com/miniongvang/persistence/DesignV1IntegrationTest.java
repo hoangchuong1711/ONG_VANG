@@ -22,6 +22,9 @@ import com.miniongvang.service.OrderService;
 import com.miniongvang.service.MembershipPolicyService;
 import com.miniongvang.service.PolicyPublicationService;
 import com.miniongvang.service.PaymentService;
+import com.miniongvang.service.VnpayPaymentService;
+import com.miniongvang.integration.VnpayGateway;
+import com.miniongvang.entity.enums.PaymentEventResult;
 import com.miniongvang.service.QuoteService;
 import com.miniongvang.service.RouteService;
 import com.miniongvang.service.TransactionRunner;
@@ -31,16 +34,24 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
 import java.sql.DriverManager;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -626,6 +637,136 @@ class DesignV1IntegrationTest {
                     .setParameter("reference", UUID.randomUUID().toString()).executeUpdate();
             return null;
         }));
+    }
+
+    private static final String VNPAY_TEST_SECRET = "test-only-secret";
+    private static VnpayGateway vnpayGateway() {
+        return new VnpayGateway("TEST1234", VNPAY_TEST_SECRET,
+                "https://example.test/api/payments/vnpay/return",
+                URI.create("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"),
+                URI.create("http://127.0.0.1:1/query"), HttpClient.newHttpClient());
+    }
+    private static Map<String,String> signedIpn(PaymentService.Payment payment,String amount,String status,String transaction) {
+        return signedIpn(payment,amount,status,transaction,VnpayGateway.orderInfo(payment.maDon()));
+    }
+    private static Map<String,String> signedIpn(PaymentService.Payment payment,String amount,String status,
+                                                String transaction,String orderInfo) {
+        Map<String,String> message=new TreeMap<>();
+        String reference=vnpayGateway().parseQuery(URI.create(payment.paymentUrl()).getRawQuery()).get("vnp_TxnRef");
+        message.put("vnp_TmnCode","TEST1234"); message.put("vnp_TxnRef",reference);
+        message.put("vnp_OrderInfo",orderInfo);
+        message.put("vnp_Amount",amount); message.put("vnp_ResponseCode",status);
+        message.put("vnp_TransactionStatus",status); message.put("vnp_TransactionNo",transaction);
+        message.put("vnp_PayDate","20261011150000");
+        String canonical=message.entrySet().stream().map(e -> URLEncoder.encode(e.getKey(),StandardCharsets.UTF_8)
+                +"="+URLEncoder.encode(e.getValue(),StandardCharsets.UTF_8)).reduce((a,b)->a+"&"+b).orElse("");
+        try {
+            Mac mac=Mac.getInstance("HmacSHA512");
+            mac.init(new SecretKeySpec(VNPAY_TEST_SECRET.getBytes(StandardCharsets.UTF_8),"HmacSHA512"));
+            message.put("vnp_SecureHash",java.util.HexFormat.of().formatHex(mac.doFinal(canonical.getBytes(StandardCharsets.UTF_8))));
+        } catch (Exception failure) { throw new AssertionError(failure); }
+        return message;
+    }
+
+    @Test void vnpayIpnSettlesOnceAndReturnNeverSettles() {
+        String order=completedOrder();
+        var gateway=vnpayGateway();
+        var service=new VnpayPaymentService(db.entityManagerFactory(),gateway);
+        var payment=payments.createOnline(customer(1),order,"online-once","127.0.0.1",gateway);
+        assertEquals(payment.paymentUrl(),payments.createOnline(customer(1),order,"online-once","127.0.0.1",gateway).paymentUrl());
+        var message=signedIpn(payment,new BigDecimal(payment.soTien()).movePointRight(2).toBigIntegerExact().toString(),"00","VNP-1");
+        assertEquals(PaymentEventResult.KHONG_THAY_DOI,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_RETURN,message).result());
+        assertFalse(payments.get(customer(1),payment.maGiaoDich()).daXacNhanDu());
+        assertEquals(PaymentEventResult.DA_AP_DUNG,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,message).result());
+        assertTrue(service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,message).duplicate());
+        assertTrue(payments.get(customer(1),payment.maGiaoDich()).daXacNhanDu());
+        assertEquals("DA_THANH_TOAN",dispatch.order(customer(1),order).thanhToan().trangThai());
+        assertEquals(2L,(long)tx.run(em -> em.createQuery("select count(e) from SuKienThanhToan e",Long.class).getSingleResult()));
+    }
+
+    @Test void vnpayInvalidMismatchLateAndTimeoutAreRetained() {
+        String order=completedOrder();
+        var gateway=vnpayGateway();
+        var service=new VnpayPaymentService(db.entityManagerFactory(),gateway);
+        var first=payments.createOnline(customer(1),order,"online-invalid","127.0.0.1",gateway);
+        String cents=new BigDecimal(first.soTien()).movePointRight(2).toBigIntegerExact().toString();
+        var forged=new TreeMap<>(signedIpn(first,cents,"00","VNP-FORGED"));
+        forged.put("vnp_Amount","99900");
+        assertEquals(PaymentEventResult.KHONG_HOP_LE,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,forged).result());
+        assertEquals(PaymentEventResult.KHONG_KHOP,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,
+                signedIpn(first,cents,"00","VNP-1","other order")).result());
+        assertEquals("CHUA_RO_KET_QUA",service.reconcile(customer(1),first.maGiaoDich()).trangThai().name());
+        assertThrows(NoSuchElementException.class,() -> service.reconcile(customer(2),first.maGiaoDich()));
+        assertEquals(PaymentEventResult.CAN_DOI_SOAT,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,
+                signedIpn(first,"99900","00","VNP-WRONG-AMOUNT")).result());
+        assertTrue(payments.get(customer(1),first.maGiaoDich()).canDoiSoat());
+        assertEquals("CHUA_THANH_TOAN",dispatch.order(customer(1),order).thanhToan().trangThai());
+        var second=payments.createOnline(customer(1),order,"online-second","127.0.0.1",gateway);
+        assertEquals(PaymentEventResult.DA_AP_DUNG,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,
+                signedIpn(second,cents,"00","VNP-SECOND")).result());
+        assertEquals(PaymentEventResult.CAN_DOI_SOAT,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,
+                signedIpn(first,cents,"00","VNP-LATE")).result());
+        assertTrue(payments.get(customer(1),first.maGiaoDich()).canDoiSoat());
+    }
+
+    @Test void concurrentVnpayIpnsCreateOneConfirmation() throws Exception {
+        String order=completedOrder();
+        var gateway=vnpayGateway();
+        var service=new VnpayPaymentService(db.entityManagerFactory(),gateway);
+        var payment=payments.createOnline(customer(1),order,"parallel-ipn","127.0.0.1",gateway);
+        var ipn=signedIpn(payment,new BigDecimal(payment.soTien()).movePointRight(2)
+                .toBigIntegerExact().toString(),"00","VNP-CONCURRENT");
+        var pool=Executors.newFixedThreadPool(2);
+        try {
+            var start=new java.util.concurrent.CountDownLatch(1);
+            var one=pool.submit(() -> { start.await(); return service.apply(
+                    com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,ipn); });
+            var two=pool.submit(() -> { start.await(); return service.apply(
+                    com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,ipn); });
+            start.countDown();
+            assertNotEquals(one.get(15,TimeUnit.SECONDS).duplicate(),two.get(15,TimeUnit.SECONDS).duplicate());
+            assertEquals(1L,(long)tx.run(em -> em.createQuery(
+                    "select count(c) from XacNhanThanhToanDonHang c where c.donHang.id=:id",Long.class)
+                    .setParameter("id",order).getSingleResult()));
+            assertEquals(1L,(long)tx.run(em -> em.createQuery(
+                    "select count(e) from SuKienThanhToan e",Long.class).getSingleResult()));
+        } finally { pool.shutdownNow(); }
+    }
+
+    @Test void signedQueryResultCanSettleButPendingQueryCannot() throws Exception {
+        String order=completedOrder();
+        var gateway=vnpayGateway();
+        var service=new VnpayPaymentService(db.entityManagerFactory(),gateway);
+        var payment=payments.createOnline(customer(1),order,"query-signed","127.0.0.1",gateway);
+        String reference=gateway.parseQuery(URI.create(payment.paymentUrl()).getRawQuery()).get("vnp_TxnRef");
+        String amount=new BigDecimal(payment.soTien()).movePointRight(2).toBigIntegerExact().toString();
+        var pending=signedQuery(reference,amount,"01");
+        assertEquals(PaymentEventResult.KHONG_THAY_DOI,service.apply(
+                com.miniongvang.entity.enums.PaymentEventSource.VNPAY_QUERY,pending).result());
+        assertFalse(payments.get(customer(1),payment.maGiaoDich()).daXacNhanDu());
+        var success=signedQuery(reference,amount,"00");
+        assertEquals(PaymentEventResult.DA_AP_DUNG,service.apply(
+                com.miniongvang.entity.enums.PaymentEventSource.VNPAY_QUERY,success).result());
+        assertTrue(payments.get(customer(1),payment.maGiaoDich()).daXacNhanDu());
+    }
+
+    private static Map<String,String> signedQuery(String reference,String amount,String status) throws Exception {
+        Map<String,String> result=new TreeMap<>();
+        result.put("vnp_ResponseId",UUID.randomUUID().toString()); result.put("vnp_Command","querydr");
+        result.put("vnp_ResponseCode","00"); result.put("vnp_Message","success");
+        result.put("vnp_TmnCode","TEST1234"); result.put("vnp_TxnRef",reference);
+        result.put("vnp_Amount",amount); result.put("vnp_BankCode","NCB");
+        result.put("vnp_PayDate","20261011150000"); result.put("vnp_TransactionNo","VNP-QUERY");
+        result.put("vnp_TransactionType","01"); result.put("vnp_TransactionStatus",status);
+        result.put("vnp_OrderInfo","Query "+reference);
+        String[] names={"vnp_ResponseId","vnp_Command","vnp_ResponseCode","vnp_Message","vnp_TmnCode",
+                "vnp_TxnRef","vnp_Amount","vnp_BankCode","vnp_PayDate","vnp_TransactionNo",
+                "vnp_TransactionType","vnp_TransactionStatus","vnp_OrderInfo"};
+        String canonical=java.util.Arrays.stream(names).map(result::get).collect(java.util.stream.Collectors.joining("|"));
+        Mac mac=Mac.getInstance("HmacSHA512");
+        mac.init(new SecretKeySpec(VNPAY_TEST_SECRET.getBytes(StandardCharsets.UTF_8),"HmacSHA512"));
+        result.put("vnp_SecureHash",java.util.HexFormat.of().formatHex(mac.doFinal(canonical.getBytes(StandardCharsets.UTF_8))));
+        return result;
     }
 
     @Test void databaseRejectsBrokenForeignKeyAndNegativeFare() {

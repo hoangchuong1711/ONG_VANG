@@ -50,8 +50,6 @@ await customer.call(path + '/payments', request, 409, 'ORDER_STATE_CONFLICT', { 
 await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-1' });
 for (const trangThai of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT'])
   await driver.call(path + '/transitions', { trangThai });
-await customer.call(path + '/payments', { phuongThuc: 'VNPAY_QR' }, 501,
-  'PAYMENT_METHOD_NOT_IMPLEMENTED', { 'Idempotency-Key': randomUUID() });
 const payment = await customer.call(path + '/payments', request, 201, undefined, { 'Idempotency-Key': key });
 assert.equal(payment.trangThai, 'CHO_XU_LY');
 assert.equal((await customer.call(path + '/payments', request, 201, undefined,

@@ -24,6 +24,8 @@ public class LanThanhToan {
     private DonHang donHang;
     @Column(name = "ma_tham_chieu", nullable = false, length = 100)
     private String maThamChieu;
+    @Column(name = "payment_url", length = 2048)
+    private String paymentUrl;
     @Enumerated(EnumType.STRING) @Column(name = "phuong_thuc", nullable = false, length = 40)
     private PaymentMethod phuongThuc;
     @Enumerated(EnumType.STRING) @Column(name = "trang_thai", nullable = false, length = 40)
@@ -49,6 +51,8 @@ public class LanThanhToan {
     public void setDonHang(DonHang value) { donHang = value; }
     public String getMaThamChieu() { return maThamChieu; }
     public void setMaThamChieu(String value) { maThamChieu = value; }
+    public String getPaymentUrl() { return paymentUrl; }
+    public void setPaymentUrl(String value) { paymentUrl = value; }
     public PaymentMethod getPhuongThuc() { return phuongThuc; }
     public void setPhuongThuc(PaymentMethod value) { phuongThuc = value; }
     public PaymentStatus getTrangThai() { return trangThai; }
