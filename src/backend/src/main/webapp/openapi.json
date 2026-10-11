@@ -6408,7 +6408,7 @@
         "type": "string",
         "minLength": 1,
         "maxLength": 36,
-        "description": "Mã từ VARCHAR(36) của SQL v0; không giả định bắt buộc UUID.",
+        "description": "Mã chuỗi tối đa 36 ký tự theo designV1 (NVARCHAR(36)); không giả định bắt buộc UUID.",
         "examples": [
           "DH-DEMO-001"
         ]

@@ -4,18 +4,18 @@
 
 Hiện `/api/health`, các API T06, T07 (`POST /api/routes/estimate`) và T09 (`POST /api/quotes`, dùng chính sách T08) đã triển khai; T10 (`POST /api/orders`), T11 (danh sách/chi tiết đơn, tài xế, gợi ý, gán/từ chối) và T12 (tiến trình, sự cố, nhật ký) đã triển khai; các API còn lại vẫn là hợp đồng chờ triển khai.
 
-Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ SQL v0 và phần cần bổ sung](docs/api/schema-mapping.md)
+Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ designV1 với API](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
 
-T10: [thiết kế và cách tạo đơn](docs/T10-order-creation.md), [kết quả và lệnh kiểm thử](tests/T10-validation.md).
+T10: [thiết kế và cách tạo đơn](docs/T10-order-creation.md).
 
-T11: [thiết kế điều phối/gán/từ chối](docs/T11-driver-dispatch.md), [kết quả và lệnh kiểm thử](tests/T11-validation.md).
+T11: [thiết kế điều phối/gán/từ chối](docs/T11-driver-dispatch.md).
 
-T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progress.md), [kết quả và lệnh kiểm thử](tests/T12-validation.md).
-SQL v0 là tài liệu tham chiếu có header MySQL, không được chạy trực tiếp vào SQL Server.
-T03 đã có migration Flyway, Entity/DAO Hibernate, transaction và seed. Xem [hướng dẫn CSDL/seed/reset](docs/database/README.md) và [kết quả kiểm thử T03](tests/database/T03-validation.md).
+T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progress.md).
 
-Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống được định hướng xây theo ba phần: giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Hiện tại repo đã có khung Docker cho FE/BE/DB và một trang trạng thái để kiểm tra kết nối; các chức năng giao hàng sẽ được phát triển tiếp theo kế hoạch của nhóm.
+Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).
+
+Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T12, các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
 
 ## Công nghệ và phiên bản
 
@@ -115,7 +115,7 @@ Mở **SQL Server Management Studio (SSMS)** → **Connect → Database Engine**
 
 | Mục | Giá trị |
 | --- | --- |
-| Server name | **`localhost,1433`** hoặc **`tcp:127.0.0.1,1433`** |
+| Server name | **`tcp:127.0.0.1,1433`** |
 | Authentication | `SQL Server Authentication` |
 | Login / User name | `sa` |
 | Password | Giá trị sau `MSSQL_SA_PASSWORD=` trong file `.env` trên máy của bạn |

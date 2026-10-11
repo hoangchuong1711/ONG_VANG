@@ -346,7 +346,7 @@ Không xóa hàng loạt trước khi truy vết consumer. Điều kiện xóa: 
 | `docs/project_brief.md` | Giữ UC/phạm vi; cập nhật SQL Server, source schema, thứ tự công việc và cột ảnh hưởng | P00/P09 |
 | `README.md`, `CONTRIBUTING.md`, `.env.example` | Rà hướng dẫn và tên DB; chỉ sửa phần cần thiết | P09/cutover |
 | `docs/api/schema-mapping.md`, `conventions.md`, `coverage.md`, `README.md` | Viết lại mapping, sửa contract và trạng thái coverage | P09 |
-| `tests/T06-validation.md`, `T10-validation.md`, `T11-validation.md`, `T12-validation.md` | Giữ kết quả cũ có nhãn lịch sử hoặc thay bằng report mới có ngày/version; không làm mất provenance | Khi chạy lại từng suite |
+| Báo cáo T04/T06/T10–T12 trên PostgreSQL | Đã thay bằng báo cáo M1 có ngày/version cho schema mới; bản cũ chỉ còn trong lịch sử Git | M1 |
 | `tests/postman/*` | Sinh collection/environment từ nguồn hiện hành; giữ biến môi trường không có secret | P09 |
 | Entity/DAO legacy liệt kê ở P03 | Xóa sau khi import, JPQL, mapping, fixture và test đã thay | Theo từng nhóm; xong trước M1 |
 | `db/migration/V1–V7` PostgreSQL | Bỏ khỏi resources khi chọn tuyến mới | P11; không ảnh hưởng DB nguồn đang giữ |

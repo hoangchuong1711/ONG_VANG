@@ -18,8 +18,7 @@ Phiên bản hợp đồng: **0.5.0** theo [designV1](../database/designV1.md). 
 | [schema-mapping.md](schema-mapping.md) | Ánh xạ SQL → DTO và khoảng trống cần xử lý ở T01/T03/T06–T18 |
 | [coverage.md](coverage.md) | Truy vết UC, operation và kiểm thử |
 | [Hướng dẫn Postman](../../tests/postman/README.md) | Chạy BE độc lập FE; phân biệt smoke và nghiệp vụ chưa triển khai |
-| [Kết quả kiểm tra T04](../../tests/postman/T04-validation.md) | Phân biệt những kiểm tra đã đạt và phần chưa chạy |
-| [Kết quả kiểm tra T06](../../tests/T06-validation.md) | Test đăng ký, phiên, quyền và HTTP trên DB test |
+| [Báo cáo kiểm tra M1](../database/designV1-M1-audit-2026-10-11.md) | Kết quả local của API, test Java và HTTP smoke T06–T12 trên schema designV1; chưa thay bằng chứng M2 |
 
 JSON được chọn để kiểm tra/sinh Postman bằng Node và phục vụ trực tiếp trong WAR; ý nghĩa hợp đồng tương đương YAML. Không có bản đặc tả thứ hai cần sửa đồng thời.
 

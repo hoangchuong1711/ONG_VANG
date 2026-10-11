@@ -18,3 +18,5 @@ Nguồn chuẩn: [designV1.md](designV1.md); công việc và gate: [designV1-im
 3. Báo cáo kiểm thử PostgreSQL cũ đã được đánh dấu là lịch sử; không dùng kết quả đó làm bằng chứng đợt này. T13–T20, bao gồm service thanh toán, vẫn thuộc M2.
 
 Các bất biến chính của M1 đã có test/truy vấn và kết quả local. Gate CI từ xa chưa có bằng chứng; không gọi M2 hoàn thành.
+
+Sau báo cáo này, các file kết quả T04/T06/T10–T12 chạy trên PostgreSQL đã được gỡ khỏi cây làm việc để tránh nhầm với bằng chứng designV1; nội dung cũ vẫn tra được trong lịch sử Git. Các test Java, Postman collection và smoke hiện hành được giữ nguyên.

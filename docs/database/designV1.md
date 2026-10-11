@@ -810,9 +810,9 @@ Bản thiết kế được đối chiếu với hai yêu cầu môn học do nh
 | docs/T08-membership-policy.md và docs/T09-quote.md | Chính sách giảm và hành vi báo giá hiện tại. |
 | docs/T10-order-creation.md | Báo giá, chủ đơn/người tạo và idempotency 24 giờ. |
 | docs/T11-driver-dispatch.md và docs/T12-delivery-progress.md | Gán/từ chối/hoàn tất/sự cố và quyền truy cập. |
-| src/backend/src/main/resources/db/migration/V1 đến V7 | Schema cũ cần thay thế/ánh xạ; không sửa các file đã phát hành chỉ bằng cách đổi tên cột. |
+| src/backend/src/main/resources/db/designV1/sqlserver/V1 và V2 | Migration SQL Server hiện hành; V1 tạo schema, V2 bảo vệ chính sách đã công bố. |
 | src/backend/src/main/java/com/miniongvang/service và DAO | Điểm refactor công thức, transaction, quyền và truy vấn. |
-| tests/T10-validation.md đến tests/T12-validation.md | Nguồn kiểm thử hồi quy; kết quả cũ không chứng minh mô hình đích đã chạy. |
+| docs/database/designV1-M1-audit-2026-10-11.md | Kết quả kiểm tra local T06–T12 trên schema mới; báo cáo PostgreSQL cũ chỉ còn trong lịch sử Git. |
 
 ### Sản phẩm phải có khi triển khai xong
 
