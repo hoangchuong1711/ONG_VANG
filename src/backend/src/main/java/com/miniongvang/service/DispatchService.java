@@ -113,6 +113,43 @@ public final class DispatchService {
             em.flush(); return view(em,orderId);
         });
     }
+    public OrderService.Order cancel(AuthService.User actor,String orderId,String reason) {
+        id(orderId);
+        if (reason==null || reason.isBlank() || reason.strip().length()>500)
+            throw new IllegalArgumentException("Reason must contain 1-500 characters");
+        String normalized=reason.strip();
+        return transactions.run(em -> {
+            TaiKhoan account=actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI);
+            DonHang order=new DonHangDAO(em).findForUpdate(orderId);
+            if (order==null || actor.vaiTro()==AccountRole.KHACH_HANG
+                    && !order.getKhachHang().getId().equals(actor.maKh()))
+                throw new NoSuchElementException("Order not found");
+            if (order.getTrangThai()!=OrderStatus.CHO_GAN && order.getTrangThai()!=OrderStatus.DA_GAN)
+                throw new Conflict("ORDER_STATE_CONFLICT");
+            Instant now=clock.instant();
+            long age=Duration.between(order.getThoiGianTao(),now).getSeconds();
+            if (age<0 || age>=300) throw new Conflict("CANCELLATION_WINDOW_EXPIRED");
+            var dao=new DispatchDAO(em);
+            if (order.getTrangThai()==OrderStatus.DA_GAN) {
+                if (order.getTaiXe()==null) throw new Conflict("ORDER_STATE_CONFLICT");
+                TaiXe driver=new TaiXeDAO(em).findForUpdate(order.getTaiXe().getId());
+                em.refresh(driver,LockModeType.PESSIMISTIC_WRITE);
+                TaiKhoan driverAccount=em.find(TaiKhoan.class,driver.getTaiKhoan().getId(),LockModeType.PESSIMISTIC_WRITE);
+                em.refresh(driverAccount,LockModeType.PESSIMISTIC_WRITE);
+                PhanCongDonHang assignment=dao.activeOrder(orderId);
+                if (assignment==null || !assignment.getTaiXe().getId().equals(driver.getId()))
+                    throw new Conflict("ORDER_STATE_CONFLICT");
+                assignment.setKetThucLuc(now); assignment.setLyDoKetThuc(normalized); assignment.setTuChoi(false);
+                driver.setRanhTu(now); order.setTaiXe(null);
+            } else if (order.getTaiXe()!=null || dao.activeOrder(orderId)!=null) {
+                throw new Conflict("ORDER_STATE_CONFLICT");
+            }
+            order.setTrangThai(OrderStatus.DA_HUY);
+            order.setThoiGianHuy(now); order.setLyDoHuy(normalized);
+            event(em,order,account,now,normalized);
+            em.flush(); return view(em,orderId);
+        });
+    }
     public EventPage events(AuthService.User actor,String orderId,int page,int size) {
         id(orderId); page(page,size);
         return transactions.run(em -> {

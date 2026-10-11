@@ -3,7 +3,7 @@
   "info": {
     "title": "Mini Ong Vàng API",
     "version": "0.4.0",
-    "description": "T06-T12 implemented; remaining operations are marked planned individually."
+    "description": "T06-T13 implemented; remaining operations are marked planned individually."
   },
   "servers": [
     {
@@ -4006,7 +4006,7 @@
         "summary": "Hủy đơn trước 5 phút",
         "operationId": "cancelOrder",
         "description": "Khách sở hữu hoặc tổng đài; tuổi đơn từ giờ server <300 giây, chỉ CHO_GAN/DA_GAN. Đúng 300 giây từ chối. Cập nhật đơn, giải phóng tài xế, nhật ký trong transaction.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-14"
         ],

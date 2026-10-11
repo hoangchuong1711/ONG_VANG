@@ -267,6 +267,64 @@ class DispatchServiceIntegrationTest {
             assertFalse(assignment.isTuChoi());assertNull(assignment.getKetThucLuc());assertNull(assignment.getLyDoKetThuc());
             assertNull(em.find(TaiXe.class,"TX-DEMO-1").getRanhTu());return null;});
     }
+    @Test void customerCancellationStoresReasonTimeAndAuditWithoutChangingFare() {
+        String id=newOrder(); var before=service.order(customer(1),id); long count=events(id);
+        var cancelled=service.cancel(customer(1),id,"  Đổi kế hoạch  ");
+        assertEquals("DA_HUY",cancelled.trangThai());assertEquals(NOW.toString(),cancelled.huyLuc());
+        assertNull(cancelled.maTx());assertEquals(before.cuoc(),cancelled.cuoc());
+        assertEquals(before.kienHang(),cancelled.kienHang());assertEquals(count+1,events(id));
+        tx.run(em->{var order=em.find(DonHang.class,id);assertEquals("Đổi kế hoạch",order.getLyDoHuy());
+            assertEquals("TK-DEMO-KH-1",new DonHangDAO(em).findDetails(id).events().getLast().getTaiKhoanThucHien().getId());return null;});
+        conflict("ORDER_STATE_CONFLICT",()->service.cancel(customer(1),id,"again"));
+    }
+    @Test void assignedCancellationReleasesDriverAndPreservesAssignmentHistory() {
+        String id=newOrder();service.assign(dispatcher(),id,"TX-DEMO-1");long count=events(id);
+        var cancelled=service.cancel(dispatcher(),id,"  Khách đổi kế hoạch  ");
+        assertEquals("DA_HUY",cancelled.trangThai());assertNull(cancelled.maTx());
+        assertEquals(0,active("donHang",id));assertEquals(0,active("taiXe","TX-DEMO-1"));
+        assertEquals(count+1,events(id));
+        tx.run(em->{var history=new PhanCongDonHangDAO(em).findHistory(id).getFirst();
+            assertEquals(NOW,history.getKetThucLuc());assertEquals("Khách đổi kế hoạch",history.getLyDoKetThuc());
+            assertFalse(history.isTuChoi());assertEquals(NOW,em.find(TaiXe.class,"TX-DEMO-1").getRanhTu());return null;});
+        assertEquals("DA_GAN",service.assign(dispatcher(),newOrder(),"TX-DEMO-1").trangThai());
+    }
+    @Test void cancellationEnforcesOwnershipStateReasonAndExactTimeBoundary() {
+        String id=newOrder();
+        assertThrows(NoSuchElementException.class,()->service.cancel(customer(2),id,"no"));
+        assertThrows(NoSuchElementException.class,()->service.cancel(customer(1),"missing","no"));
+        assertThrows(SecurityException.class,()->service.cancel(driver(1),id,"no"));
+        for(String reason:Arrays.asList(null,"","  ","x".repeat(501)))
+            assertThrows(IllegalArgumentException.class,()->service.cancel(customer(1),id,reason));
+        for(int age:List.of(300,301)) {
+            var at=new DispatchService(db.entityManagerFactory(),Clock.fixed(NOW.plusSeconds(age),ZoneOffset.UTC));
+            conflict("CANCELLATION_WINDOW_EXPIRED",()->at.cancel(customer(1),id,"late"));
+        }
+        assertEquals("DA_HUY",new DispatchService(db.entityManagerFactory(),
+                Clock.fixed(NOW.plusSeconds(299),ZoneOffset.UTC)).cancel(customer(1),id,"valid").trangThai());
+        for(String terminal:List.of("DH-DEMO-PICKED","DH-DEMO-DELIVERING","DH-DEMO-PAID-CASH","DH-DEMO-CANCELLED"))
+            conflict("ORDER_STATE_CONFLICT",()->service.cancel(dispatcher(),terminal,"no"));
+    }
+    @Test void concurrentAssignAndCancelLeaveOneCancelledOrderAndNoBusyDriver() throws Exception {
+        String id=newOrder();long count=events(id);
+        var results=race(2,n->n==0?service.assign(dispatcher(),id,"TX-DEMO-1").trangThai()
+                :service.cancel(customer(1),id,"Không gửi nữa").trangThai());
+        assertTrue(results.contains("DA_HUY"));
+        assertTrue(results.contains("DA_GAN") || results.contains("ORDER_STATE_CONFLICT"));
+        assertEquals("DA_HUY",service.order(customer(1),id).trangThai());
+        assertEquals(0,active("donHang",id));assertEquals(0,active("taiXe","TX-DEMO-1"));
+        assertEquals(count+(results.contains("DA_GAN")?2:1),events(id));
+    }
+    @Test void auditFailureRollsBackAssignedCancellation() {
+        String id=newOrder();service.assign(dispatcher(),id,"TX-DEMO-1");long count=events(id);
+        installFailure();
+        try {auditFailure(()->service.cancel(customer(1),id,"cancel"));}
+        finally {removeFailure();}
+        var order=service.order(customer(1),id);
+        assertEquals("DA_GAN",order.trangThai());assertEquals("TX-DEMO-1",order.maTx());
+        assertNull(order.huyLuc());assertEquals(count,events(id));assertEquals(1,active("donHang",id));
+        tx.run(em->{assertNull(em.find(TaiXe.class,"TX-DEMO-1").getRanhTu());
+            assertNull(new DispatchDAO(em).activeOrder(id).getKetThucLuc());return null;});
+    }
     static void auditFailure(org.junit.jupiter.api.function.Executable work) {
         Throwable error=assertThrows(RuntimeException.class,work);
         while(error.getCause()!=null) error=error.getCause();

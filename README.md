@@ -2,7 +2,7 @@
 
 ## Tài liệu và kiểm thử API (T04)
 
-Hiện `/api/health`, các API T06, T07 (`POST /api/routes/estimate`) và T09 (`POST /api/quotes`, dùng chính sách T08) đã triển khai; T10 (`POST /api/orders`), T11 (danh sách/chi tiết đơn, tài xế, gợi ý, gán/từ chối) và T12 (tiến trình, sự cố, nhật ký) đã triển khai; các API còn lại vẫn là hợp đồng chờ triển khai.
+Hiện `/api/health`, các API T06, T07 (`POST /api/routes/estimate`) và T09 (`POST /api/quotes`, dùng chính sách T08) đã triển khai; T10 (`POST /api/orders`), T11 (danh sách/chi tiết đơn, tài xế, gợi ý, gán/từ chối), T12 (tiến trình, sự cố, nhật ký) và T13 (hủy đơn) đã triển khai; các API còn lại vẫn là hợp đồng chờ triển khai.
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ SQL v0 và phần cần bổ sung](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
@@ -12,6 +12,7 @@ T10: [thiết kế và cách tạo đơn](docs/T10-order-creation.md), [kết qu
 T11: [thiết kế điều phối/gán/từ chối](docs/T11-driver-dispatch.md), [kết quả và lệnh kiểm thử](tests/T11-validation.md).
 
 T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progress.md), [kết quả và lệnh kiểm thử](tests/T12-validation.md).
+T13: [thiết kế hủy đơn](docs/T13-order-cancellation.md), [phạm vi và trạng thái kiểm thử](tests/T13-validation.md).
 SQL v0 là tài liệu tham chiếu có header MySQL, không được chạy trực tiếp vào PostgreSQL.
 T03 đã có migration Flyway, Entity/DAO Hibernate, transaction và seed. Xem [hướng dẫn CSDL/seed/reset](docs/database/README.md) và [kết quả kiểm thử T03](tests/database/T03-validation.md).
 

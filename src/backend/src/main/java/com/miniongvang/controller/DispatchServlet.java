@@ -60,6 +60,8 @@ public final class DispatchServlet extends HttpServlet {
                     result=service.assign(actor,id,body(req,"maTx"));
                 else if (post && parts.length==5 && parts[4].equals("reject"))
                     result=service.reject(actor,id,body(req,"lyDo"));
+                else if (post && parts.length==5 && parts[4].equals("cancel"))
+                    result=service.cancel(actor,id,body(req,"lyDo"));
                 else throw new NoSuchElementException("Endpoint not found");
             }
             send(resp,responseStatus,result);

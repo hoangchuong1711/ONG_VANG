@@ -6,7 +6,7 @@ Phiên bản hợp đồng: **0.3.0**, ngày 08/10/2026. T03 yêu cầu khối l
 
 - `POST /api/auth/register` cho khách hàng tự đăng ký đã có trong OpenAPI 0.3.0, Swagger và Postman. Xem [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06).
 - Đã có implementation: `GET /api/health`.
-- Đã triển khai: `/api/health`, 5 operation T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng chính sách T08). T10 đã triển khai `POST /api/orders`; T11 đã triển khai listOrders/getOrder/listDrivers/suggestDrivers/assignDriver/rejectOrder; T12 đã triển khai listOrderEvents/transitionOrder/recordIncident ([hướng dẫn](../T12-delivery-progress.md)). Danh sách khách và các API T13–T18 còn lại vẫn planned.
+- Đã triển khai: `/api/health`, 5 operation T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng chính sách T08). T10 đã triển khai `POST /api/orders`; T11 đã triển khai listOrders/getOrder/listDrivers/suggestDrivers/assignDriver/rejectOrder; T12 đã triển khai listOrderEvents/transitionOrder/recordIncident ([hướng dẫn](../T12-delivery-progress.md)); T13 đã triển khai cancelOrder ([hướng dẫn](../T13-order-cancellation.md)). Danh sách khách và các API T14–T18 còn lại vẫn planned.
 - T04 không chạy SQL v0, không tạo/migrate bảng, không tạo tài khoản seed, không hiện thực thanh toán.
 - Swagger UI là công cụ tài liệu/test BE, không phải FE nghiệp vụ T21–T28.
 

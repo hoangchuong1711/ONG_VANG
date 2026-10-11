@@ -10,7 +10,8 @@
     "check": "node validate.mjs && node generate-postman.mjs --check && node --test swagger-config.test.mjs",
     "smoke:orders": "node order-smoke.mjs",
     "smoke:dispatch": "node dispatch-smoke.mjs",
-    "smoke:progress": "node progress-smoke.mjs"
+    "smoke:progress": "node progress-smoke.mjs",
+    "smoke:cancel": "node cancel-smoke.mjs"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "12.1.0",
