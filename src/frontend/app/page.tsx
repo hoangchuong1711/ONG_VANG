@@ -66,7 +66,7 @@ export default function Home() {
           <p className="eyebrow">SYSTEM STATUS</p>
           <h1>{overallOnline ? "Everything is connected." : "Checking your services."}</h1>
           <p className="hero-copy">
-            A live check of the frontend, Java backend, and PostgreSQL database.
+            A live check of the frontend, Java backend, and SQL Server database.
           </p>
         </section>
 
@@ -88,9 +88,9 @@ export default function Home() {
           <StatusCard
             number="03"
             title="Database"
-            detail={health?.databaseName ?? "PostgreSQL"}
+            detail={health?.databaseName ?? "SQL Server"}
             state={databaseState}
-            endpoint="Docker service · db:5432"
+            endpoint="Docker service · db:1433"
           />
         </section>
 
@@ -109,7 +109,7 @@ export default function Home() {
           <p className="panel-copy">
             {health?.message ??
               (overallOnline
-                ? "The backend answered and PostgreSQL passed a test query."
+                ? "The backend answered and SQL Server passed a test query."
                 : "The page is up. The backend and database check will update automatically.")}
           </p>
 

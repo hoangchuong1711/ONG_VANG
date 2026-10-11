@@ -20,7 +20,7 @@ public final class TaiXeDAO extends BaseDAO<TaiXe> {
               and t.trangThai = :driverStatus
               and not exists (select p.id from PhanCongDonHang p
                               where p.taiXe = t and p.ketThucLuc is null)
-            order by t.ranhTu asc, t.id asc
+            order by t.ranhTu asc nulls last, t.id asc
             """, TaiXe.class)
                 .setParameter("accountStatus", AccountStatus.HOAT_DONG)
                 .setParameter("driverStatus", DriverStatus.ONLINE)

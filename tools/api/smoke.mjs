@@ -6,7 +6,7 @@ import addFormats from 'ajv-formats';
 
 const base = (process.env.API_BASE_URL || 'http://localhost:8081').replace(/\/$/, '');
 const local = JSON.parse(readFileSync(new URL('../../src/backend/src/main/webapp/openapi.json', import.meta.url), 'utf8'));
-// Compose waits for PostgreSQL health, but Tomcat may still be deploying the WAR.
+// Compose waits for SQL Server health, but Tomcat may still be deploying the WAR.
 const deadline = Date.now() + 60000;
 while (true) {
   try {

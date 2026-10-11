@@ -19,7 +19,7 @@ public final class AuthService {
     public AuthService(EntityManagerFactory factory) { this.factory = factory; }
 
     public record User(String maNguoiDung, String hoTen, AccountRole vaiTro,
-                       String maKh, String maTx, String maNv) {}
+                       String maKh, String maTx) {}
 
     public static String normalizePhone(String input) {
         if (input == null) return null;
@@ -39,6 +39,7 @@ public final class AuthService {
                 account.setId(UUID.randomUUID().toString());
                 account.setUsername(normalized);
                 account.setHoTen(name);
+                account.setSoDienThoai(normalized);
                 account.setEmail(email);
                 account.setMatKhauHash(PasswordHasher.hash(password));
                 account.setVaiTro(AccountRole.KHACH_HANG);
@@ -48,12 +49,10 @@ public final class AuthService {
                 KhachHang customer = new KhachHang();
                 customer.setId(UUID.randomUUID().toString());
                 customer.setTaiKhoan(account);
-                customer.setHoTen(name);
-                customer.setSoDienThoai(normalized);
                 customer.setDiaChiMacDinh(address);
                 em.persist(customer);
                 return new User(account.getId(), name, AccountRole.KHACH_HANG,
-                        customer.getId(), null, null);
+                        customer.getId(), null);
             });
         } catch (PersistenceException failure) {
             if (isUniqueViolation(failure)) throw new AccountExistsException();
@@ -85,23 +84,21 @@ public final class AuthService {
         try (EntityManager em = factory.createEntityManager()) {
             TaiKhoan account = em.find(TaiKhoan.class, id);
             if (account == null || account.getTrangThai() != AccountStatus.HOAT_DONG) return null;
-            String maKh = null, maTx = null, maNv = null;
+            String maKh = null, maTx = null;
             switch (account.getVaiTro()) {
                 case KHACH_HANG -> maKh = em.createQuery("select k.id from KhachHang k where k.taiKhoan.id = :id", String.class)
                         .setParameter("id", id).getResultStream().findFirst().orElse(null);
                 case TAI_XE -> maTx = em.createQuery("select t.id from TaiXe t where t.taiKhoan.id = :id", String.class)
                         .setParameter("id", id).getResultStream().findFirst().orElse(null);
-                case TONG_DAI -> maNv = em.createQuery("select d.id from DieuPhoiVien d where d.taiKhoan.id = :id", String.class)
-                        .setParameter("id", id).getResultStream().findFirst().orElse(null);
                 default -> { }
             }
-            return new User(id, account.getHoTen(), account.getVaiTro(), maKh, maTx, maNv);
+            return new User(id, account.getHoTen(), account.getVaiTro(), maKh, maTx);
         }
     }
 
     private static boolean isUniqueViolation(Throwable error) {
         for (Throwable cause = error; cause != null; cause = cause.getCause()) {
-            if (cause instanceof java.sql.SQLException sql && "23505".equals(sql.getSQLState())) return true;
+            if (cause instanceof java.sql.SQLException sql && (sql.getErrorCode() == 2601 || sql.getErrorCode() == 2627)) return true;
         }
         return false;
     }

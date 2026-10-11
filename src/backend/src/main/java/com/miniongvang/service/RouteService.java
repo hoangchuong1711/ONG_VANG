@@ -20,7 +20,7 @@ public final class RouteService {
         if (start == null || end == null) throw new IllegalArgumentException("Invalid address");
         if (start.equalsIgnoreCase(end)) throw new RouteFailure(RouteFailure.Kind.DISTANCE_INVALID);
         RouteProvider.RouteData data = provider.estimate(start, end);
-        if (data.distanceMeters() <= 0 || data.durationSeconds() < 0
+        if (data.distanceMeters() <= 0 || data.durationSeconds() <= 0 || data.durationSeconds() > Integer.MAX_VALUE
                 || data.origin() == null || data.destination() == null
                 || data.origin().isBlank() || data.destination().isBlank()
                 || data.origin().length() > 255 || data.destination().length() > 255)

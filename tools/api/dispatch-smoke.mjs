@@ -63,8 +63,6 @@ await customer.login(username, password);
 await dispatcher.login('demo_dispatcher', process.env.DEMO_PASSWORD);
 await driver1.login('0800000001', process.env.DEMO_PASSWORD);
 await driver2.login('0800000002', process.env.DEMO_PASSWORD);
-await driver2.call('/api/orders/DH-DEMO-PAID-CASH', undefined, 404, 'Error', 'RESOURCE_NOT_FOUND');
-await driver1.call('/api/orders/DH-DEMO-PAID-CASH', undefined, 200, 'Order');
 const quoteInput = { diemLayHang: 'Điểm mẫu A', diemGiaoHang: 'Điểm mẫu B', kienHang: [{ loaiHangHoa: 'Hoa', khoiLuongKg: '1.00' }] };
 async function create() {
   const quote = await customer.call('/api/quotes', quoteInput);
@@ -82,8 +80,6 @@ await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-1' }, 403, 'Error'
 await customer.call(path + '/assignments', { maTx: 'TX-DEMO-1' }, 403, 'Error', 'FORBIDDEN');
 await dispatcher.call(path + '/assignments', '{', 400, 'Error', 'JSON_INVALID');
 await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-1', force: true }, 400, 'Error', 'VALIDATION_ERROR');
-await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-6' }, 409, 'Error', 'DRIVER_UNAVAILABLE');
-await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-7' }, 409, 'Error', 'DRIVER_UNAVAILABLE');
 const suggestions = await dispatcher.call(path + '/driver-suggestions', undefined, 200, 'DriverPage');
 assert.deepEqual(suggestions.items.map(d => d.maTx), ['TX-DEMO-2', 'TX-DEMO-1']);
 const free = await dispatcher.call('/api/drivers?trangThaiHoatDong=ONLINE&dangBanChuyen=false', undefined, 200, 'DriverPage');

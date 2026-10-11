@@ -20,10 +20,10 @@ class AuthServiceIntegrationTest {
     @BeforeAll static void start() throws Exception {
         url = System.getenv("TEST_DB_URL");
         if (Boolean.parseBoolean(System.getenv("REQUIRE_TEST_DB"))) assertNotNull(url);
-        assumeTrue(url != null && url.matches("jdbc:postgresql://[^/]+/mini_ong_vang_test"));
+        assumeTrue(url != null && url.matches("jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"));
         dbUser = System.getenv("TEST_DB_USER"); dbPassword = System.getenv("TEST_DB_PASSWORD");
         try (var c = DriverManager.getConnection(url, dbUser, dbPassword);
-             var s = c.createStatement(); var r = s.executeQuery("select current_database()")) {
+             var s = c.createStatement(); var r = s.executeQuery("select DB_NAME()")) {
             assertTrue(r.next()); assertEquals("mini_ong_vang_test", r.getString(1));
         }
         persistence = PersistenceContext.start(url, dbUser, dbPassword);
@@ -44,7 +44,7 @@ class AuthServiceIntegrationTest {
             assertNull(auth.authenticate(phone, "wrong"));
             auth.recordLogin(user.maNguoiDung());
             try (var c = DriverManager.getConnection(url, dbUser, dbPassword);
-                 var p = c.prepareStatement("select t.username, t.mat_khau_hash, k.so_dien_thoai, t.lan_dang_nhap_cuoi from tai_khoan t join khach_hang k on k.ma_tk=t.ma_tk where t.ma_tk=?")) {
+                 var p = c.prepareStatement("select t.username, t.mat_khau_hash, t.so_dien_thoai, t.lan_dang_nhap_cuoi from tai_khoan t join khach_hang k on k.ma_tk=t.ma_tk where t.ma_tk=?")) {
                 p.setString(1, user.maNguoiDung());
                 try (var r = p.executeQuery()) {
                     assertTrue(r.next()); assertEquals(phone, r.getString(1)); assertEquals(phone, r.getString(3));

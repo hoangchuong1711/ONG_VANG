@@ -1,0 +1,67 @@
+package com.miniongvang.infrastructure;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+/** Skeleton infrastructure tests; no application migrations or real payment calls. */
+class SqlServerIntegrationTest {
+    private static String url;
+
+    @BeforeAll
+    static void requireIsolatedDatabase() {
+        url = System.getenv("TEST_DB_URL");
+        boolean configured = url != null && !url.isBlank();
+        if (Boolean.parseBoolean(System.getenv("REQUIRE_TEST_DB"))) {
+            assertTrue(configured, "CI requires TEST_DB_URL; integration tests must not silently skip");
+        }
+        assumeTrue(configured, "Set TEST_DB_URL to run isolated SQL Server integration tests");
+        assertTrue(url.matches("jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"),
+                "Integration tests only accept the dedicated mini_ong_vang_test database");
+    }
+
+    private Connection connect() throws SQLException {
+        return DriverManager.getConnection(url, System.getenv("TEST_DB_USER"), System.getenv("TEST_DB_PASSWORD"));
+    }
+
+    @Test
+    void connectsToDedicatedSqlServerDatabase() throws SQLException {
+        try (Connection connection = connect(); var statement = connection.createStatement();
+             var result = statement.executeQuery("SELECT DB_NAME(), 1")) {
+            assertEquals("Microsoft SQL Server", connection.getMetaData().getDatabaseProductName());
+            assertTrue(result.next());
+            assertEquals("mini_ong_vang_test", result.getString(1));
+            assertEquals(1, result.getInt(2));
+        }
+    }
+
+    @Test
+    void commitsAndRollsBackWithoutLeakingPartialWrites() throws SQLException {
+        try (Connection connection = connect(); var statement = connection.createStatement()) {
+            // Temporary table belongs only to this connection and disappears when it closes.
+            statement.execute("CREATE TABLE #t05_transaction_probe (id INTEGER PRIMARY KEY, amount NUMERIC(15,2) NOT NULL)");
+            connection.setAutoCommit(false);
+            statement.executeUpdate("INSERT INTO #t05_transaction_probe VALUES (1, 45000.00)");
+            connection.commit();
+
+            statement.executeUpdate("INSERT INTO #t05_transaction_probe VALUES (2, 10000.00)");
+            SQLException duplicate = assertThrows(SQLException.class,
+                    () -> statement.executeUpdate("INSERT INTO #t05_transaction_probe VALUES (1, 90000.00)"));
+            assertTrue(duplicate.getErrorCode() == 2601 || duplicate.getErrorCode() == 2627);
+            connection.rollback();
+
+            try (var result = statement.executeQuery("SELECT count(*), sum(amount) FROM #t05_transaction_probe")) {
+                assertTrue(result.next());
+                assertEquals(1, result.getInt(1));
+                assertEquals("45000.00", result.getBigDecimal(2).toPlainString());
+            }
+            connection.rollback();
+        }
+    }
+}

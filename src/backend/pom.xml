@@ -46,11 +46,11 @@
             <version>${hibernate.version}</version>
         </dependency>
 
-        <!-- PostgreSQL JDBC Driver -->
+        <!-- Microsoft SQL Server JDBC Driver -->
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.7.7</version>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.10.2.jre11</version>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -59,7 +59,7 @@
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
+            <artifactId>flyway-sqlserver</artifactId>
             <version>${flyway.version}</version>
         </dependency>
         <dependency>

@@ -1,33 +1,50 @@
-# Standalone test stack: do not combine with docker-compose.yml using multiple -f flags.
+# Standalone disposable SQL Server test stack; never combine with the development stack.
 name: mini-ong-vang-ci
-
 services:
   db-test:
-    image: postgres:17
+    image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
-      POSTGRES_DB: mini_ong_vang_test
-      POSTGRES_USER: mini_ong_vang_test
-      POSTGRES_PASSWORD: ci-only-password
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}
+      SQLCMDPASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}
     ports:
-      - "127.0.0.1:15433:5432"
+      - "127.0.0.1:15433:1433"
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/opt/mssql:uid=10001,gid=0,mode=0770
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mini_ong_vang_test -d mini_ong_vang_test"]
-      interval: 2s
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -Q 'SELECT 1' -o /dev/null"]
+      interval: 5s
       timeout: 5s
-      retries: 30
+      retries: 40
+      start_period: 20s
+
+  db-init-test:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SQLCMDPASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}
+      DATABASE_NAME: mini_ong_vang_test
+    volumes:
+      - ./scripts/init-sqlserver.sql:/init.sql:ro
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        [[ "$$DATABASE_NAME" =~ ^[a-zA-Z_][a-zA-Z0-9_]{0,127}$$ ]] || exit 1
+        /opt/mssql-tools18/bin/sqlcmd -S db-test -U sa -C -b -v DatabaseName="$$DATABASE_NAME" -i /init.sql
+    depends_on:
+      db-test:
+        condition: service_healthy
 
   backend-test:
     image: mini-ong-vang-backend-test:local
     build:
       context: ./src/backend
     environment:
-      DB_URL: jdbc:postgresql://db-test:5432/mini_ong_vang_test
-      DB_USER: mini_ong_vang_test
-      DB_PASSWORD: ci-only-password
+      DB_URL: "jdbc:sqlserver://db-test:1433;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"
+      DB_USER: sa
+      DB_PASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}
     ports:
       - "127.0.0.1:18081:8080"
     depends_on:
-      db-test:
-        condition: service_healthy
+      db-init-test:
+        condition: service_completed_successfully
