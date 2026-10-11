@@ -2112,7 +2112,7 @@
         ],
         "summary": "Chi tiết đơn và trạng thái thanh toán",
         "operationId": "getOrder",
-        "description": "Khách sở hữu, tổng đài hoặc tài xế hiện được giao/có lịch sử phân công không bị từ chối. Sai chủ đơn trả 404 để tránh lộ tài nguyên. Trả cước snapshot và trạng thái thanh toán từ dữ liệu đã lưu.",
+        "description": "Khách sở hữu, tổng đài hoặc tài xế hiện được giao/có lịch sử phân công không bị từ chối. Sai chủ đơn trả 404 để tránh lộ tài nguyên. Trả cước snapshot và trạng thái thanh toán từ dữ liệu đã lưu. T16: chi tiết bổ sung phiên bản chính sách đã chốt, toàn bộ phân công, giao dịch được xác nhận và nhật ký theo thuTu. Giữ quyền truy cập hiện hành; đơn người khác trả 404.",
         "x-implementation-status": "implemented",
         "x-uc": [
           "UC-19",
@@ -2146,7 +2146,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Order"
+                  "$ref": "#/components/schemas/OrderDetail"
                 },
                 "example": {
                   "maDon": "DH-DEMO-001",
@@ -2180,7 +2180,24 @@
                   },
                   "hoanTatLuc": null,
                   "huyLuc": null,
-                  "maTkTao": "TK-DEMO-KH-1"
+                  "maTkTao": "TK-DEMO-KH-1",
+                  "phienBanChinhSach": {
+                    "bieuPhi": {
+                      "maBieuPhi": "CUOC-DEMO-1",
+                      "tenBieuPhi": "Biểu phí mẫu",
+                      "cuocCoBan": "20000.00",
+                      "donGiaKm": "5000.00",
+                      "kmToiThieu": "0.00",
+                      "kmToiDa": null,
+                      "hieuLucTu": "2026-01-01T00:00:00Z",
+                      "hieuLucDen": null
+                    },
+                    "giamGia": null,
+                    "phuThu": []
+                  },
+                  "phanCong": [],
+                  "xacNhanThanhToan": null,
+                  "nhatKy": []
                 }
               }
             }
@@ -8230,6 +8247,351 @@
             "password": "ReplaceWithLocalPassword"
           }
         ]
+      },
+      "HistoryFarePolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maBieuPhi",
+          "tenBieuPhi",
+          "cuocCoBan",
+          "donGiaKm",
+          "kmToiThieu",
+          "kmToiDa",
+          "hieuLucTu",
+          "hieuLucDen"
+        ],
+        "properties": {
+          "maBieuPhi": {
+            "type": "string"
+          },
+          "tenBieuPhi": {
+            "type": "string"
+          },
+          "cuocCoBan": {
+            "type": "string"
+          },
+          "donGiaKm": {
+            "type": "string"
+          },
+          "kmToiThieu": {
+            "type": "string"
+          },
+          "kmToiDa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hieuLucTu": {
+            "type": "string"
+          },
+          "hieuLucDen": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "HistoryDiscountPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maChinhSach",
+          "hang",
+          "tyLeGiam",
+          "hieuLucTu",
+          "hieuLucDen"
+        ],
+        "properties": {
+          "maChinhSach": {
+            "type": "string"
+          },
+          "hang": {
+            "type": "string"
+          },
+          "tyLeGiam": {
+            "type": "string"
+          },
+          "hieuLucTu": {
+            "type": "string"
+          },
+          "hieuLucDen": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "HistorySurchargePolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maPhuThu",
+          "maLoaiPhuThu",
+          "tenPhuThu",
+          "soTien",
+          "hieuLucTu",
+          "hieuLucDen"
+        ],
+        "properties": {
+          "maPhuThu": {
+            "type": "string"
+          },
+          "maLoaiPhuThu": {
+            "type": "string"
+          },
+          "tenPhuThu": {
+            "type": "string"
+          },
+          "soTien": {
+            "type": "string"
+          },
+          "hieuLucTu": {
+            "type": "string"
+          },
+          "hieuLucDen": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "HistoryPolicyVersions": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bieuPhi",
+          "giamGia",
+          "phuThu"
+        ],
+        "properties": {
+          "bieuPhi": {
+            "$ref": "#/components/schemas/HistoryFarePolicy"
+          },
+          "giamGia": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryDiscountPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phuThu": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistorySurchargePolicy"
+            }
+          }
+        }
+      },
+      "HistoryAssignment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maPhanCong",
+          "maTx",
+          "maTkDieuPhoi",
+          "batDauLuc",
+          "ketThucLuc",
+          "ketQuaKetThuc",
+          "lyDo"
+        ],
+        "properties": {
+          "maPhanCong": {
+            "type": "string"
+          },
+          "maTx": {
+            "type": "string"
+          },
+          "maTkDieuPhoi": {
+            "type": "string"
+          },
+          "batDauLuc": {
+            "type": "string"
+          },
+          "ketThucLuc": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ketQuaKetThuc": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lyDo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "HistoryConfirmation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maGiaoDich",
+          "phuongThuc",
+          "soTienThucNhan",
+          "thuLuc",
+          "maTkXacNhan"
+        ],
+        "properties": {
+          "maGiaoDich": {
+            "type": "string"
+          },
+          "phuongThuc": {
+            "type": "string"
+          },
+          "soTienThucNhan": {
+            "type": "string"
+          },
+          "thuLuc": {
+            "type": "string"
+          },
+          "maTkXacNhan": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "OrderDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maDon",
+          "thoiGianTao",
+          "diemLayHang",
+          "diemGiaoHang",
+          "sdtNguoiNhan",
+          "quangDuongKm",
+          "ghiChuGiaoHang",
+          "trangThai",
+          "maKh",
+          "maTx",
+          "maTkTao",
+          "cuoc",
+          "kienHang",
+          "thanhToan",
+          "hoanTatLuc",
+          "huyLuc",
+          "phienBanChinhSach",
+          "phanCong",
+          "xacNhanThanhToan",
+          "nhatKy"
+        ],
+        "properties": {
+          "maDon": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "thoiGianTao": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "diemLayHang": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "diemGiaoHang": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "sdtNguoiNhan": {
+            "$ref": "#/components/schemas/Phone"
+          },
+          "quangDuongKm": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "ghiChuGiaoHang": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "trangThai": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "maKh": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "maTx": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cuoc": {
+            "$ref": "#/components/schemas/Fare"
+          },
+          "kienHang": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackageRequest"
+            }
+          },
+          "thanhToan": {
+            "$ref": "#/components/schemas/PaymentSummary"
+          },
+          "hoanTatLuc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "huyLuc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "maTkTao": {
+            "$ref": "#/components/schemas/Id",
+            "description": "T?i kho?n t?o ??n; t?ng ??i d?ng maNguoiDung c?a m?nh."
+          },
+          "phienBanChinhSach": {
+            "$ref": "#/components/schemas/HistoryPolicyVersions"
+          },
+          "phanCong": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryAssignment"
+            }
+          },
+          "xacNhanThanhToan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryConfirmation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nhatKy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          }
+        }
       }
     },
     "responses": {

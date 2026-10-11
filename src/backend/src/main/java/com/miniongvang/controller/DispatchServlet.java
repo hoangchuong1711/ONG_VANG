@@ -49,7 +49,7 @@ public final class DispatchServlet extends HttpServlet {
                 if (parts.length<4 || !parts[1].equals("api") || !parts[2].equals("orders"))
                     throw new NoSuchElementException("Endpoint not found");
                 String id=parts[3];
-                if (get && parts.length==4) result=service.order(actor,id);
+                if (get && parts.length==4) result=service.detail(actor,id);
                 else if (get && parts.length==5 && parts[4].equals("events"))
                     result=service.events(actor,id,integer(req,"page",0),integer(req,"size",20));
                 else if (post && parts.length==5 && parts[4].equals("transitions"))

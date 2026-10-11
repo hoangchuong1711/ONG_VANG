@@ -12,7 +12,7 @@ assert.equal(health.databaseName, 'mini_ong_vang_test', 'Progress smoke writes f
 assert(process.env.DEMO_PASSWORD, 'Seed isolated DB with DEMO_PASSWORD before progress smoke');
 const spec = JSON.parse(readFileSync(new URL('../../src/backend/src/main/webapp/openapi.json', import.meta.url), 'utf8'));
 const ajv = new Ajv2020({ strict: false }); addFormats(ajv);
-const schemas = Object.fromEntries(['Order', 'OrderPage', 'DriverPage', 'Error', 'Event', 'EventPage'].map(name => [name,
+const schemas = Object.fromEntries(['Order', 'OrderDetail', 'OrderPage', 'DriverPage', 'Error', 'Event', 'EventPage'].map(name => [name,
   ajv.compile({ $ref: '#/components/schemas/' + name, components: spec.components })]));
 let checks = 0;
 class Client {
@@ -100,7 +100,7 @@ for (const target of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT']) {
       assert.equal(event.trangThaiTruoc, 'DANG_GIAO');
       assert.equal(event.trangThaiSau, 'DANG_GIAO'); count++;
     }
-    assert.equal((await driver.call(path, undefined, 200, 'Order')).hoanTatLuc, null);
+    assert.equal((await driver.call(path, undefined, 200, 'OrderDetail')).hoanTatLuc, null);
     const busy = await dispatcher.call('/api/drivers?dangBanChuyen=true', undefined, 200, 'DriverPage');
     assert(busy.items.some(d => d.maTx === 'TX-DEMO-1'));
   }
@@ -110,7 +110,7 @@ for (const target of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT']) {
   const events = await customer.call(path + '/events', undefined, 200, 'EventPage');
   assert.equal(events.totalElements, count);
 }
-const done = await driver.call(path, undefined, 200, 'Order');
+const done = await driver.call(path, undefined, 200, 'OrderDetail');
 assert(done.hoanTatLuc); assert.equal(done.thanhToan.trangThai, 'CHUA_THANH_TOAN'); assert.deepEqual(done.cuoc, order.cuoc);
 await other.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 404, 'Error', 'RESOURCE_NOT_FOUND');
 await driver.call(path + '/transitions', { trangThai: 'DA_LAY_HANG' }, 409, 'Error', 'ORDER_STATE_CONFLICT');
@@ -130,7 +130,8 @@ for (let i = 0; i < all.items.length; i++) {
 }
 const next = await create();
 await dispatcher.call('/api/orders/' + next.maDon + '/assignments', { maTx: 'TX-DEMO-1' }, 200, 'Order');
-assert.deepEqual(await driver.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 200, 'Order'), done);
+const replay = await driver.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 200, 'Order');
+for (const key of Object.keys(replay)) assert.deepEqual(replay[key], done[key]);
 const busy = await dispatcher.call('/api/drivers?dangBanChuyen=true', undefined, 200, 'DriverPage');
 assert(busy.items.some(d => d.maTx === 'TX-DEMO-1'));
 assert.equal((await driver.call(path + '/events', undefined, 200, 'EventPage')).totalElements, count);

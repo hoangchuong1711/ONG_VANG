@@ -42,6 +42,15 @@ public final class DispatchService {
             return view(em,id);
         });
     }
+    public OrderHistoryService.Detail detail(AuthService.User actor, String id) {
+        id(id);
+        return transactions.run(em -> {
+            actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
+            DonHang order = new DonHangDAO(em).find(id);
+            if (order == null || !visible(em,actor,order)) throw new NoSuchElementException("Order not found");
+            return OrderHistoryService.read(em, view(em,id));
+        });
+    }
     public DriverPage drivers(AuthService.User actor,int page,int size,DriverStatus status,Boolean busy) {
         page(page,size);
         return transactions.run(em -> {
