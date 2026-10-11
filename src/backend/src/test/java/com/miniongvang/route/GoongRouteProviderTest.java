@@ -25,7 +25,7 @@ class GoongRouteProviderTest {
                     """);
         });
         server.createContext("/v2/direction", exchange -> {
-            assertTrue(exchange.getRequestURI().getRawQuery().contains("vehicle=motorcycle"));
+            assertTrue(exchange.getRequestURI().getRawQuery().contains("vehicle=car"));
             reply(exchange, 200, """
                     {"routes":[{"legs":[{"distance":{"value":2828},"duration":{"value":615}}]}]}
                     """);
