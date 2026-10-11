@@ -95,8 +95,10 @@ for (const target of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT']) {
   if (target === 'HOAN_TAT') {
     for (const type of ['KHONG_LIEN_LAC_DUOC', 'TU_CHOI_NHAN']) {
       const event = await driver.call(path + '/incidents', { loaiSuCo: type, lyDo: '  ' + 'x'.repeat(500) + '  ' }, 201, 'Event');
-      assert.equal(event.loaiSuCo, type); assert.equal(event.ghiChuSuCo, 'x'.repeat(500));
-      assert.equal(event.tenTrangThai, 'DANG_GIAO'); count++;
+      assert.equal(event.loaiSuCo, type); assert.equal(event.ghiChu, 'x'.repeat(500));
+      assert.equal(event.loaiSuKien, 'SU_CO');
+      assert.equal(event.trangThaiTruoc, 'DANG_GIAO');
+      assert.equal(event.trangThaiSau, 'DANG_GIAO'); count++;
     }
     assert.equal((await driver.call(path, undefined, 200, 'Order')).hoanTatLuc, null);
     const busy = await dispatcher.call('/api/drivers?dangBanChuyen=true', undefined, 200, 'DriverPage');
@@ -116,8 +118,12 @@ await driver.call(path + '/incidents', incident, 409, 'Error', 'ORDER_STATE_CONF
 const free = await dispatcher.call('/api/drivers?dangBanChuyen=false', undefined, 200, 'DriverPage');
 assert(free.items.some(d => d.maTx === 'TX-DEMO-1'));
 const all = await driver.call(path + '/events', undefined, 200, 'EventPage');
-assert.equal(all.items.filter(e => e.tenTrangThai === 'HOAN_TAT').length, 1);
-assert.equal(all.items.find(e => e.tenTrangThai === 'HOAN_TAT').thoiGianGhiNhan, done.hoanTatLuc);
+assert.equal(all.items.filter(e => e.trangThaiSau === 'HOAN_TAT').length, 1);
+assert.equal(all.items.find(e => e.trangThaiSau === 'HOAN_TAT').thoiGian, done.hoanTatLuc);
+assert.deepEqual(all.items.map(e => e.thuTu), Array.from({ length: all.items.length }, (_, i) => i + 1));
+assert.equal(all.items[0].loaiSuKien, 'TAO_DON');
+assert.equal(all.items[0].trangThaiTruoc, null);
+assert.equal(all.items[0].maTkThucHien, order.maTkTao);
 for (let i = 0; i < all.items.length; i++) {
   const page = await customer.call(path + '/events?page=' + i + '&size=1', undefined, 200, 'EventPage');
   assert.deepEqual(page.items, [all.items[i]]); assert.equal(page.totalElements, count);

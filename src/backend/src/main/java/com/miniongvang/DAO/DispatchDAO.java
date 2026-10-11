@@ -11,6 +11,7 @@ import com.miniongvang.entity.enums.AssignmentOutcome;
 import com.miniongvang.entity.enums.DriverStatus;
 import com.miniongvang.entity.enums.OrderStatus;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -114,7 +115,8 @@ public final class DispatchDAO {
 
     public PhuongTien vehicle(String driver) {
         return em.createQuery("from PhuongTien p where p.taiXe.id=:id", PhuongTien.class)
-                .setParameter("id", driver).getResultStream().findFirst().orElse(null);
+                .setParameter("id", driver).setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .getResultStream().findFirst().orElse(null);
     }
 
     public Orders orders(AccountRole role, String profile, OrderStatus status,

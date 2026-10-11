@@ -1,5 +1,7 @@
 # T12 — Kết quả kiểm thử tiến trình và hoàn tất
 
+> Báo cáo lịch sử của schema PostgreSQL trước designV1. Các con số dưới đây không chứng minh kết quả của đợt chuyển DB; xem [kiểm tra M1 hiện tại](../docs/database/designV1-M1-audit-2026-10-11.md).
+
 Ngày kiểm thử: 10/10/2026. Windows, Java 21.0.6, Maven 3.9.11; PostgreSQL 17 và Tomcat 10.1 qua Docker Compose test riêng. Chỉ dùng `mini_ong_vang_test` tại cổng 15433, backend test tại 18081.
 
 ## Kết quả thực chạy

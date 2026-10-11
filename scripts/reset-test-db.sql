@@ -10,6 +10,9 @@ SET NUMERIC_ROUNDABORT OFF;
 IF DB_NAME() <> N'mini_ong_vang_test'
     THROW 50000, 'Refusing to reset a non-test database.', 1;
 BEGIN TRANSACTION;
+DISABLE TRIGGER dbo.trg_membership_policy_immutable ON dbo.chinh_sach_thanh_vien;
+DISABLE TRIGGER dbo.trg_fare_policy_immutable ON dbo.cau_hinh_cuoc;
+DISABLE TRIGGER dbo.trg_surcharge_policy_immutable ON dbo.cau_hinh_phu_thu;
 DELETE FROM dbo.yeu_cau_tao_don;
 DELETE FROM dbo.bao_gia;
 DELETE FROM dbo.su_kien_thanh_toan;
@@ -30,4 +33,7 @@ DELETE FROM dbo.cau_hinh_cuoc;
 DELETE FROM dbo.chinh_sach_thanh_vien;
 DELETE FROM dbo.tai_khoan;
 DELETE FROM dbo.demo_seed_manifest;
+ENABLE TRIGGER dbo.trg_membership_policy_immutable ON dbo.chinh_sach_thanh_vien;
+ENABLE TRIGGER dbo.trg_fare_policy_immutable ON dbo.cau_hinh_cuoc;
+ENABLE TRIGGER dbo.trg_surcharge_policy_immutable ON dbo.cau_hinh_phu_thu;
 COMMIT;

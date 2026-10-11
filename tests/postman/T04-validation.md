@@ -1,5 +1,7 @@
 # Kết quả kiểm tra T04 — 05/10/2026
 
+> Báo cáo lịch sử của schema PostgreSQL trước designV1. Các con số dưới đây không chứng minh kết quả của đợt chuyển DB; xem [kiểm tra M1 hiện tại](../../docs/database/designV1-M1-audit-2026-10-11.md).
+
 | Kiểm tra | Kết quả | Phạm vi |
 | --- | --- | --- |
 | `npm.cmd run check --prefix tools/api` | PASS | OpenAPI 3.1 hợp lệ; 28 operation, 12 UC; 272 examples khớp JSON Schema; Postman đồng bộ; vendor khớp package ghim |

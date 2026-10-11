@@ -1,13 +1,12 @@
 # T04 — Hợp đồng API Mini Ong Vàng
 
-Phiên bản hợp đồng: **0.3.0**, ngày 08/10/2026. T03 yêu cầu khối lượng kiện theo SQL và xác định User.maNguoiDung là ID tài khoản. T06 bổ sung đăng ký khách hàng và triển khai xác thực. Cơ sở: [kế hoạch dự án](../project_brief.md) và [migration/mapping T03](schema-mapping.md).
+Phiên bản hợp đồng: **0.5.0** theo [designV1](../database/designV1.md). `User.maNguoiDung` là ID tài khoản; đơn hàng dùng `maTkTao`, sự kiện dùng `thuTu` và trạng thái trước/sau. Cơ sở: [kế hoạch dự án](../project_brief.md) và [ánh xạ schema](schema-mapping.md).
 
 ## Trạng thái thực tế
 
-- `POST /api/auth/register` cho khách hàng tự đăng ký đã có trong OpenAPI 0.3.0, Swagger và Postman. Xem [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06).
-- Đã có implementation: `GET /api/health`.
+- `POST /api/auth/register` cho khách hàng tự đăng ký có trong OpenAPI, Swagger và Postman. Xem [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06).
 - Đã triển khai: `/api/health`, 5 operation T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng chính sách T08). T10 đã triển khai `POST /api/orders`; T11 đã triển khai listOrders/getOrder/listDrivers/suggestDrivers/assignDriver/rejectOrder; T12 đã triển khai listOrderEvents/transitionOrder/recordIncident ([hướng dẫn](../T12-delivery-progress.md)). Danh sách khách và các API T13–T18 còn lại vẫn planned.
-- T04 không chạy SQL v0, không tạo/migrate bảng, không tạo tài khoản seed, không hiện thực thanh toán.
+- Schema nghiệp vụ hiện do Flyway designV1 tạo; API thanh toán vẫn thuộc T13–T20.
 - Swagger UI là công cụ tài liệu/test BE, không phải FE nghiệp vụ T21–T28.
 
 ## Các tài liệu

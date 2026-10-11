@@ -19,7 +19,7 @@ public final class AuthService {
     public AuthService(EntityManagerFactory factory) { this.factory = factory; }
 
     public record User(String maNguoiDung, String hoTen, AccountRole vaiTro,
-                       String maKh, String maTx, String maNv) {}
+                       String maKh, String maTx) {}
 
     public static String normalizePhone(String input) {
         if (input == null) return null;
@@ -52,7 +52,7 @@ public final class AuthService {
                 customer.setDiaChiMacDinh(address);
                 em.persist(customer);
                 return new User(account.getId(), name, AccountRole.KHACH_HANG,
-                        customer.getId(), null, null);
+                        customer.getId(), null);
             });
         } catch (PersistenceException failure) {
             if (isUniqueViolation(failure)) throw new AccountExistsException();
@@ -92,7 +92,7 @@ public final class AuthService {
                         .setParameter("id", id).getResultStream().findFirst().orElse(null);
                 default -> { }
             }
-            return new User(id, account.getHoTen(), account.getVaiTro(), maKh, maTx, null);
+            return new User(id, account.getHoTen(), account.getVaiTro(), maKh, maTx);
         }
     }
 

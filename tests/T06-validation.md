@@ -1,5 +1,7 @@
 # T06 — kiểm thử xác thực và đăng ký khách hàng
 
+> Báo cáo lịch sử của schema PostgreSQL trước designV1. Các con số dưới đây không chứng minh kết quả của đợt chuyển DB; xem [kiểm tra M1 hiện tại](../docs/database/designV1-M1-audit-2026-10-11.md).
+
 Ngày kiểm tra: 08/10/2026. Môi trường: Java 21, Maven, PostgreSQL 17 qua `docker-compose.ci.yml` (`mini_ong_vang_test`, tmpfs, cổng 15433), Tomcat backend-test cổng 18081. Không dùng database phát triển.
 
 | Trường hợp | Kết quả quan sát | Trạng thái |

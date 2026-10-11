@@ -241,8 +241,8 @@ FE: chạy `npm ci`, `npm run lint`, `npm run build` trong `src/frontend`.
 Build hiện tải font Google bằng `next/font`; cần mạng khi cài dependency/build.
 FE hiện chưa có bộ test UI, không ghi lint/build là test chức năng đã PASS.
 
-Test Java kiểm tra kết nối, migration, Hibernate mapping, seed, constraint, snapshot,
-commit/rollback và cạnh tranh assignment/version. Bộ T03 reset dữ liệu trên DB test riêng trước từng case;
+Test Java kiểm tra kết nối, migration designV1, Hibernate mapping, seed, constraint, cước chốt theo đơn,
+commit/rollback và cạnh tranh phân công. Bộ test reset dữ liệu trên DB test riêng trước từng case;
 chỉ khởi động backend-test sau khi Maven verify xong. Chạy Maven không có `TEST_DB_URL` thì test DB skip;
 CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06–T09 có test tương ứng; T10 có integration test tạo đơn và HTTP smoke; T11 có test SQL Server và HTTP với cạnh tranh gán/từ chối; T12 có kiểm thử tiến trình/sự cố/hoàn tất; test T13–T18 tiếp tục bổ sung theo task.
 

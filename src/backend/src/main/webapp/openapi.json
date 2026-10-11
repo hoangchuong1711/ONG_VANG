@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Mini Ong Vàng API",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "description": "T06-T12 implemented; remaining operations are marked planned individually."
   },
   "servers": [
@@ -220,8 +220,7 @@
                   "hoTen": "Nguyễn An",
                   "vaiTro": "KHACH_HANG",
                   "maKh": "KH-DEMO-1",
-                  "maTx": null,
-                  "maNv": null
+                  "maTx": null
                 }
               }
             },
@@ -397,8 +396,7 @@
                   "hoTen": "Nguyễn An",
                   "vaiTro": "KHACH_HANG",
                   "maKh": "KH-DEMO-1",
-                  "maTx": null,
-                  "maNv": null
+                  "maTx": null
                 }
               }
             }
@@ -1171,8 +1169,8 @@
                     ]
                   },
                   "hangThanhVien": {
-                    "maHang": "HANG-DEMO-VIP",
-                    "tenHang": "VIP demo",
+                    "maHang": "VIP",
+                    "tenHang": "Khách VIP",
                     "phanTramGiamGia": "10.00",
                     "ngayHetHan": "2026-11-04",
                     "conHieuLuc": true
@@ -1513,7 +1511,6 @@
                   "trangThai": "CHO_GAN",
                   "maKh": "KH-DEMO-001",
                   "maTx": null,
-                  "maNv": null,
                   "cuoc": {
                     "cuocGoc": "50000.00",
                     "tienPhuThu": "0.00",
@@ -1534,7 +1531,8 @@
                     "soTienConPhaiThu": "45000.00"
                   },
                   "hoanTatLuc": null,
-                  "huyLuc": null
+                  "huyLuc": null,
+                  "maTkTao": "TK-DEMO-KH-1"
                 }
               }
             }
@@ -1956,7 +1954,6 @@
                       "trangThai": "CHO_GAN",
                       "maKh": "KH-DEMO-001",
                       "maTx": null,
-                      "maNv": null,
                       "cuoc": {
                         "cuocGoc": "50000.00",
                         "tienPhuThu": "0.00",
@@ -1977,7 +1974,8 @@
                         "soTienConPhaiThu": "45000.00"
                       },
                       "hoanTatLuc": null,
-                      "huyLuc": null
+                      "huyLuc": null,
+                      "maTkTao": "TK-DEMO-KH-1"
                     }
                   ],
                   "page": 0,
@@ -2161,7 +2159,6 @@
                   "trangThai": "CHO_GAN",
                   "maKh": "KH-DEMO-001",
                   "maTx": null,
-                  "maNv": null,
                   "cuoc": {
                     "cuocGoc": "50000.00",
                     "tienPhuThu": "0.00",
@@ -2182,7 +2179,8 @@
                     "soTienConPhaiThu": "45000.00"
                   },
                   "hoanTatLuc": null,
-                  "huyLuc": null
+                  "huyLuc": null,
+                  "maTkTao": "TK-DEMO-KH-1"
                 }
               }
             }
@@ -2323,7 +2321,7 @@
         ],
         "summary": "Nhật ký đơn",
         "operationId": "listOrderEvents",
-        "description": "Cùng quyền getOrder. Sort thoiGianGhiNhan ASC,maNhatKy ASC.",
+        "description": "Cùng quyền getOrder. Sắp xếp theo thuTu tăng dần trong mỗi đơn.",
         "x-implementation-status": "implemented",
         "x-uc": [
           "UC-13",
@@ -2384,12 +2382,17 @@
                 "example": {
                   "items": [
                     {
-                      "maNhatKy": "NK-DEMO-001",
+                      "maSuKien": "NK-DEMO-001",
                       "maDon": "DH-DEMO-001",
-                      "tenTrangThai": "CHO_GAN",
-                      "thoiGianGhiNhan": "2026-10-05T03:00:00Z",
-                      "nguoiThucHien": "KH-DEMO-001",
-                      "ghiChuSuCo": null
+                      "thuTu": 1,
+                      "loaiSuKien": "TAO_DON",
+                      "trangThaiTruoc": null,
+                      "trangThaiSau": "CHO_GAN",
+                      "thoiGian": "2026-10-05T03:00:00Z",
+                      "maTkThucHien": "TK-DEMO-KH-1",
+                      "nguoiThucHien": "Demo customer",
+                      "ghiChu": null,
+                      "loaiSuCo": null
                     }
                   ],
                   "page": 0,
@@ -3024,7 +3027,6 @@
                   "trangThai": "DA_GAN",
                   "maKh": "KH-DEMO-001",
                   "maTx": "TX-DEMO-001",
-                  "maNv": null,
                   "cuoc": {
                     "cuocGoc": "50000.00",
                     "tienPhuThu": "0.00",
@@ -3045,7 +3047,8 @@
                     "soTienConPhaiThu": "45000.00"
                   },
                   "hoanTatLuc": null,
-                  "huyLuc": null
+                  "huyLuc": null,
+                  "maTkTao": "TK-DEMO-KH-1"
                 }
               }
             }
@@ -3293,7 +3296,6 @@
                   "trangThai": "CHO_GAN",
                   "maKh": "KH-DEMO-001",
                   "maTx": null,
-                  "maNv": null,
                   "cuoc": {
                     "cuocGoc": "50000.00",
                     "tienPhuThu": "0.00",
@@ -3314,7 +3316,8 @@
                     "soTienConPhaiThu": "45000.00"
                   },
                   "hoanTatLuc": null,
-                  "huyLuc": null
+                  "huyLuc": null,
+                  "maTkTao": "TK-DEMO-KH-1"
                 }
               }
             }
@@ -3553,7 +3556,6 @@
                   "trangThai": "CHO_GAN",
                   "maKh": "KH-DEMO-001",
                   "maTx": null,
-                  "maNv": null,
                   "cuoc": {
                     "cuocGoc": "50000.00",
                     "tienPhuThu": "0.00",
@@ -3574,7 +3576,8 @@
                     "soTienConPhaiThu": "45000.00"
                   },
                   "hoanTatLuc": null,
-                  "huyLuc": null
+                  "huyLuc": null,
+                  "maTkTao": "TK-DEMO-KH-1"
                 }
               }
             }
@@ -3803,12 +3806,16 @@
                   "$ref": "#/components/schemas/Event"
                 },
                 "example": {
-                  "maNhatKy": "NK-DEMO-001",
+                  "maSuKien": "NK-DEMO-001",
                   "maDon": "DH-DEMO-001",
-                  "tenTrangThai": "DANG_GIAO",
-                  "thoiGianGhiNhan": "2026-10-05T03:00:00Z",
+                  "thuTu": 4,
+                  "loaiSuKien": "SU_CO",
+                  "trangThaiTruoc": "DANG_GIAO",
+                  "trangThaiSau": "DANG_GIAO",
+                  "thoiGian": "2026-10-05T03:00:00Z",
+                  "maTkThucHien": "TK-DEMO-TX-1",
                   "nguoiThucHien": "Demo driver",
-                  "ghiChuSuCo": "Recipient did not answer",
+                  "ghiChu": "Recipient did not answer",
                   "loaiSuCo": "KHONG_LIEN_LAC_DUOC"
                 }
               }
@@ -4050,7 +4057,6 @@
                   "trangThai": "CHO_GAN",
                   "maKh": "KH-DEMO-001",
                   "maTx": null,
-                  "maNv": null,
                   "cuoc": {
                     "cuocGoc": "50000.00",
                     "tienPhuThu": "0.00",
@@ -4071,7 +4077,8 @@
                     "soTienConPhaiThu": "45000.00"
                   },
                   "hoanTatLuc": null,
-                  "huyLuc": null
+                  "huyLuc": null,
+                  "maTkTao": "TK-DEMO-KH-1"
                 }
               }
             }
@@ -6254,8 +6261,7 @@
                   "hoTen": "Khách Mới",
                   "vaiTro": "KHACH_HANG",
                   "maKh": "22222222-2222-4222-8222-222222222222",
-                  "maTx": null,
-                  "maNv": null
+                  "maTx": null
                 }
               }
             }
@@ -6524,13 +6530,12 @@
           "hoTen",
           "vaiTro",
           "maKh",
-          "maTx",
-          "maNv"
+          "maTx"
         ],
         "properties": {
           "maNguoiDung": {
             "$ref": "#/components/schemas/Id",
-            "description": "ID tai_khoan.ma_tk; kh?c ID h? s? maKh/maTx/maNv."
+            "description": "ID tai_khoan.ma_tk; kh?c ID h? s? maKh/maTx."
           },
           "hoTen": {
             "type": "string",
@@ -6558,16 +6563,6 @@
                 "type": "null"
               }
             ]
-          },
-          "maNv": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Id"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "examples": [
@@ -6576,8 +6571,7 @@
             "hoTen": "Nguyễn An",
             "vaiTro": "KHACH_HANG",
             "maKh": "KH-DEMO-1",
-            "maTx": null,
-            "maNv": null
+            "maTx": null
           }
         ]
       },
@@ -6993,8 +6987,8 @@
               ]
             },
             "hangThanhVien": {
-              "maHang": "HANG-DEMO-VIP",
-              "tenHang": "VIP demo",
+              "maHang": "VIP",
+              "tenHang": "Khách VIP",
               "phanTramGiamGia": "10.00",
               "ngayHetHan": "2026-11-04",
               "conHieuLuc": true
@@ -7102,7 +7096,7 @@
           "trangThai",
           "maKh",
           "maTx",
-          "maNv",
+          "maTkTao",
           "cuoc",
           "kienHang",
           "thanhToan",
@@ -7154,16 +7148,6 @@
               }
             ]
           },
-          "maNv": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Id"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "cuoc": {
             "$ref": "#/components/schemas/Fare"
           },
@@ -7189,6 +7173,10 @@
               "null"
             ],
             "format": "date-time"
+          },
+          "maTkTao": {
+            "$ref": "#/components/schemas/Id",
+            "description": "T?i kho?n t?o ??n; t?ng ??i d?ng maNguoiDung c?a m?nh."
           }
         },
         "examples": [
@@ -7203,7 +7191,6 @@
             "trangThai": "CHO_GAN",
             "maKh": "KH-DEMO-001",
             "maTx": null,
-            "maNv": null,
             "cuoc": {
               "cuocGoc": "50000.00",
               "tienPhuThu": "0.00",
@@ -7224,7 +7211,8 @@
               "soTienConPhaiThu": "45000.00"
             },
             "hoanTatLuc": null,
-            "huyLuc": null
+            "huyLuc": null,
+            "maTkTao": "TK-DEMO-KH-1"
           }
         ]
       },
@@ -7232,32 +7220,52 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "maNhatKy",
+          "maSuKien",
           "maDon",
-          "tenTrangThai",
-          "thoiGianGhiNhan",
+          "thuTu",
+          "loaiSuKien",
+          "trangThaiTruoc",
+          "trangThaiSau",
+          "thoiGian",
+          "maTkThucHien",
           "nguoiThucHien",
-          "ghiChuSuCo"
+          "ghiChu",
+          "loaiSuCo"
         ],
         "properties": {
-          "maNhatKy": {
+          "maSuKien": {
             "$ref": "#/components/schemas/Id"
           },
           "maDon": {
             "$ref": "#/components/schemas/Id"
           },
-          "tenTrangThai": {
+          "thuTu": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "loaiSuKien": {
+            "type": "string",
+            "enum": ["TAO_DON", "CHUYEN_TRANG_THAI", "SU_CO"]
+          },
+          "trangThaiTruoc": {
+            "anyOf": [{"$ref": "#/components/schemas/OrderStatus"}, {"type": "null"}]
+          },
+          "trangThaiSau": {
             "$ref": "#/components/schemas/OrderStatus"
           },
-          "thoiGianGhiNhan": {
+          "thoiGian": {
             "type": "string",
             "format": "date-time"
           },
+          "maTkThucHien": {
+            "$ref": "#/components/schemas/Id"
+          },
           "nguoiThucHien": {
             "type": "string",
-            "maxLength": 100
+            "maxLength": 100,
+            "description": "Tên hiển thị hiện tại của tài khoản; mã tài khoản là định danh lịch sử."
           },
-          "ghiChuSuCo": {
+          "ghiChu": {
             "type": [
               "string",
               "null"
@@ -7274,17 +7282,22 @@
               "TU_CHOI_NHAN",
               null
             ],
-            "description": "Delivery incident type; null for status transitions and legacy events."
+            "description": "Loại sự cố giao hàng; null với sự kiện khác."
           }
         },
         "examples": [
           {
-            "maNhatKy": "NK-DEMO-001",
+            "maSuKien": "NK-DEMO-001",
             "maDon": "DH-DEMO-001",
-            "tenTrangThai": "CHO_GAN",
-            "thoiGianGhiNhan": "2026-10-05T03:00:00Z",
-            "nguoiThucHien": "KH-DEMO-001",
-            "ghiChuSuCo": null
+            "thuTu": 1,
+            "loaiSuKien": "TAO_DON",
+            "trangThaiTruoc": null,
+            "trangThaiSau": "CHO_GAN",
+            "thoiGian": "2026-10-05T03:00:00Z",
+            "maTkThucHien": "TK-DEMO-KH-1",
+            "nguoiThucHien": "Demo customer",
+            "ghiChu": null,
+            "loaiSuCo": null
           }
         ]
       },
@@ -7976,7 +7989,6 @@
                 "trangThai": "CHO_GAN",
                 "maKh": "KH-DEMO-001",
                 "maTx": null,
-                "maNv": null,
                 "cuoc": {
                   "cuocGoc": "50000.00",
                   "tienPhuThu": "0.00",
@@ -7997,7 +8009,8 @@
                   "soTienConPhaiThu": "45000.00"
                 },
                 "hoanTatLuc": null,
-                "huyLuc": null
+                "huyLuc": null,
+                "maTkTao": "TK-DEMO-KH-1"
               }
             ],
             "page": 0,
@@ -8050,12 +8063,17 @@
           {
             "items": [
               {
-                "maNhatKy": "NK-DEMO-001",
+                "maSuKien": "NK-DEMO-001",
                 "maDon": "DH-DEMO-001",
-                "tenTrangThai": "CHO_GAN",
-                "thoiGianGhiNhan": "2026-10-05T03:00:00Z",
-                "nguoiThucHien": "KH-DEMO-001",
-                "ghiChuSuCo": null
+                "thuTu": 1,
+                "loaiSuKien": "TAO_DON",
+                "trangThaiTruoc": null,
+                "trangThaiSau": "CHO_GAN",
+                "thoiGian": "2026-10-05T03:00:00Z",
+                "maTkThucHien": "TK-DEMO-KH-1",
+                "nguoiThucHien": "Demo customer",
+                "ghiChu": null,
+                "loaiSuCo": null
               }
             ],
             "page": 0,

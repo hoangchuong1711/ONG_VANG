@@ -98,6 +98,8 @@ jobs:
           docker compose -f docker-compose.ci.yml up --no-deps --wait --wait-timeout 120 backend-test
       - name: Smoke test T12 delivery progress and completion
         run: npm run smoke:progress --prefix tools/api
+      - name: Reconcile designV1 invariants and policy triggers
+        run: docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test < scripts/check-design-v1-invariants.sql
       - name: Collect container logs
         if: always()
         run: |

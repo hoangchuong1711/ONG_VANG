@@ -1,6 +1,6 @@
 # Ma trận thực thi ràng buộc designV1
 
-Trạng thái ban đầu: kế hoạch thực thi. Không xem dòng nào là đã được cài cho đến khi có migration, service và kết quả kiểm tra.
+Đây là ma trận trách nhiệm ràng buộc, không phải bảng PASS/FAIL tự động. Trạng thái triển khai và bằng chứng trên DB test/dev nằm ở [báo cáo M1](designV1-M1-audit-2026-10-11.md). Flyway V1 tạo schema, V2 bảo vệ nội dung policy đã công bố; `scripts/check-design-v1-invariants.sql` đối chiếu các bất biến liên bảng. Các hàng T13–T20 vẫn thuộc M2.
 
 Quy ước: **DB** là PK/FK/UQ/CHECK/index; **BE** là validation hoặc transaction; **Đối chiếu** là truy vấn kiểm tra trạng thái nhiều bảng. Ràng buộc có thể được bảo vệ ở nhiều lớp. Mã `DTxx` trỏ tới tiêu chí nghiệm thu tương ứng trong [designV1.md](designV1.md).
 

@@ -182,7 +182,7 @@ Các mã Pxx là công việc của đợt chuyển đổi, không thay tên T01
 **Phụ thuộc:** P03/P04. **Liên quan:** T06/T08.
 
 - [ ] `AuthService.register`: account và khách THUONG cùng transaction; tên/SĐT không lặp ở hồ sơ; unique đã chuẩn hóa xử lý được race đăng ký.
-- [ ] `AuthService.current` và `User`: bỏ `maNv`; tổng đài xác định bằng `maNguoiDung` + role. Giữ `maKh`/`maTx` theo thiết kế.
+- [x] `AuthService.current` và `User`: bỏ `maNv`; tổng đài xác định bằng `maNguoiDung` + role. Giữ `maKh`/`maTx` theo thiết kế.
 - [ ] Rà `ApiSecurityFilter`, servlet và session: không còn kiểm tra hồ sơ điều phối; kiểm tra account đang hoạt động và actor lấy từ session. Session cũ phải bị hết hiệu lực tại cutover hoặc có cơ chế chuyển tương thích được test.
 - [ ] `MembershipPolicyService`, `KhachHangDAO`, DTO giảm giá: đọc hạng/thời hạn ở khách và chính sách phiên bản có hiệu lực; THUONG/hết hạn/thiếu policy giảm 0; không tích điểm.
 - [ ] Test 0%, 100%, trước/đúng/sau thời hạn; trùng policy là lỗi dữ liệu, không chọn một bản tùy ý. Kiểm tra username giữ nguyên khi thay SĐT liên hệ nếu có luồng cập nhật.
@@ -195,7 +195,7 @@ Các mã Pxx là công việc của đợt chuyển đổi, không thay tên T01
 
 - [ ] DAO biểu phí/phụ thu dùng mốc Instant; chọn đúng một biểu phí khớp thời điểm + km. Không có bản → lỗi cấu hình; nhiều bản → lỗi cấu hình, không `findFirst` để che dữ liệu sai.
 - [ ] `FareCalculator` giữ HALF_UP nguyên đồng, giảm trên cước gốc + phụ thu, kiểm tra tràn/âm; `km_toi_thieu` chỉ là điều kiện phạm vi.
-- [ ] Luồng công bố/đóng policy kiểm tra overlap trong transaction có khóa phù hợp kể cả khi chưa có bản nào. Chốt cơ chế cụ thể tại P00/P02 và test hai request công bố đồng thời; SELECT kiểm tra trước INSERT đơn thuần là chưa đủ.
+- [x] Luồng công bố/đóng policy kiểm tra overlap trong transaction có application lock theo phạm vi kể cả khi chưa có bản nào; test hai request công bố đồng thời. Trigger V2 chặn sửa/xóa nội dung đã công bố.
 - [ ] `QuoteService` lưu payload có version, đúng FK, TTL 300 giây; kết quả chứa phiên bản policy cần so khớp.
 - [ ] Giữ `RouteProvider`, Fake/Goong và lỗi lộ trình hiện có nếu không phụ thuộc schema. Bổ sung truyền nguồn và thời gian dự kiến vào dữ liệu đơn.
 - [ ] Test giá đổi, phụ thu đổi, hạng hết hạn sau báo giá; không áp giá mới âm thầm khi tạo đơn.
@@ -236,11 +236,11 @@ Các mã Pxx là công việc của đợt chuyển đổi, không thay tên T01
 
 **Phụ thuộc:** P05–P08; cập nhật từng phần ngay khi thay DTO, không chờ đến cuối.
 
-- [ ] Sửa `openapi.json`: User bỏ `maNv`; Order bỏ `maNv`, thêm `maTkTao`; event có thứ tự/loại/trạng thái trước-sau/actor; membership có enum/policy; giữ breakdown tiền và thuộc tính dẫn xuất cần cho FE.
-- [ ] Đổi phiên bản API contract phù hợp vì có breaking fields, cập nhật examples/error cases và phân biệt operation đã triển khai với operation T13+ còn chờ.
+- [x] Sửa `openapi.json`: User bỏ `maNv`; Order bỏ `maNv`, thêm `maTkTao`; event có thứ tự/loại/trạng thái trước-sau/actor; membership có enum/policy; giữ breakdown tiền và thuộc tính dẫn xuất cần cho FE.
+- [x] Đổi phiên bản API contract phù hợp vì có breaking fields, cập nhật examples/error cases và phân biệt operation đã triển khai với operation T13+ còn chờ.
 - [ ] Sinh lại Postman bằng `tools/api/generate-postman.mjs`; cập nhật smoke, `schema-mapping.md`, `coverage.md`, conventions và README API.
 - [ ] Rà consumer trong frontend bằng nguồn được theo dõi, không sửa thư viện hoặc output build. Nếu chưa có consumer thì ghi không có tác động code FE, chỉ chuẩn bị contract T21+.
-- [ ] Cập nhật các tài liệu và kết quả test theo danh mục mục 8. Vẽ lại Class Diagram/ERD sau khi mapping ổn định; không lấy sơ đồ cũ làm nguồn schema.
+- [ ] Cập nhật các tài liệu và kết quả test theo danh mục mục 8. ERD/Class Diagram đã được người dùng vẽ lại, ngoài phạm vi triển khai này; không lấy sơ đồ cũ làm nguồn schema.
 - [ ] Chạy clean build và toàn bộ kiểm tra M1 theo mục 7. Đóng gói WAR mới, kiểm tra không chứa entity/resource migration cũ do artifact tồn dư.
 
 **Gate M1:** schema mới tái tạo được; T06–T12 chạy xuyên luồng; mapping/API/docs nhất quán; kết quả test mới có commit/schema version và không dùng báo cáo cũ để chứng minh.
@@ -384,10 +384,14 @@ Nếu cần chia nhỏ hơn, chia theo luồng nghiệp vụ như bảng trên, 
 - [ ] Không còn snapshot dư, VIP/hạng dạng entity, hồ sơ tổng đài hoặc bảng đánh giá ngoài phạm vi.
 - [ ] Không còn nguồn tài xế kép, boolean từ chối hoặc suy người hoàn tất từ timestamp.
 - [ ] Có kiểm thử policy bất biến/chồng lấn, replay, rollback và tranh chấp thật.
-- [ ] API/Postman, task docs, ERD/Class Diagram và code cùng mô hình.
+- [ ] API/Postman, task docs và code cùng mô hình; người dùng tự đối chiếu ERD/Class Diagram đã vẽ với designV1.
 - [ ] DB test bắt buộc được chạy; báo cáo mới có bằng chứng, không mượn kết quả cũ.
 - [ ] M1 và M2 được đánh dấu độc lập; không ghi hoàn tất chức năng chưa triển khai.
 - [ ] Dọn file cũ không làm mất tuyến chuyển dữ liệu/rollback còn cần thiết.
 - [ ] Người triển khai tiếp theo có thể dựng môi trường mới và chạy luồng kiểm tra bằng README, không cần dựa vào DB có sẵn trên máy tác giả.
 
-**Trạng thái hiện tại (11/10/2026):** P01–P03 đã chạy trên SQL Server: 19 bảng nghiệp vụ, 26 FK, 117 CHECK đều bật và trusted; Flyway V1 lặp lại không chạy thêm; JPA validate đạt. Runtime và Docker Compose đã trỏ `mini_ong_vang_design_v1`; seed designV1 và reset DB test đã thay thế. Auth, báo giá, tạo đơn/replay, điều phối, từ chối, sự cố và hoàn tất chạy trên mapping mới. Entity/DAO/migration không còn dùng của schema cũ đã được xóa khỏi nguồn active. Clean verify có 24 test đạt, không fail/skip; HTTP smoke lần lượt đạt 24 (tạo đơn), 85 (điều phối), 93 (tiến trình) sau khi cô lập fixture. M1 còn cần đồng bộ tài liệu còn mô tả schema cũ, rà API contract và bổ sung độ phủ test cho các bất biến chưa đo. T13–T20 và payment service vẫn thuộc M2, chưa coi là hoàn thành chỉ vì đã có bảng.
+**Trạng thái hiện tại (11/10/2026):** P01–P03 đã chạy trên SQL Server: 19 bảng nghiệp vụ, 26 FK, 117 CHECK đều bật và trusted; Flyway V1 lặp lại không chạy thêm; JPA validate đạt. Runtime và Docker Compose đã trỏ `mini_ong_vang_design_v1`; seed designV1 và reset DB test đã thay thế. Auth, báo giá, tạo đơn/replay, điều phối, từ chối, sự cố và hoàn tất chạy trên mapping mới. Entity/DAO/migration cũ không còn trong nguồn active. `User` bỏ `maNv`, `Order` trả `maTkTao`; Event API trả thứ tự, loại, trạng thái trước/sau và account actor. OpenAPI 0.5.0, Postman và tài liệu T08–T12 đã cập nhật; ba tài liệu/schema T03 cũ được xóa khỏi nhánh hiện hành. Clean verify có 24 test đạt, không fail/skip; OpenAPI kiểm tra 29 operation, 287 example; HTTP smoke đã đạt 24 (tạo đơn), 85 (điều phối), 93 (tiến trình), riêng smoke T12 được chạy lại sau sửa Event API. DB `mini_ong_vang` cũ vẫn được giữ, DB test tách riêng.
+
+**Cập nhật tiếp (11/10/2026):** Migration V2 thêm ba trigger bất biến policy; `PolicyPublicationService` công bố/đóng ba loại policy bằng application lock và audit nguyên tử. SQL đối chiếu role/profile, đơn–phân công–event và policy đã đạt trên DB test. Clean verify có 28 test đạt, gồm TTL 299.999/300 giây, replay khi route lỗi, công bố cùng phạm vi đồng thời và chặn sửa policy đã công bố. FE hiện chỉ gọi health, nhãn SQL Server đã được cập nhật. ERD/Class Diagram người dùng đã vẽ lại nên không thuộc đợt triển khai này.
+
+**Cập nhật nghiệm thu local:** V2 và truy vấn đối chiếu đã đạt trên DB dev/test; WAR V2 sau reset/seed đạt smoke chung, T10 24, T11 85, T12 93. Clean verify có 32 test, thêm biên thành viên 0%/100%, rollback khi ghi đơn/audit thất bại và tranh chấp khóa account/ngừng xe khi gán. FE lint/build đạt. Báo cáo PostgreSQL cũ được đánh dấu lịch sử. ERD/Class Diagram người dùng đã vẽ lại, không thuộc đợt việc này. Chưa có bằng chứng GitHub Actions trên commit/PR; không gộp M1 với T13–T20/M2.

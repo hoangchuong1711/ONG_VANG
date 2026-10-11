@@ -19,11 +19,11 @@ public final class DesignV1Smoke {
     public static void run(EntityManagerFactory factory) {
         var route = new RouteService(new FakeRouteProvider(), 30_000);
         var customer = new AuthService.User("TK-DEMO-KH-1", "Khách thường",
-                AccountRole.KHACH_HANG, "KH-DEMO-1", null, null);
+                AccountRole.KHACH_HANG, "KH-DEMO-1", null);
         var dispatcher = new AuthService.User("TK-DEMO-NV", "Tổng đài demo",
-                AccountRole.TONG_DAI, null, null, null);
+                AccountRole.TONG_DAI, null, null);
         var driver = new AuthService.User("TK-DEMO-TX-1", "Tài xế demo 1",
-                AccountRole.TAI_XE, null, "TX-DEMO-1", null);
+                AccountRole.TAI_XE, null, "TX-DEMO-1");
         var parcel = new QuoteService.Parcel("Tài liệu", null, "1.00");
         var quote = new QuoteService(factory, route).create(customer, null,
                 "Quận 1", "Quận 3", List.of(parcel));

@@ -1,5 +1,7 @@
 # T10 — Kết quả kiểm thử UC-02
 
+> Báo cáo lịch sử của schema PostgreSQL trước designV1. Các con số dưới đây không chứng minh kết quả của đợt chuyển DB; xem [kiểm tra M1 hiện tại](../docs/database/designV1-M1-audit-2026-10-11.md).
+
 Ngày chạy: 09/10/2026. Nhánh: `feat/t10-API-tao-don`, trên nền `ec8967a` (T09 đã merge). Mã nguồn T10 chưa commit tại thời điểm ghi báo cáo.
 
 ## Kết quả thực tế

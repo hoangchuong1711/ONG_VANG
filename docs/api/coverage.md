@@ -7,8 +7,8 @@ UC-01/T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng T08) đ�
 | --- | --- | --- |
 | Hạ tầng / T02 | getHealth | 200 DB connected; 503 thiếu cấu hình/driver hoặc DB lỗi, vẫn là JSON Health |
 | UC-01 / T06 | getCsrf, register, login, getCurrentUser, logout | Register: tạo tài khoản và hồ sơ khách thường nguyên tử, hash mật khẩu, chuẩn hóa SĐT, trùng SĐT kể cả đồng thời, rollback, chặn field role/status/ID/VIP, không tự đăng nhập; login bằng tài khoản mới. Auth: sai credential, thiếu field, tài khoản khóa, session hết hạn, CSRF thiếu/sai kể cả register; cookie HttpOnly/SameSite/Secure; đổi session khi login và vô hiệu sau logout |
-| UC-02 / T10 | createOrder (implemented); getOrder (implemented trong T11); listCustomers (planned) | Khách/tổng đài tạo đúng chủ; thiếu địa chỉ/SĐT, sai SĐT, ngoài vùng; báo giá hết hạn/đổi giá; timeout retry cùng key; rollback đơn/kiện/snapshot/nhật ký |
-| UC-03 / T09 | createQuote | Thiếu biểu phí, khoảng cách không hợp lệ, HALF_UP và không âm; tổng breakdown khớp snapshot |
+| UC-02 / T10 | createOrder (implemented); getOrder (implemented trong T11); listCustomers (planned) | Khách/tổng đài tạo đúng chủ; thiếu địa chỉ/SĐT, sai SĐT, ngoài vùng; báo giá hết hạn/đổi giá; timeout retry cùng key; rollback đơn/kiện/cước/nhật ký |
+| UC-03 / T09 | createQuote | Thiếu biểu phí, khoảng cách không hợp lệ, HALF_UP và không âm; tổng breakdown khớp cước chốt khi tạo đơn |
 | UC-04 / T07 | estimateRoute, createQuote | Địa chỉ không tìm thấy, quá phạm vi, timeout/lỗi provider; fixture cố định, không random/fallback âm thầm |
 | UC-05 / T08 | createQuote | Khách thường=0 giảm; VIP hợp lệ/hết hạn/hạng lỗi; giảm không vượt cước; tổng đài chọn đúng khách |
 | UC-08 / T14 | createPayment, listPayments, getPayment, confirmCash | Đơn chưa hoàn tất, đã trả, sai tiền, giao dịch thất bại; khách không tự xác nhận tiền mặt; miễn cước; nhiều attempt nhưng một tất toán |

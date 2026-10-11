@@ -205,12 +205,14 @@ public final class DispatchService {
             throw new SecurityException("Account unavailable");
     }
     private static Event eventView(SuKienDonHang event) {
-        return new Event(event.getId(),event.getDonHang().getId(),event.getTrangThaiSau().name(),
-                event.getThoiGian().toString(),event.getTaiKhoanThucHien().getHoTen(),
-                event.getGhiChu(),event.getLoaiSuCo());
+        return new Event(event.getId(), event.getDonHang().getId(), event.getThuTu(),
+                event.getLoaiSuKien(), event.getTrangThaiTruoc(), event.getTrangThaiSau(),
+                event.getThoiGian().toString(), event.getTaiKhoanThucHien().getId(),
+                event.getTaiKhoanThucHien().getHoTen(), event.getGhiChu(), event.getLoaiSuCo());
     }
-    public record Event(String maNhatKy,String maDon,String tenTrangThai,String thoiGianGhiNhan,
-                        String nguoiThucHien,String ghiChuSuCo,IncidentType loaiSuCo) {}
+    public record Event(String maSuKien, String maDon, int thuTu, OrderEventType loaiSuKien,
+                        OrderStatus trangThaiTruoc, OrderStatus trangThaiSau, String thoiGian,
+                        String maTkThucHien, String nguoiThucHien, String ghiChu, IncidentType loaiSuCo) {}
     public record EventPage(List<Event> items,int page,int size,long totalElements,long totalPages) {}
 
     private static boolean visible(EntityManager em,AuthService.User actor,DonHang order) {
@@ -286,7 +288,7 @@ public final class DispatchService {
         return new OrderService.Order(order.getId(),order.getThoiGianTao().toString(),order.getDiemLayHang(),
                 order.getDiemGiaoHang(),order.getSdtNguoiNhan(),money(order.getQuangDuongKm()),order.getGhiChuGiaoHang(),
                 order.getTrangThai().name(),order.getKhachHang().getId(),assignment==null?null:assignment.getTaiXe().getId(),
-                null,fare,parcels,
+                order.getTaiKhoanTao().getId(),fare,parcels,
                 new OrderService.PaymentSummary(state,total.signum()==0||paid?"0.00":fare.tongCuoc()),
                 order.getThoiGianHoanTat()==null?null:order.getThoiGianHoanTat().toString(),order.getThoiGianHuy()==null?null:order.getThoiGianHuy().toString());
     }

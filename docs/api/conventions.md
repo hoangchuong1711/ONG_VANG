@@ -1,4 +1,4 @@
-# Quy ước API v0.2.0
+# Quy ước API v0.5.0
 
 Các quy ước API hiện tại được đối chiếu với [designV1](../database/designV1.md). Một số nghiệp vụ T13–T20 trong tài liệu vẫn là phạm vi dự kiến, chưa có endpoint chạy thực tế.
 
@@ -58,7 +58,7 @@ Yêu cầu bổ sung ngày 08/10/2026, đã có trong OpenAPI 0.3.0 và implemen
 ### Phiên đăng nhập và phân quyền
 
 - Vai trò: KHACH_HANG, TAI_XE, TONG_DAI, CHU_DOI_XE. CHU_DOI_XE ánh xạ quản trị trong brief; TONG_DAI gồm tổng đài/điều phối. Không tự cấp quản trị quyền hành động thay mọi actor.
-- Khách/tài xế đăng nhập bằng SĐT qua field username; nhân viên dùng username. T03 lưu credential chung trong tai_khoan; User.maNguoiDung = ma_tk, các maKh/maTx/maNv là ID hồ sơ. T06 dùng PasswordHasher kiểm tra bcrypt, không dùng cột SĐT làm mật khẩu.
+- Khách/tài xế đăng nhập bằng SĐT qua field username; nhân viên dùng username. Credential nằm trong `tai_khoan`; `User.maNguoiDung = ma_tk`, còn `maKh`/`maTx` là ID hồ sơ. Tổng đài không có hồ sơ riêng. T06 dùng PasswordHasher kiểm tra bcrypt.
 - Cookie JSESSIONID, host-only, Path=/ (hoặc context path khi deploy riêng), HttpOnly, SameSite=Lax, Secure trên HTTPS. Local HTTP không bật Secure. Session chỉ qua cookie, không URL rewriting.
 - Session idle timeout 30 phút (baseline demo). Login đổi session ID/token, logout invalidate và hết hạn cookie. API riêng tư trả Cache-Control: no-store. Auth filter kiểm tra tài khoản bị khóa và role mỗi request.
 - `x-roles` là metadata mô tả, không phải cơ chế bảo mật tự sinh từ Swagger. Ownership phải kiểm tra ở BE trên đơn/lần thanh toán. Khách không được đổi maKh sang người khác. Tổng đài phải chọn khách khi tạo/báo giá.

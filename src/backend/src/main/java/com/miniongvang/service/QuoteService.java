@@ -14,6 +14,7 @@ import jakarta.persistence.EntityManagerFactory;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
@@ -22,6 +23,7 @@ import tools.jackson.databind.ObjectMapper;
 
 public final class QuoteService {
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final Pattern WEIGHT = Pattern.compile("^(0\\.(0[1-9]|[1-9][0-9]?)|[1-9][0-9]{0,7}(\\.[0-9]{1,2})?)$");
     private final TransactionRunner transactions;
     private final RouteService routes;
@@ -95,7 +97,8 @@ public final class QuoteService {
         MembershipView tier = customer.getMaHang() == MembershipTier.THUONG ? null
                 : new MembershipView(customer.getMaHang().name(), customer.getMaHang().name(),
                         policy == null ? "0.00" : policy.getTyLeGiam().setScale(2).toPlainString(),
-                        customer.getThanhVienDen() == null ? null : customer.getThanhVienDen().toString(),
+                        customer.getThanhVienDen() == null ? null
+                                : customer.getThanhVienDen().minusMillis(1).atZone(VIETNAM).toLocalDate().toString(),
                         decision.active());
         return new EvaluationV1(tariff, fare, tier, extras, policy);
     }

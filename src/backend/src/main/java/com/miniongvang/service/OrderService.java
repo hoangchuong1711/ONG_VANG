@@ -112,7 +112,7 @@ public final class OrderService {
             new DonHangDAO(em).persistAggregateV1(order, priced, parcels, extras, event);
             Order result = new Order(order.getId(), now.toString(), order.getDiemLayHang(), order.getDiemGiaoHang(),
                     order.getSdtNguoiNhan(), route.quangDuongKm(), order.getGhiChuGiaoHang(), "CHO_GAN",
-                    customerId, null, null, fare, request.kienHang(),
+                    customerId, null, account.getId(), fare, request.kienHang(),
                     new PaymentSummary(new BigDecimal(fare.tongCuoc()).signum() == 0 ? "MIEN_CUOC" : "CHUA_THANH_TOAN", fare.tongCuoc()), null, null);
             if (saved == null) { saved = new YeuCauTaoDon(); saved.setRequestId(requestId); }
             saved.setTaiKhoan(account); saved.setDonHang(order); saved.setRequestJson(requestJson);
@@ -152,7 +152,7 @@ public final class OrderService {
                               String sdtNguoiNhan, String ghiChuGiaoHang, List<QuoteService.Parcel> kienHang) {}
     public record PaymentSummary(String trangThai, String soTienConPhaiThu) {}
     public record Order(String maDon, String thoiGianTao, String diemLayHang, String diemGiaoHang, String sdtNguoiNhan,
-                        String quangDuongKm, String ghiChuGiaoHang, String trangThai, String maKh, String maTx, String maNv,
+                        String quangDuongKm, String ghiChuGiaoHang, String trangThai, String maKh, String maTx, String maTkTao,
                         FareCalculator.Fare cuoc, List<QuoteService.Parcel> kienHang, PaymentSummary thanhToan,
                         String hoanTatLuc, String huyLuc) {}
     public static final class Conflict extends RuntimeException {

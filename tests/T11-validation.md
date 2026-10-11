@@ -1,5 +1,7 @@
 # T11 — Kết quả kiểm thử điều phối
 
+> Báo cáo lịch sử của schema PostgreSQL trước designV1. Các con số dưới đây không chứng minh kết quả của đợt chuyển DB; xem [kiểm tra M1 hiện tại](../docs/database/designV1-M1-audit-2026-10-11.md).
+
 Ngày kiểm thử: 09/10/2026. Nhánh `feature/T11-driver-dispatch`, nền T10 `b67da3c`. Môi trường cloud kiểm thử bằng Java 21, Maven 3.9.11, PostgreSQL 17, Tomcat 10.1. Người dùng chạy lại trên Windows 11/Git Bash với Temurin JDK 21.0.12.1, Maven 3.10.0, Node.js 24.16.0, Docker Compose 5.5.1. Chỉ sử dụng database riêng `mini_ong_vang_test` (cổng 15433), HTTP cổng 18081; không reset database phát triển.
 
 ## Kết quả đã chạy

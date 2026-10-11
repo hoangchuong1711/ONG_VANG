@@ -1,6 +1,6 @@
 # Ánh xạ designV1 → API
 
-Schema nguồn: [designV1](../database/designV1.md). OpenAPI nguồn chạy thực tế: `src/backend/src/main/webapp/openapi.json`. API hiện giữ một số trường phản hồi cũ để không đổi contract T06–T12; chẳng hạn `maNv` của đơn luôn `null` vì designV1 bỏ hồ sơ tổng đài, actor được lưu qua `ma_tk_tao`/event.
+Schema nguồn: [designV1](../database/designV1.md). OpenAPI nguồn chạy thực tế: `src/backend/src/main/webapp/openapi.json` (v0.5.0). User không có `maNv`; Order trả `maTkTao` từ `don_hang.ma_tk_tao`. Tổng đài được nhận diện bằng tài khoản và vai trò.
 
 | Bảng designV1 | Entity | API và quy tắc |
 | --- | --- | --- |
