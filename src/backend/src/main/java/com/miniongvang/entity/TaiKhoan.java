@@ -24,6 +24,9 @@ public class TaiKhoan {
     @Column(name="email", length=150)
     private String email;
 
+    @Column(name="so_dien_thoai", length=10)
+    private String soDienThoai;
+
     @Column(name="mat_khau_hash", nullable=false, length=255)
     private String matKhauHash;
 
@@ -52,6 +55,9 @@ public class TaiKhoan {
 
     public String getEmail() { return email; }
     public void setEmail(String value) { this.email = value; }
+
+    public String getSoDienThoai() { return soDienThoai; }
+    public void setSoDienThoai(String value) { this.soDienThoai = value; }
 
     public String getMatKhauHash() { return matKhauHash; }
     public void setMatKhauHash(String value) { this.matKhauHash = value; }

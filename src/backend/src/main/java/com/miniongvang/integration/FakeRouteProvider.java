@@ -39,6 +39,6 @@ public final class FakeRouteProvider implements RouteProvider {
             throw new RouteFailure(RouteFailure.Kind.OUT_OF_SERVICE_AREA);
         Leg leg = LEGS.get(start.id + ":" + end.id);
         if (leg == null) throw new RouteFailure(RouteFailure.Kind.DISTANCE_INVALID);
-        return new RouteData(start.address, end.address, leg.meters, leg.seconds, "GIA_LAP");
+        return new RouteData(start.address, end.address, leg.meters, leg.seconds, "FAKE");
     }
 }

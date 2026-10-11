@@ -34,9 +34,10 @@ Giới hạn mặc định `ROUTE_MAX_DISTANCE_KM=30`; có thể đổi trong `.
 ROUTE_PROVIDER=goong
 GOONG_API_KEY=<key-cua-ban>
 GOONG_TIMEOUT_MS=5000
+GOONG_VEHICLE=car
 ROUTE_MAX_DISTANCE_KM=30
 ```
 
-Sau đó chạy lại `docker compose up --build -d backend`. Chế độ Goong gọi Geocode V2 để tìm tọa độ của hai địa chỉ, rồi Directions V2 với `vehicle=motorcycle` cho xe máy. Adapter đổi khoảng cách từ mét và thời gian từ giây về đúng DTO của T07, `nguon=GOONG`. Key chỉ nằm ở backend và file `.env` không được commit. Nếu chọn Goong mà thiếu key, backend báo lỗi cấu hình khi khởi động. API Goong lỗi hoặc timeout lần lượt trả `ROUTE_PROVIDER_ERROR` (502), `ROUTE_PROVIDER_TIMEOUT` (504), không dùng kết quả giả lập để thay thế.
+Sau đó chạy lại `docker compose up --build -d backend`. Chế độ Goong gọi Geocode V2 để tìm tọa độ của hai địa chỉ, rồi Directions V2 để tính khoảng cách và thời gian. `GOONG_VEHICLE=car` là mặc định vì Goong hiện trả HTTP 400 với `motorcycle` ở Directions V2; kết quả là ước tính theo tuyến ô tô, chưa phải tuyến xe máy. Có thể đổi thành `bike`, `motorcycle` hoặc `truck` nếu tài khoản/API hỗ trợ, nhưng `bike` được Goong mô tả là xe đạp. Adapter đổi khoảng cách từ mét và thời gian từ giây về đúng DTO của T07, `nguon=GOONG`. Key chỉ nằm ở backend và file `.env` không được commit. Nếu chọn Goong mà thiếu key, backend báo lỗi cấu hình khi khởi động. API Goong lỗi hoặc timeout lần lượt trả `ROUTE_PROVIDER_ERROR` (502), `ROUTE_PROVIDER_TIMEOUT` (504), không dùng kết quả giả lập để thay thế.
 
-Hiện chưa có key nên phần Goong mới được kiểm thử bằng HTTP server cục bộ trả response mô phỏng; cần thử trực tiếp sau khi tài khoản được xác minh. Tham khảo [Geocode V2](https://help.goong.io/kb/rest-api-v2/geocode-rest-api-v2/geocode-v2/) và [Directions V2](https://help.goong.io/kb/rest-api-v2/directions-rest-api-v2/directions-v2/).
+Adapter được kiểm thử bằng HTTP server cục bộ. Tham khảo [Geocode V2](https://help.goong.io/kb/rest-api-v2/geocode-rest-api-v2/geocode-v2/) và [Directions V2](https://help.goong.io/kb/rest-api-v2/directions-rest-api-v2/directions-v2/).

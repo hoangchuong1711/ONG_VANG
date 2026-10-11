@@ -1,6 +1,6 @@
 package com.miniongvang.config;
 
-import com.miniongvang.seed.DemoSeeder;
+import com.miniongvang.seed.DesignV1DemoSeeder;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
@@ -21,7 +21,7 @@ public class PersistenceListener implements ServletContextListener {
                 if (password == null || password.isBlank()) {
                     throw new IllegalArgumentException("DEMO_PASSWORD is required when DEMO_SEED=true");
                 }
-                new DemoSeeder(persistence.entityManagerFactory()).seed(password);
+                new DesignV1DemoSeeder(persistence.entityManagerFactory()).seed(password);
             }
             event.getServletContext().setAttribute(RouteConfiguration.ATTRIBUTE, RouteConfiguration.fromEnvironment());
             event.getServletContext().setAttribute(ATTRIBUTE, persistence);

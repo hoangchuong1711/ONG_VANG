@@ -42,12 +42,12 @@ public class HealthServlet extends HttpServlet {
         }
 
         try {
-            Class.forName("org.postgresql.Driver");
+            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
         } catch (ClassNotFoundException exception) {
-            getServletContext().log("PostgreSQL JDBC driver is missing from the backend WAR.", exception);
+            getServletContext().log("SQL Server JDBC driver is missing from the backend WAR.", exception);
             response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             response.getWriter().write("""
-                {"status":"error","service":"mini-ong-vang-backend","database":"disconnected","message":"PostgreSQL JDBC driver is unavailable."}
+                {"status":"error","service":"mini-ong-vang-backend","database":"disconnected","message":"SQL Server JDBC driver is unavailable."}
                 """);
             return;
         }

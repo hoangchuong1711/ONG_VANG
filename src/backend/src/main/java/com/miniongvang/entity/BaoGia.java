@@ -15,8 +15,8 @@ public class BaoGia {
     @Column(name = "ma_bieu_phi", nullable = false, length = 36) private String maBieuPhi;
     @Column(name = "tao_luc", nullable = false) private Instant taoLuc;
     @Column(name = "het_han_luc", nullable = false) private Instant hetHanLuc;
-    @Column(name = "yeu_cau_json", nullable = false, columnDefinition = "text") private String yeuCauJson;
-    @Column(name = "ket_qua_json", nullable = false, columnDefinition = "text") private String ketQuaJson;
+    @Column(name = "yeu_cau_json", nullable = false, columnDefinition = "nvarchar(max)") private String yeuCauJson;
+    @Column(name = "ket_qua_json", nullable = false, columnDefinition = "nvarchar(max)") private String ketQuaJson;
 
     public BaoGia() {}
     public String getId() { return id; }

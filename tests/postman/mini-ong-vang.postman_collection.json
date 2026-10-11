@@ -188,7 +188,6 @@
                   "  pm.test('Response has vaiTro', () => pm.expect(body).to.have.property('vaiTro'));",
                   "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
                   "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
                   "}",
                   "if (pm.response.code >= 200 && pm.response.code < 300) pm.environment.unset('csrfToken');"
                 ]
@@ -236,7 +235,6 @@
                   "  pm.test('Response has vaiTro', () => pm.expect(body).to.have.property('vaiTro'));",
                   "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
                   "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
                   "}"
                 ]
               }
@@ -316,7 +314,7 @@
               ],
               "query": []
             },
-            "description": "Chuẩn hóa địa chỉ và ước tính lộ trình\n\nMặc định dùng bộ tuyến T07 cố định: Quận 1, Quận 3, Quận 5 (TP.HCM); Hà Nội là fixture vượt phạm vi. ROUTE_PROVIDER=goong dùng Geocode/Directions V2 và yêu cầu GOONG_API_KEY. Không đổi sang dữ liệu giả khi provider thật lỗi.\n\nStatus: implemented; UC: UC-04; roles: KHACH_HANG, TONG_DAI",
+            "description": "Chuẩn hóa địa chỉ và ước tính lộ trình\n\nMặc định dùng bộ tuyến T07 cố định: Quận 1, Quận 3, Quận 5 (TP.HCM); Hà Nội là fixture vượt phạm vi. ROUTE_PROVIDER=goong dùng Geocode/Directions V2 và yêu cầu GOONG_API_KEY. GOONG_VEHICLE mặc định car (ước tính theo tuyến ô tô); có thể cấu hình phương tiện khác nếu Goong hỗ trợ. Không đổi sang dữ liệu giả khi provider thật lỗi.\n\nStatus: implemented; UC: UC-04; roles: KHACH_HANG, TONG_DAI",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\"\n}",
@@ -487,7 +485,7 @@
                   "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
                   "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
                   "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                  "  pm.test('Response has maTkTao', () => pm.expect(body).to.have.property('maTkTao'));",
                   "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
                   "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
@@ -624,7 +622,7 @@
                   "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
                   "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
                   "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                  "  pm.test('Response has maTkTao', () => pm.expect(body).to.have.property('maTkTao'));",
                   "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
                   "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
@@ -673,7 +671,7 @@
                 }
               ]
             },
-            "description": "Nhật ký đơn\n\nCùng quyền getOrder. Sort thoiGianGhiNhan ASC,maNhatKy ASC.\n\nStatus: implemented; UC: UC-13, UC-19; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+            "description": "Nhật ký đơn\n\nCùng quyền getOrder. Sắp xếp theo thuTu tăng dần trong mỗi đơn.\n\nStatus: implemented; UC: UC-13, UC-19; roles: KHACH_HANG, TONG_DAI, TAI_XE"
           },
           "event": [
             {
@@ -892,7 +890,7 @@
                   "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
                   "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
                   "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                  "  pm.test('Response has maTkTao', () => pm.expect(body).to.have.property('maTkTao'));",
                   "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
                   "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
@@ -968,7 +966,7 @@
                   "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
                   "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
                   "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                  "  pm.test('Response has maTkTao', () => pm.expect(body).to.have.property('maTkTao'));",
                   "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
                   "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
@@ -1044,7 +1042,7 @@
                   "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
                   "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
                   "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
+                  "  pm.test('Response has maTkTao', () => pm.expect(body).to.have.property('maTkTao'));",
                   "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
                   "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
@@ -1110,88 +1108,17 @@
                   "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
                   "  const body = pm.response.json();",
-                  "  pm.test('Response has maNhatKy', () => pm.expect(body).to.have.property('maNhatKy'));",
+                  "  pm.test('Response has maSuKien', () => pm.expect(body).to.have.property('maSuKien'));",
                   "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
-                  "  pm.test('Response has tenTrangThai', () => pm.expect(body).to.have.property('tenTrangThai'));",
-                  "  pm.test('Response has thoiGianGhiNhan', () => pm.expect(body).to.have.property('thoiGianGhiNhan'));",
+                  "  pm.test('Response has thuTu', () => pm.expect(body).to.have.property('thuTu'));",
+                  "  pm.test('Response has loaiSuKien', () => pm.expect(body).to.have.property('loaiSuKien'));",
+                  "  pm.test('Response has trangThaiTruoc', () => pm.expect(body).to.have.property('trangThaiTruoc'));",
+                  "  pm.test('Response has trangThaiSau', () => pm.expect(body).to.have.property('trangThaiSau'));",
+                  "  pm.test('Response has thoiGian', () => pm.expect(body).to.have.property('thoiGian'));",
+                  "  pm.test('Response has maTkThucHien', () => pm.expect(body).to.have.property('maTkThucHien'));",
                   "  pm.test('Response has nguoiThucHien', () => pm.expect(body).to.have.property('nguoiThucHien'));",
-                  "  pm.test('Response has ghiChuSuCo', () => pm.expect(body).to.have.property('ghiChuSuCo'));",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "response": []
-        },
-        {
-          "name": "cancelOrder",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "X-CSRF-Token",
-                "value": "{{csrfToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/orders/{{orderId}}/cancel",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "orders",
-                "{{orderId}}",
-                "cancel"
-              ],
-              "query": []
-            },
-            "description": "Hủy đơn trước 5 phút\n\nKhách sở hữu hoặc tổng đài; tuổi đơn từ giờ server <300 giây, chỉ CHO_GAN/DA_GAN. Đúng 300 giây từ chối. Cập nhật đơn, giải phóng tài xế, nhật ký trong transaction.\n\nStatus: implemented; UC: UC-14; roles: KHACH_HANG, TONG_DAI",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"lyDo\": \"Khách thay đổi kế hoạch\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                  "  const body = pm.response.json();",
-                  "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
-                  "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
-                  "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
-                  "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
-                  "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
-                  "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
-                  "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
-                  "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
-                  "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
-                  "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
-                  "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
-                  "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
-                  "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
-                  "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
-                  "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
-                  "  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('DA_HUY'));",
+                  "  pm.test('Response has ghiChu', () => pm.expect(body).to.have.property('ghiChu'));",
+                  "  pm.test('Response has loaiSuCo', () => pm.expect(body).to.have.property('loaiSuCo'));",
                   "}"
                 ]
               }
@@ -1255,7 +1182,6 @@
                   "  pm.test('Response has vaiTro', () => pm.expect(body).to.have.property('vaiTro'));",
                   "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
                   "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
-                  "  pm.test('Response has maNv', () => pm.expect(body).to.have.property('maNv'));",
                   "}"
                 ]
               }
@@ -1341,6 +1267,99 @@
                       "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
                       "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
                       "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Orders",
+          "item": [
+            {
+              "name": "cancelOrder",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/orders/{{orderId}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{orderId}}",
+                    "cancel"
+                  ],
+                  "query": []
+                },
+                "description": "Hủy đơn trước 5 phút\n\nKhách sở hữu hoặc tổng đài; tuổi đơn từ giờ server <300 giây, chỉ CHO_GAN/DA_GAN. Đúng 300 giây từ chối. Cập nhật đơn, giải phóng tài xế, nhật ký trong transaction.\n\nStatus: planned; UC: UC-14; roles: KHACH_HANG, TONG_DAI",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lyDo\": \"Khách thay đổi kế hoạch\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                      "  pm.test('Response has thoiGianTao', () => pm.expect(body).to.have.property('thoiGianTao'));",
+                      "  pm.test('Response has diemLayHang', () => pm.expect(body).to.have.property('diemLayHang'));",
+                      "  pm.test('Response has diemGiaoHang', () => pm.expect(body).to.have.property('diemGiaoHang'));",
+                      "  pm.test('Response has sdtNguoiNhan', () => pm.expect(body).to.have.property('sdtNguoiNhan'));",
+                      "  pm.test('Response has quangDuongKm', () => pm.expect(body).to.have.property('quangDuongKm'));",
+                      "  pm.test('Response has ghiChuGiaoHang', () => pm.expect(body).to.have.property('ghiChuGiaoHang'));",
+                      "  pm.test('Response has trangThai', () => pm.expect(body).to.have.property('trangThai'));",
+                      "  pm.test('Response has maKh', () => pm.expect(body).to.have.property('maKh'));",
+                      "  pm.test('Response has maTx', () => pm.expect(body).to.have.property('maTx'));",
+                      "  pm.test('Response has maTkTao', () => pm.expect(body).to.have.property('maTkTao'));",
+                      "  pm.test('Response has cuoc', () => pm.expect(body).to.have.property('cuoc'));",
+                      "  pm.test('Response has kienHang', () => pm.expect(body).to.have.property('kienHang'));",
+                      "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
+                      "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
+                      "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                      "  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('DA_HUY'));",
                       "}"
                     ]
                   }

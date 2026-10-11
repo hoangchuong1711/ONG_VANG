@@ -1,11 +1,7 @@
-# T09 — Tính cước và báo giá
+# T09 — Báo giá trên designV1
 
-`POST /api/quotes` dùng session/CSRF T06. Khách hàng không truyền `maKh` hoặc chỉ truyền chính ID của mình; tổng đài bắt buộc truyền `maKh`. Request có hai địa chỉ và ít nhất một kiện hàng đúng schema OpenAPI. Backend lấy lộ trình T07 trước khi mở transaction DB.
+`POST /api/quotes` xác thực khách hoặc tổng đài, chuẩn hóa địa chỉ/kiện và lấy lộ trình trước transaction DB. Backend phải tìm **đúng một** `BieuPhi` công bố khớp thời điểm và khoảng km; nếu không hoặc nhiều hơn một thì báo lỗi cấu hình. Phụ thu được lấy từ `ChinhSachPhuThu` công bố còn hiệu lực; hai phiên bản cùng loại khớp thời điểm là lỗi cấu hình.
 
-Biểu phí được chọn trong các dòng bật, còn hiệu lực ở ngày hiện tại tại `Asia/Ho_Chi_Minh`, có `kmToiThieu <= km <= kmToiDa` (nếu có). Khi nhiều dòng khớp, ưu tiên ngày bắt đầu mới nhất rồi ID. `kmToiThieu` là giới hạn áp dụng, không trừ khỏi số km tính tiền. Phụ thu demo đang bật và không gắn khu vực được cộng; dòng phụ thu theo khu vực chờ quy tắc vùng cụ thể.
+Cước gốc = `HALF_UP(cuocCoBan + km × donGiaKm)` tới đồng. Tổng = cước gốc + các phụ thu cố định − giảm thành viên, luôn dưới giới hạn DECIMAL(15,2). Quote lưu request chuẩn hóa, route, kết quả, mã biểu phí và `hetHanLuc = taoLuc + 300 giây` vào `bao_gia`. T10 tính lại trước khi chốt; giá, chính sách, route hoặc kiện đổi thì trả `QUOTE_CHANGED`.
 
-`cuocGoc = cuocCoBan + km × donGiaKm`. T08 tính giảm VIP trên `cuocGoc + tienPhuThu`. Các phần tiền hiển thị làm tròn `HALF_UP` đến nguyên VND và trả chuỗi có `.00`; giảm không vượt tổng trước giảm và tổng không âm. Chi tiết phụ thu cộng đúng bằng `tienPhuThu`.
-
-Mỗi báo giá được lưu vào bảng `bao_gia` với mã UUID, chủ sở hữu, mã biểu phí, thời điểm tạo/hết hạn, request đã chuẩn hóa (gồm kiện hàng và lộ trình) và toàn bộ response giá. Thời hạn là 300 giây; từ đúng `hetHanLuc` báo giá đã hết hạn. T10 dùng dữ liệu này để so khớp chủ/đầu vào và tính lại trước khi tạo đơn và snapshot. T09 chưa tạo đơn hoặc ghi `snapshot_cuoc_don_hang`.
-
-Thiếu biểu phí phù hợp hoặc dữ liệu biểu phí/tiền sai trả `503 FARE_CONFIG_MISSING`; địa chỉ/km/phạm vi và timeout theo T07. Khách chọn ID người khác trả `403 FORBIDDEN`; tổng đài chọn khách không tồn tại trả `404 RESOURCE_NOT_FOUND`.
+Chi tiết bảng và ràng buộc ở [designV1](database/designV1.md). Công bố/chấm dứt phiên bản biểu phí và phụ thu bằng thao tác quản trị an toàn chưa thuộc luồng HTTP T09 hiện tại; phải xử lý trước khi dùng chính sách động ngoài fixture.

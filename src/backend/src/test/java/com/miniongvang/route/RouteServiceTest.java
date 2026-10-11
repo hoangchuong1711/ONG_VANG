@@ -17,7 +17,7 @@ class RouteServiceTest {
         assertEquals("Quận 3, TP.HCM", route.diemGiaoHang());
         assertEquals("5.00", route.quangDuongKm());
         assertEquals(900, route.thoiGianDuKienGiay());
-        assertEquals("GIA_LAP", route.nguon());
+        assertEquals("FAKE", route.nguon());
         assertTrue(route.trongPhamVi());
         assertEquals("5.40", service.estimate("Quận 3", "Quận 1").quangDuongKm());
     }
@@ -49,6 +49,8 @@ class RouteServiceTest {
                 () -> RouteConfiguration.from(Map.of("ROUTE_MAX_DISTANCE_KM", "0")));
         assertThrows(IllegalArgumentException.class,
                 () -> RouteConfiguration.from(Map.of("ROUTE_PROVIDER", "goong", "GOONG_API_KEY", "test", "GOONG_TIMEOUT_MS", "0")));
+        assertThrows(IllegalArgumentException.class,
+                () -> RouteConfiguration.from(Map.of("ROUTE_PROVIDER", "goong", "GOONG_API_KEY", "test", "GOONG_VEHICLE", "unsupported")));
     }
 
     @Test void providerResultsAreValidatedBeforePublishing() {

@@ -1,118 +1,43 @@
-# CSDL, Hibernate và dữ liệu T03
+# Cơ sở dữ liệu designV1
 
-Backend dùng PostgreSQL 17, Hibernate 6.6.58.Final, Flyway 12.11.0, HikariCP 7.1.0. Migration là nguồn schema chạy thực tế: `src/backend/src/main/resources/db/migration`. Có 17 bảng nghiệp vụ, bảng `demo_seed_manifest` và lịch sử Flyway.
+Nguồn thiết kế là [designV1.md](designV1.md); danh sách ràng buộc và trách nhiệm DB/service nằm ở [designV1-constraint-matrix.md](designV1-constraint-matrix.md). Flyway tạo schema từ `src/backend/src/main/resources/db/designV1/sqlserver/V1__design_v1_baseline.sql` và thêm trigger bảo vệ chính sách đã công bố ở `V2__published_policy_immutability.sql`. Có **19 bảng nghiệp vụ**, thêm `demo_seed_manifest` và `flyway_schema_history` phục vụ vận hành. Không chạy các migration V1–V7 của mô hình cũ trên DB này.
 
-## Khởi động và migration
+## Khởi động local
 
-```powershell
-docker compose up --build backend
-```
-
-Listener khởi tạo pool → chạy Flyway → tạo EntityManagerFactory với `hibernate.hbm2ddl.auto=validate` → seed nếu bật → Tomcat phục vụ ứng dụng. Migration/mapping lỗi sẽ làm khởi tạo webapp thất bại. Khi undeploy, listener đóng EMF và pool. `/api/health` vẫn giữ hợp đồng JSON hạ tầng T04.
-
-- V1: 15 bảng từ SQL tham chiếu, bỏ header MySQL và transaction thủ công.
-- V2: tài khoản/role, timestamp có timezone, snapshot, assignment, nhiều payment attempt, constraint và index.
-- SQL tham chiếu `docs/api/schema-v0.mysql.sql` không phải script khởi tạo. Không chạy DROP DATABASE trong file đó.
-- Không dùng Hibernate `update/create`, Flyway clean hoặc baseline tự động để bỏ qua DB đã có bảng thủ công.
-- V1 có hồ sơ hợp lệ có thể nâng V2; tên tài khoản được lấy từ hồ sơ, timestamp V1 được hiểu theo Asia/Ho_Chi_Minh. Nếu tài khoản không có nguồn tên hoặc đã có đơn V1, migration dừng và rollback. Cần kế hoạch chuyển đổi lịch sử riêng; không suy ra giá lịch sử từ cấu hình hiện tại.
-- Migration đã phát hành lên DB dùng chung phải được giữ nguyên; thay đổi tiếp theo thêm version mới.
-
-## Quyết định dữ liệu
-
-| Vấn đề | Cách triển khai |
-| --- | --- |
-| ID | String tối đa 36 ký tự; User.maNguoiDung là ma_tk, maKh/maTx/maNv là ID hồ sơ |
-| Tên người dùng | tai_khoan.ho_ten dùng cho User; hồ sơ giữ tên giao hàng. T06 cập nhật đồng bộ cùng transaction khi cho sửa hồ sơ |
-| Vai trò hồ sơ | Composite FK (ma_tk, vai_tro) và cột role cố định ở hồ sơ ngăn gắn sai role/cross-profile. Không cần trigger |
-| Trạng thái | Khóa ở tài khoản; ONLINE/OFFLINE/NGHI ở tài xế; bận từ assignment chưa kết thúc |
-| Cước | Snapshot là nguồn chuẩn, gồm số tiền và tên biểu phí/hạng/tỷ lệ; bỏ cột giảm giá trùng ở don_hang. T09 có thể bổ sung tham số chính sách chi tiết bằng migration mới |
-| Phụ thu | Số tiền/tên snapshot; chuỗi trạng thái legacy '0' không có vai trò trong phép tính |
-| Kiện hàng | Khối lượng bắt buộc >0. API 0.2.0 đã đồng bộ required; giới hạn tối đa nghiệp vụ chờ T01/T09 |
-| Thời gian/tiền | Instant/timestamptz, LocalDate/DATE, BigDecimal/NUMERIC(15,2). API giữ UTC/VND theo conventions |
-| Payment | Nhiều attempt, một success và một online pending tối đa/đơn; callback/tất toán cuối cùng thuộc T14–T15 |
-| Xóa dữ liệu | Không có API xóa lịch sử. Assignment/payment giữ FK chống xóa đơn/tài xế đã có lịch sử; cascade chỉ dùng ở các quan hệ sở hữu theo ERD |
-
-ERD Page-1 ngoài repo chưa được đối chiếu trực tiếp. [Thiết kế persistence](design.md) và [mapping API](../api/schema-mapping.md) mô tả chính xác phần đã triển khai; các quyết định trên là baseline T03 cho nhóm review.
-
-## Dùng DAO và transaction
-
-Package giữ đúng `com.miniongvang.entity` và `com.miniongvang.DAO`. Entity có trường private/getter/setter và map theo field; quan hệ dùng LAZY. Không serialize Entity trực tiếp; service dựng DTO khi EntityManager còn mở.
-
-```java
-TransactionRunner tx = new TransactionRunner(persistence.entityManagerFactory());
-tx.run(em -> {
-    DonHangDAO orders = new DonHangDAO(em);
-    DonHang order = orders.findForUpdate(orderId);
-    // Service kiểm tra quyền/precondition và gọi các DAO khác bằng cùng em.
-    return null;
-});
-```
-
-DAO không tự mở EntityManager/commit. Runner flush/commit hoặc rollback và luôn đóng EntityManager; từ chối nested transaction độc lập trên cùng thread. Không mang EntityManager qua thread, không giữ transaction trong lúc gọi route/VNPay.
-
-`DonHangDAO.persistAggregate` lưu đơn/snapshot/kiện/phụ thu/nhật ký trong transaction do caller quản lý, kiểm tra có kiện/snapshot/event và tổng phụ thu. Service T10 còn phải kiểm tra quyền, báo giá, tổng tiền và trạng thái. `findDetails` lấy từng tập con riêng để tránh nhân bản đơn do join nhiều collection. Query tài xế rảnh loại khóa/offline/nghỉ/bận, sắp theo ranh_tu rồi ID.
-
-## Bật seed demo
-
-Trong `.env` cục bộ:
-
-```dotenv
-DEMO_SEED=true
-DEMO_PASSWORD=<mat-khau-demo-cua-ban>
-```
-
-Sau đó rebuild/recreate backend. Seed chạy một transaction, có marker `t03-v1` và ID cố định. Chạy lại không nhân đôi hoặc ghi đè đơn đã sửa; trạng thái cài dở bị báo lỗi. Mật khẩu không được ghi vào SQL/log; chỉ lưu bcrypt. `PasswordHasher` dùng cost 10, giới hạn 72 byte UTF-8; T06 dùng cùng helper để verify. Mặc định seed tắt.
-
-Ngày VIP/tạo đơn lấy theo thời điểm seed. Fixture đơn CHO_GAN ban đầu có tuổi 60 giây; muốn demo hủy trước 300 giây vào lần khác cần môi trường test đã reset. Giá/địa chỉ dưới đây chỉ là fixture demo, chưa thay cấu hình nghiệp vụ/RouteProvider T01/T07–T09.
-
-| Nhóm | ID / login | Ý nghĩa |
-| --- | --- | --- |
-| Khách | KH-DEMO-1 / 0900000001 | Khách thường |
-| VIP | KH-DEMO-2 / 0900000002 | VIP hết hạn sau 30 ngày, giảm mẫu 10% |
-| VIP hết hạn | KH-DEMO-3 / 0900000003 | Hết hạn hôm trước |
-| Tài xế rảnh | TX-DEMO-1, TX-DEMO-2 / 0800000001, 0800000002 | ONLINE; TX-DEMO-2 rảnh lâu hơn |
-| Tài xế bận | TX-DEMO-3..5 / 0800000003..5 | Mỗi người có một assignment hoạt động |
-| Tài xế khóa | TX-DEMO-6 / 0800000006 | ONLINE nhưng tài khoản KHOA |
-| Tài xế offline/nghỉ | TX-DEMO-7..8 / 0800000007..8 | OFFLINE/NGHI |
-| Tổng đài | NV-DEMO-1 / demo_dispatcher | TONG_DAI |
-| Chủ đội xe | TK-DEMO-ADMIN / demo_admin | CHU_DOI_XE, không cần hồ sơ nhân viên |
-
-Tổng: 13 tài khoản, 3 khách, 2 hồ sơ VIP, 8 tài xế, 7 xe, 1 điều phối viên, 1 hạng, 2 biểu phí (một hiệu lực, một miễn cước lịch sử đã tắt), 2 phụ thu (bật/tắt), 10 đơn, 10 snapshot, 12 kiện, 1 phụ thu theo đơn, 10 assignment (3 đang hoạt động), 4 payment attempt. Có đủ sáu trạng thái đơn. Mọi tài khoản dùng mật khẩu được cung cấp qua DEMO_PASSWORD.
-
-Đơn mẫu: `DH-DEMO-WAIT`, `DH-DEMO-ASSIGNED`, `DH-DEMO-PICKED`, `DH-DEMO-DELIVERING`, `DH-DEMO-PAID-CASH`, `DH-DEMO-PAID-ONLINE` (thất bại rồi thành công), `DH-DEMO-PENDING`, `DH-DEMO-UNPAID`, `DH-DEMO-FREE`, `DH-DEMO-CANCELLED`. Lịch sử assignment của đơn tiền mặt có tài xế từ chối trước khi gán lại. Đơn miễn cước không có attempt.
-
-## Test và reset
-
-CI chạy DB test trước, Maven verify tiếp theo, cuối cùng mới bật backend-test và HTTP smoke để reset/fixture không chạy đua với webapp. Chạy local theo cùng thứ tự:
+Điền mật khẩu riêng vào `.env`; đặt `MSSQL_DATABASE=mini_ong_vang_design_v1`. Sau đó chạy:
 
 ```powershell
-docker compose -f docker-compose.ci.yml up -d --wait db-test
-$env:TEST_DB_URL = 'jdbc:postgresql://127.0.0.1:15433/mini_ong_vang_test'
-$env:TEST_DB_USER = 'mini_ong_vang_test'
-$env:TEST_DB_PASSWORD = 'ci-only-password'
-$env:REQUIRE_TEST_DB = 'true'
-mvn.cmd --batch-mode --no-transfer-progress -f src/backend/pom.xml verify
-docker compose -f docker-compose.ci.yml up --build -d --wait backend-test
-$env:API_BASE_URL = 'http://127.0.0.1:18081'
-$env:API_EXPECTED_DATABASE = 'mini_ong_vang_test'
-npm.cmd run smoke --prefix tools/api
+docker compose up -d --build backend
 ```
 
-Integration test xác minh database thực rồi truncate các bảng ứng dụng trước mỗi case và seed bằng Clock cố định. Không chạy đồng thời hai suite lên cùng DB. Thiếu TEST_DB_URL thì test DB skip ở local; CI có REQUIRE_TEST_DB=true sẽ fail.
+`db-init` chỉ tạo database khi chưa có; ứng dụng chạy Flyway, JPA `validate`, rồi seed nếu `DEMO_SEED=true`. Mỗi thay đổi schema đã áp dụng phải thêm migration V2+; không sửa V1 sau khi đã chạy. Database cũ `mini_ong_vang` được giữ để đối chiếu, không phải nguồn dữ liệu của backend mới. Không dùng `down --volumes` nếu còn muốn giữ dữ liệu local.
 
-Reset để demo lại trên DB test đã migrate:
+Kiểm tra `http://localhost:8081/api/health`: trường `databaseName` phải là `mini_ong_vang_design_v1`. Trong SSMS, kết nối SQL Server ở `localhost,1433` bằng tài khoản local trong `.env`, rồi chọn DB mới.
+
+## Mô hình dữ liệu và transaction
+
+`tai_khoan` chứa tên, số điện thoại, vai trò và trạng thái. `khach_hang` chứa hạng enum cùng khoảng hiệu lực; hạng không còn là bảng riêng. Chính sách giảm giá, biểu phí, phụ thu được giữ theo phiên bản và tham chiếu từ đơn để giá cũ không đổi theo chính sách mới. Tài xế của đơn suy từ `phan_cong_don_hang`, không lưu thêm `don_hang.ma_tx`. Cước gốc và giảm giá ở `cuoc_don_hang`; tổng cước được tính từ cước, phụ thu đã chọn và giảm giá, không lưu một cột tổng dư.
+
+Tạo đơn ghi `don_hang`, `cuoc_don_hang`, `chi_tiet_kien_hang`, `phu_thu_don_hang`, `nhat_ky_don_hang` và `yeu_cau_tao_don` trong cùng transaction. Điều phối khóa đơn/tài xế và dùng unique index có điều kiện để chống hai phân công hoạt động. `PolicyPublicationService` là đường quản trị nội bộ: xác thực `CHU_DOI_XE`, khóa phạm vi bằng SQL Server application lock kể cả khi chưa có policy công bố, kiểm tra chồng hiệu lực và ghi audit cùng transaction. Trigger V2 chặn sửa/xóa nội dung đã công bố; chỉ cho đóng mốc kết thúc tương lai một lần. Luồng này chưa có endpoint công khai. Các bất biến liên bảng như một đơn có đủ kiện, giá đúng phiên bản và trạng thái khớp phân công được kiểm tra thêm bằng `scripts/check-design-v1-invariants.sql`. Bảng payment đã có mapping/ràng buộc nền nhưng T14–T15 chưa có service/endpoint.
+
+## Seed và DB test
+
+Muốn nạp tài khoản demo, đặt `DEMO_SEED=true` và `DEMO_PASSWORD` trong `.env` rồi recreate backend. Seed `DesignV1DemoSeeder` ghi marker `design-v1`, chạy lại không nhân đôi và không ghi đè đơn mới. Fixture hiện có: KH-DEMO-1 (thường), KH-DEMO-2 (VÀNG), TX-DEMO-1/2 (ONLINE và có xe), `demo_dispatcher`, `demo_admin`, một phiên bản cho mỗi loại chính sách. Không có đơn demo dựng sẵn; smoke tạo đơn qua API. Mật khẩu chỉ lưu dạng hash.
+
+DB test là `mini_ong_vang_test` ở cổng 15433, độc lập DB dev. `scripts/reset-test-db.sql` từ chối mọi DB khác và xóa dữ liệu theo thứ tự FK; chỉ trong transaction reset nó tạm tắt ba trigger policy rồi bật lại, không xóa schema hay Flyway history. `SeedCommand test` xác minh URL, tên DB thực và `REQUIRE_TEST_DB=true` trước khi nạp lại fixture. CI chạy `clean verify`, reset/seed, rồi HTTP smoke. Trước smoke tiến trình giao hàng, CI reset/seed lần nữa vì smoke điều phối làm tài xế bận.
 
 ```powershell
-$env:DEMO_PASSWORD = '<mat-khau-demo-cua-ban>'
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-test-db.ps1
+$env:TEST_DB_URL='jdbc:sqlserver://127.0.0.1:15433;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true'
+$env:TEST_DB_USER='sa'
+$env:TEST_DB_PASSWORD='<mật khẩu DB test>'
+$env:REQUIRE_TEST_DB='true'
+docker compose -f docker-compose.ci.yml up --wait db-test
+docker compose -f docker-compose.ci.yml up --no-deps --exit-code-from db-init-test db-init-test
+mvn.cmd -f src/backend/pom.xml clean verify
 ```
 
-Bypass chỉ áp dụng tiến trình chạy script khi PowerShell máy bạn chặn `.ps1`, không thay execution policy toàn máy. Script xác minh env/URL/tên DB thực, dừng riêng backend-test, truncate danh sách bảng cụ thể trong transaction rồi seed lại. Không xóa lịch sử Flyway, không dùng TRUNCATE CASCADE, không nhận DB dev. Nếu seed lỗi, sửa nguyên nhân và chạy lại; reset và seed là hai transaction riêng. Chạy lại backend-test sau reset khi cần HTTP.
+Để reset và seed test sau khi set thêm `DEMO_PASSWORD`, chạy `scripts/reset-test-db.ps1`. Script dừng backend-test trước khi xóa. Không dùng script này cho DB dev. Sau test, chạy `scripts/check-design-v1-invariants.sql` bằng `sqlcmd -b -d mini_ong_vang_test`; script chỉ đọc, trả lỗi khi V2/trigger thiếu, policy chồng hoặc dữ liệu liên bảng sai.
 
-Dọn môi trường test:
+## Giới hạn đang theo dõi
 
-```powershell
-docker compose -f docker-compose.ci.yml down --volumes --remove-orphans
-```
-
-DB CI dùng tmpfs và cổng 15433; dev dùng volume riêng/cổng 5433. Kết quả thực tế ở [T03-validation](../../tests/database/T03-validation.md). Các API T06–T18 vẫn chưa được triển khai bởi T03.
+M1 đã chạy các luồng T06–T12 trên schema mới và HTTP smoke đạt. Đã có đường quản trị policy nội bộ, trigger bất biến và truy vấn đối chiếu; vẫn cần rà các ca lỗi/rollback còn thiếu trước khi đóng gate M1. T13–T20, thanh toán VNPay/tiền mặt, báo cáo và nghiệm thu toàn diện là mốc M2. Trạng thái chi tiết nằm trong [kế hoạch triển khai](designV1-implementation-plan.md).

@@ -2,6 +2,7 @@ package com.miniongvang.service;
 
 import com.miniongvang.DAO.*;
 import com.miniongvang.entity.*;
+import com.miniongvang.entity.enums.PaymentStatus;
 import com.miniongvang.entity.enums.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -45,7 +46,8 @@ public final class DispatchService {
         page(page,size);
         return transactions.run(em -> {
             actor(em,actor,AccountRole.TONG_DAI);
-            return driverPage(em,new DispatchDAO(em).drivers(status,busy,null,page,size),page,size);
+            return driverPage(em,new DispatchDAO(em).drivers(status,busy,null,
+                    LocalDate.ofInstant(clock.instant(),VIETNAM),page,size),page,size);
         });
     }
     public DriverPage suggestions(AuthService.User actor,String id,int page,int size) {
@@ -55,7 +57,8 @@ public final class DispatchService {
             DonHang order=new DonHangDAO(em).find(id);
             if (order==null) throw new NoSuchElementException("Order not found");
             if (order.getTrangThai()!=OrderStatus.CHO_GAN) throw new Conflict("ORDER_STATE_CONFLICT");
-            return driverPage(em,new DispatchDAO(em).drivers(DriverStatus.ONLINE,false,id,page,size),page,size);
+            return driverPage(em,new DispatchDAO(em).drivers(DriverStatus.ONLINE,false,id,
+                    LocalDate.ofInstant(clock.instant(),VIETNAM),page,size),page,size);
         });
     }
     public OrderService.Order assign(AuthService.User actor,String orderId,String driverId) {
@@ -66,20 +69,24 @@ public final class DispatchService {
             DonHang order=new DonHangDAO(em).findForUpdate(orderId);
             if (order==null) throw new NoSuchElementException("Order not found");
             var dao=new DispatchDAO(em);
-            if (order.getTrangThai()!=OrderStatus.CHO_GAN || order.getTaiXe()!=null || dao.activeOrder(orderId)!=null)
+            if (order.getTrangThai()!=OrderStatus.CHO_GAN || dao.activeOrder(orderId)!=null)
                 throw new Conflict("ORDER_STATE_CONFLICT");
             TaiXe driver=new TaiXeDAO(em).findForUpdate(driverId);
             if (driver==null) throw new NoSuchElementException("Driver not found");
             TaiKhoan account=em.find(TaiKhoan.class,driver.getTaiKhoan().getId(),LockModeType.PESSIMISTIC_WRITE);
-            if (driver.getTrangThai()!=DriverStatus.ONLINE || account.getTrangThai()!=AccountStatus.HOAT_DONG
+            PhuongTien vehicle=dao.vehicle(driverId);
+            if (driver.getTrangThai()!=DriverStatus.ONLINE || driver.getRanhTu()==null
+                    || account.getTrangThai()!=AccountStatus.HOAT_DONG
+                    || driver.getNgayHetHanGplx().isBefore(LocalDate.ofInstant(clock.instant(),VIETNAM))
+                    || vehicle==null || !vehicle.isDangHoatDong()
                     || dao.busy(driverId) || dao.rejected(orderId,driverId)) throw new Conflict("DRIVER_UNAVAILABLE");
             Instant now=clock.instant();
             PhanCongDonHang assignment=new PhanCongDonHang(); assignment.setId(UUID.randomUUID().toString());
             assignment.setDonHang(order); assignment.setTaiXe(driver); assignment.setTaiKhoanDieuPhoi(dispatcher);
             assignment.setBatDauLuc(now); em.persist(assignment);
-            order.setTaiXe(driver); order.setTrangThai(OrderStatus.DA_GAN);
+            order.setTrangThai(OrderStatus.DA_GAN);
             driver.setRanhTu(null);
-            event(em,order,dispatcher,now,null);
+            event(em,order,dispatcher,now,OrderStatus.CHO_GAN,null);
             // Flush while still holding locks; DB partial unique indexes are a second guard.
             em.flush(); return view(em,orderId);
         });
@@ -93,7 +100,8 @@ public final class DispatchService {
             TaiKhoan account=actor(em,actor,AccountRole.TAI_XE);
             DonHang order=new DonHangDAO(em).findForUpdate(orderId);
             if (order==null) throw new NoSuchElementException("Order not found");
-            if (order.getTaiXe()==null || !order.getTaiXe().getId().equals(actor.maTx()))
+            PhanCongDonHang assignment=new DispatchDAO(em).activeOrder(orderId);
+            if (assignment==null || !assignment.getTaiXe().getId().equals(actor.maTx()))
                 throw new NoSuchElementException("Order not found");
             if (order.getTrangThai()!=OrderStatus.DA_GAN) throw new Conflict("ORDER_STATE_CONFLICT");
             TaiXe driver=new TaiXeDAO(em).findForUpdate(actor.maTx());
@@ -103,13 +111,14 @@ public final class DispatchService {
             em.refresh(account,LockModeType.PESSIMISTIC_WRITE);
             if (account.getTrangThai()!=AccountStatus.HOAT_DONG || account.getVaiTro()!=AccountRole.TAI_XE)
                 throw new SecurityException("Account unavailable");
-            PhanCongDonHang assignment=new DispatchDAO(em).activeOrder(orderId);
+            assignment=new DispatchDAO(em).activeOrder(orderId);
             if (assignment==null || !assignment.getTaiXe().getId().equals(driver.getId()))
                 throw new Conflict("ORDER_STATE_CONFLICT");
             Instant now=clock.instant();
-            assignment.setKetThucLuc(now); assignment.setLyDoKetThuc(normalized); assignment.setTuChoi(true);
-            order.setTaiXe(null); order.setTrangThai(OrderStatus.CHO_GAN); driver.setRanhTu(now);
-            event(em,order,account,now,normalized);
+            assignment.setKetThucLuc(now); assignment.setLyDo(normalized);
+            assignment.setKetQuaKetThuc(AssignmentOutcome.TU_CHOI);
+            order.setTrangThai(OrderStatus.CHO_GAN); driver.setRanhTu(now);
+            event(em,order,account,now,OrderStatus.DA_GAN,normalized);
             em.flush(); return view(em,orderId);
         });
     }
@@ -184,14 +193,14 @@ public final class DispatchService {
             };
             if (order.getTrangThai()!=required) throw new Conflict("ORDER_STATE_CONFLICT");
             Instant now=clock.instant();
+            OrderStatus previous=order.getTrangThai();
             order.setTrangThai(target);
             if (target==OrderStatus.HOAN_TAT) {
                 var assignment=new DispatchDAO(em).activeOrder(orderId);
-                assignment.setKetThucLuc(now); assignment.setLyDoKetThuc("HOAN_TAT");
+                assignment.setKetThucLuc(now); assignment.setKetQuaKetThuc(AssignmentOutcome.HOAN_TAT);
                 order.setThoiGianHoanTat(now); driver.setRanhTu(now);
-                // Keep the performing driver for ownership/history; busy is derived from active assignments/orders.
             }
-            event(em,order,account,now,null);
+            event(em,order,account,now,previous,null);
             em.flush(); return view(em,orderId);
         });
     }
@@ -204,15 +213,17 @@ public final class DispatchService {
             DonHang order=ownedOrder(em,actor,orderId);
             if (order.getTrangThai()!=OrderStatus.DANG_GIAO) throw new Conflict("ORDER_STATE_CONFLICT");
             lockDriver(em,actor,account,orderId);
-            NhatKyTrangThai event=event(em,order,account,clock.instant(),reason.strip());
-            event.setLoaiSuCo(type);
+            SuKienDonHang event=incidentEvent(em,order,account,clock.instant(),type,reason.strip());
             em.flush(); return eventView(event);
         });
     }
     private static DonHang ownedOrder(EntityManager em,AuthService.User actor,String id) {
         DonHang order=new DonHangDAO(em).findForUpdate(id);
-        if (order==null || (order.getTaiXe()==null || !order.getTaiXe().getId().equals(actor.maTx()))
-                && !(order.getTrangThai()==OrderStatus.HOAN_TAT && new DispatchDAO(em).completedBy(id,actor.maTx())))
+        if (order==null) throw new NoSuchElementException("Order not found");
+        var assignment=new DispatchDAO(em).activeOrder(id);
+        if ((assignment==null || !assignment.getTaiXe().getId().equals(actor.maTx()))
+                && !(order.getTrangThai()==OrderStatus.HOAN_TAT
+                && new DispatchDAO(em).completedBy(id,actor.maTx())))
             throw new NoSuchElementException("Order not found");
         return order;
     }
@@ -230,20 +241,22 @@ public final class DispatchService {
         if (account.getTrangThai()!=AccountStatus.HOAT_DONG || account.getVaiTro()!=AccountRole.TAI_XE)
             throw new SecurityException("Account unavailable");
     }
-    private static Event eventView(NhatKyTrangThai event) {
-        return new Event(event.getId(),event.getDonHang().getId(),event.getTrangThai().name(),
-                event.getThoiGianGhiNhan().toString(),event.getNguoiThucHien(),event.getGhiChuSuCo(),event.getLoaiSuCo());
+    private static Event eventView(SuKienDonHang event) {
+        return new Event(event.getId(), event.getDonHang().getId(), event.getThuTu(),
+                event.getLoaiSuKien(), event.getTrangThaiTruoc(), event.getTrangThaiSau(),
+                event.getThoiGian().toString(), event.getTaiKhoanThucHien().getId(),
+                event.getTaiKhoanThucHien().getHoTen(), event.getGhiChu(), event.getLoaiSuCo());
     }
-    public record Event(String maNhatKy,String maDon,String tenTrangThai,String thoiGianGhiNhan,
-                        String nguoiThucHien,String ghiChuSuCo,IncidentType loaiSuCo) {}
+    public record Event(String maSuKien, String maDon, int thuTu, OrderEventType loaiSuKien,
+                        OrderStatus trangThaiTruoc, OrderStatus trangThaiSau, String thoiGian,
+                        String maTkThucHien, String nguoiThucHien, String ghiChu, IncidentType loaiSuCo) {}
     public record EventPage(List<Event> items,int page,int size,long totalElements,long totalPages) {}
 
     private static boolean visible(EntityManager em,AuthService.User actor,DonHang order) {
         return switch(actor.vaiTro()) {
             case TONG_DAI -> true;
             case KHACH_HANG -> order.getKhachHang().getId().equals(actor.maKh());
-            case TAI_XE -> order.getTaiXe()!=null && order.getTaiXe().getId().equals(actor.maTx())
-                    || new DispatchDAO(em).relatedDriver(order.getId(),actor.maTx());
+            case TAI_XE -> new DispatchDAO(em).relatedDriver(order.getId(),actor.maTx());
             default -> false;
         };
     }
@@ -254,7 +267,7 @@ public final class DispatchService {
         if (account==null || account.getTrangThai()!=AccountStatus.HOAT_DONG || account.getVaiTro()!=actor.vaiTro())
             throw new SecurityException("Account unavailable");
         String bound=switch(actor.vaiTro()) {
-            case TONG_DAI -> { var p=actor.maNv()==null?null:em.find(DieuPhoiVien.class,actor.maNv()); yield p==null?null:p.getTaiKhoan().getId(); }
+            case TONG_DAI -> account.getId();
             case TAI_XE -> { var p=actor.maTx()==null?null:em.find(TaiXe.class,actor.maTx()); yield p==null?null:p.getTaiKhoan().getId(); }
             case KHACH_HANG -> { var p=actor.maKh()==null?null:em.find(KhachHang.class,actor.maKh()); yield p==null?null:p.getTaiKhoan().getId(); }
             default -> null;
@@ -262,30 +275,58 @@ public final class DispatchService {
         if (!account.getId().equals(bound)) throw new SecurityException("Profile mismatch");
         return account;
     }
-    private static NhatKyTrangThai event(EntityManager em,DonHang order,TaiKhoan actor,Instant now,String reason) {
-        NhatKyTrangThai event=new NhatKyTrangThai(); event.setId(UUID.randomUUID().toString());
-        event.setDonHang(order); event.setTrangThai(order.getTrangThai()); event.setThoiGianGhiNhan(now);
-        event.setTaiKhoanThucHien(actor); event.setNguoiThucHien(actor.getHoTen());
-        event.setVaiTroThucHien(actor.getVaiTro().name()); event.setGhiChuSuCo(reason); em.persist(event);
+    private static int nextSequence(EntityManager em, String orderId) {
+        Integer last=em.createQuery("select max(e.thuTu) from SuKienDonHang e where e.donHang.id=:id",Integer.class)
+                .setParameter("id",orderId).getSingleResult();
+        return last==null?1:Math.addExact(last,1);
+    }
+    private static SuKienDonHang event(EntityManager em,DonHang order,TaiKhoan actor,Instant now,
+                                       OrderStatus before,String reason) {
+        SuKienDonHang event=new SuKienDonHang(); event.setId(UUID.randomUUID().toString());
+        event.setDonHang(order); event.setThuTu(nextSequence(em,order.getId()));
+        event.setLoaiSuKien(OrderEventType.CHUYEN_TRANG_THAI);
+        event.setTrangThaiTruoc(before); event.setTrangThaiSau(order.getTrangThai());
+        event.setThoiGian(now); event.setTaiKhoanThucHien(actor); event.setGhiChu(reason);
+        em.persist(event);
+        return event;
+    }
+    private static SuKienDonHang incidentEvent(EntityManager em,DonHang order,TaiKhoan actor,
+                                                Instant now,IncidentType type,String reason) {
+        SuKienDonHang event=new SuKienDonHang(); event.setId(UUID.randomUUID().toString());
+        event.setDonHang(order); event.setThuTu(nextSequence(em,order.getId()));
+        event.setLoaiSuKien(OrderEventType.SU_CO);
+        event.setTrangThaiTruoc(OrderStatus.DANG_GIAO); event.setTrangThaiSau(OrderStatus.DANG_GIAO);
+        event.setThoiGian(now); event.setTaiKhoanThucHien(actor);
+        event.setLoaiSuCo(type); event.setGhiChu(reason); em.persist(event);
         return event;
     }
     private static OrderService.Order view(EntityManager em,String id) {
-        var details=new DonHangDAO(em).findDetails(id); var order=details.order(); var snapshot=details.fare();
-        if (snapshot==null) throw new IllegalStateException("Order fare snapshot missing");
-        var extras=details.surcharges().stream().map(p->new FareCalculator.Surcharge(p.getPhuThu().getId(),
-                p.getTenPhuThuSnapshot(),money(p.getSoTienTinh()))).toList();
-        var fare=new FareCalculator.Fare(money(snapshot.getCuocGoc()),money(snapshot.getTienPhuThu()),
-                money(snapshot.getTienGiamGia()),money(snapshot.getTongCuoc()),snapshot.getDonViTien(),extras);
+        var details=new DonHangDAO(em).findDetailsV1(id); var order=details.order(); var priced=details.fare();
+        if (priced==null) throw new IllegalStateException("Order fare missing");
+        var extras=details.surcharges().stream().map(p->new FareCalculator.Surcharge(
+                p.getChinhSachPhuThu().getId(),p.getChinhSachPhuThu().getTenPhuThu(),
+                money(p.getChinhSachPhuThu().getSoTien()))).toList();
+        BigDecimal extraTotal=details.surcharges().stream().map(p->p.getChinhSachPhuThu().getSoTien())
+                .reduce(BigDecimal.ZERO,BigDecimal::add);
+        BigDecimal total=priced.getCuocGoc().add(extraTotal).subtract(priced.getTienGiamGia());
+        var fare=new FareCalculator.Fare(money(priced.getCuocGoc()),money(extraTotal),
+                money(priced.getTienGiamGia()),money(total),"VND",extras);
         var parcels=details.parcels().stream().map(p->new QuoteService.Parcel(p.getLoaiHangHoa(),p.getGhiChuBaoQuan(),money(p.getKhoiLuongKg()))).toList();
-        var attempts=new ThanhToanDAO(em).findAttempts(id);
-        boolean paid=attempts.stream().anyMatch(p->p.getTrangThai()==PaymentStatus.THANH_CONG);
-        boolean pending=attempts.stream().anyMatch(p->p.getTrangThai()==PaymentStatus.CHO_XU_LY);
-        String state=snapshot.getTongCuoc().signum()==0?"MIEN_CUOC":paid?"DA_THANH_TOAN":pending?"DANG_XU_LY":"CHUA_THANH_TOAN";
+        var payments=new LanThanhToanDAO(em);
+        var attempts=payments.findAttempts(id);
+        boolean paid=payments.confirmed(id);
+        boolean pending=attempts.stream().anyMatch(p->p.getTrangThai()==PaymentStatus.CHO_XU_LY
+                || p.getTrangThai()==PaymentStatus.CHUA_RO_KET_QUA);
+        String state=total.signum()==0?"MIEN_CUOC":paid?"DA_THANH_TOAN":pending?"DANG_XU_LY":"CHUA_THANH_TOAN";
+        var dispatch=new DispatchDAO(em);
+        PhanCongDonHang assignment=dispatch.activeOrder(id);
+        if (assignment==null && order.getTrangThai()==OrderStatus.HOAN_TAT)
+            assignment=dispatch.completedOrder(id);
         return new OrderService.Order(order.getId(),order.getThoiGianTao().toString(),order.getDiemLayHang(),
                 order.getDiemGiaoHang(),order.getSdtNguoiNhan(),money(order.getQuangDuongKm()),order.getGhiChuGiaoHang(),
-                order.getTrangThai().name(),order.getKhachHang().getId(),order.getTaiXe()==null?null:order.getTaiXe().getId(),
-                order.getDieuPhoiVien()==null?null:order.getDieuPhoiVien().getId(),fare,parcels,
-                new OrderService.PaymentSummary(state,paid?"0.00":fare.tongCuoc()),
+                order.getTrangThai().name(),order.getKhachHang().getId(),assignment==null?null:assignment.getTaiXe().getId(),
+                order.getTaiKhoanTao().getId(),fare,parcels,
+                new OrderService.PaymentSummary(state,total.signum()==0||paid?"0.00":fare.tongCuoc()),
                 order.getThoiGianHoanTat()==null?null:order.getThoiGianHoanTat().toString(),order.getThoiGianHuy()==null?null:order.getThoiGianHuy().toString());
     }
     private static DriverPage driverPage(EntityManager em,DispatchDAO.Drivers result,int page,int size) {
