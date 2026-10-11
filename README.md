@@ -2,7 +2,7 @@
 
 ## Tài liệu và kiểm thử API (T04)
 
-Hiện `/api/health`, các API T06–T12 và thanh toán tiền mặt T14 đã triển khai. VNPay T15 và các API còn lại vẫn là hợp đồng chờ triển khai.
+Hiện `/api/health`, các API T06–T13 và thanh toán tiền mặt T14 đã triển khai. VNPay T15 và các API còn lại vẫn là hợp đồng chờ triển khai.
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ designV1 với API](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
@@ -14,9 +14,11 @@ T11: [thiết kế điều phối/gán/từ chối](docs/T11-driver-dispatch.md)
 T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progress.md).
 T14: [nghiệp vụ thanh toán tiền mặt](docs/T14-payment.md).
 
+T13: [thiết kế hủy đơn](docs/T13-order-cancellation.md), [phạm vi kiểm thử](tests/T13-validation.md).
+
 Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).
 
-Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T12 và tiền mặt T14, các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
+Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T14 (bao gồm hủy đơn T13 và tiền mặt T14), các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
 
 ## Công nghệ và phiên bản
 
@@ -219,20 +221,24 @@ $env:TEST_DB_URL = 'jdbc:sqlserver://127.0.0.1:15433;databaseName=mini_ong_vang_
 $env:TEST_DB_USER = 'sa'
 $env:TEST_DB_PASSWORD = '<mat-khau-test-manh-cua-ban>'
 $env:REQUIRE_TEST_DB = 'true'
+$env:DEMO_PASSWORD = 'ci-only-demo-password'
 docker compose -f docker-compose.ci.yml up --wait --wait-timeout 180 db-test
 docker compose -f docker-compose.ci.yml up --no-deps --exit-code-from db-init-test db-init-test
 $env:API_BASE_URL = 'http://127.0.0.1:18081'
 $env:API_EXPECTED_DATABASE = 'mini_ong_vang_test'
 mvn.cmd --batch-mode --no-transfer-progress -f src/backend/pom.xml verify
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-test-db.ps1
 docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
 npm.cmd run smoke --prefix tools/api
+npm.cmd run smoke:orders --prefix tools/api
+npm.cmd run smoke:cancel --prefix tools/api
 ```
 
 Mỗi lệnh phải thành công trước khi tiếp tục. Chạy xong, kể cả khi test lỗi:
 
 ```powershell
 docker compose -f docker-compose.ci.yml down --volumes --remove-orphans
-Remove-Item Env:TEST_DB_URL, Env:TEST_DB_USER, Env:TEST_DB_PASSWORD, Env:REQUIRE_TEST_DB, Env:API_BASE_URL, Env:API_EXPECTED_DATABASE -ErrorAction SilentlyContinue
+Remove-Item Env:TEST_DB_URL, Env:TEST_DB_USER, Env:TEST_DB_PASSWORD, Env:REQUIRE_TEST_DB, Env:DEMO_PASSWORD, Env:API_BASE_URL, Env:API_EXPECTED_DATABASE -ErrorAction SilentlyContinue
 ```
 
 Lệnh dọn trên chỉ dành cho **Compose test**. Dữ liệu test là tạm thời và mất khi container DB dừng.
@@ -245,7 +251,7 @@ FE hiện chưa có bộ test UI, không ghi lint/build là test chức năng đ
 Test Java kiểm tra kết nối, migration designV1, Hibernate mapping, seed, constraint, cước chốt theo đơn,
 commit/rollback và cạnh tranh phân công. Bộ test reset dữ liệu trên DB test riêng trước từng case;
 chỉ khởi động backend-test sau khi Maven verify xong. Chạy Maven không có `TEST_DB_URL` thì test DB skip;
-CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06–T09 có test tương ứng; T10 có integration test tạo đơn và HTTP smoke; T11 có test SQL Server và HTTP với cạnh tranh gán/từ chối; T12 có kiểm thử tiến trình/sự cố/hoàn tất; test T13–T18 tiếp tục bổ sung theo task.
+CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06–T09 có test tương ứng; T10 có integration test tạo đơn và HTTP smoke; T11 có test SQL Server và HTTP với cạnh tranh gán/từ chối; T12 có kiểm thử tiến trình/sự cố/hoàn tất; T13 có test SQL Server và HTTP smoke; test T14–T18 tiếp tục bổ sung theo task.
 
 Trên GitHub, xem tab **Actions → CI** hoặc checks của PR. Job BE lưu Surefire reports và
 container logs vào artifact `backend-test-results` trong 7 ngày, kể cả test thất bại;

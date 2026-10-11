@@ -11,6 +11,7 @@
     "smoke:orders": "node order-smoke.mjs",
     "smoke:dispatch": "node dispatch-smoke.mjs",
     "smoke:progress": "node progress-smoke.mjs",
+    "smoke:cancel": "node cancel-smoke.mjs",
     "smoke:payment": "node payment-smoke.mjs"
   },
   "devDependencies": {

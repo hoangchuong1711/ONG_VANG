@@ -5,8 +5,8 @@ Phiên bản hợp đồng: **0.5.0** theo [designV1](../database/designV1.md). 
 ## Trạng thái thực tế
 
 - `POST /api/auth/register` cho khách hàng tự đăng ký có trong OpenAPI, Swagger và Postman. Xem [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06).
-- Đã triển khai: `/api/health`, T06–T12 và luồng tiền mặt T14 (`createPayment`, `listPayments`, `getPayment`, `confirmCash`; [hướng dẫn](../T14-payment.md)). Danh sách khách, VNPay T15 và các API còn lại vẫn planned.
-- Schema nghiệp vụ do Flyway designV1 tạo; T14 dùng các bảng thanh toán đã có.
+- Đã triển khai: `/api/health`, 5 operation T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng chính sách T08). T10 đã triển khai `POST /api/orders`; T11 đã triển khai listOrders/getOrder/listDrivers/suggestDrivers/assignDriver/rejectOrder; T12 đã triển khai listOrderEvents/transitionOrder/recordIncident ([hướng dẫn](../T12-delivery-progress.md)); T13 có cancelOrder ([hướng dẫn](../T13-order-cancellation.md)); T14 đã triển khai luồng tiền mặt `createPayment`/`listPayments`/`getPayment`/`confirmCash` ([hướng dẫn](../T14-payment.md)). Danh sách khách, VNPay T15 và các API còn lại vẫn planned.
+- Schema nghiệp vụ do Flyway designV1 tạo; T14 dùng các bảng thanh toán đã có, callback VNPay tiếp tục ở T15.
 - Swagger UI là công cụ tài liệu/test BE, không phải FE nghiệp vụ T21–T28.
 
 ## Các tài liệu
