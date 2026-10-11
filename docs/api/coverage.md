@@ -1,6 +1,6 @@
 # Truy vết hợp đồng T04
 
-UC-01/T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng T08) đã có implementation và test riêng; `createOrder` T10, 6 operation T11 và 3 operation T12 đã triển khai; các endpoint còn lại vẫn **Not Run / chờ implementation BE**. Địa chỉ T07 là fixture cố định; username và ID trong OpenAPI còn là ví dụ. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
+UC-01/T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng T08) đã có implementation và test riêng; `createOrder` T10, 6 operation T11, 3 operation T12, `cancelOrder` T13, thanh toán tiền mặt T14 và VNPay Sandbox T15 đã triển khai; các endpoint còn lại vẫn **Not Run / chờ implementation BE**. Địa chỉ T07 là fixture cố định; username và ID trong OpenAPI còn là ví dụ. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
 
 
 | UC / task | Operation ID | Nhánh và tiêu chí cần kiểm thử |
@@ -15,7 +15,7 @@ UC-01/T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng T08) đ�
 | UC-10 / T15 | createPayment, getPayment, reconcilePayment, vnpayIpn, vnpayReturn (implemented) | Integration SQL Server: ký URL, return không xác nhận, IPN thành công/lặp/đồng thời/sai chữ ký/sai đơn/sai tiền/đến muộn, timeout chưa rõ kết quả, hai khoản thu thành công. Sandbox thật cần IPN public đăng ký với VNPay. Xem [T15](../T15-vnpay.md). |
 | UC-12 / T11 | listOrders, listDrivers, suggestDrivers, assignDriver, rejectOrder | Không có tài xế trả danh sách rỗng; tài xế vừa bận/khóa/offline; từ chối phải có lý do, CHO_GAN trở lại; gán-gán/gán-từ chối đồng thời; gán-hủy bằng fixture DB; tích hợp API hủy ở T13 |
 | UC-13 / T12 | getOrder, listOrderEvents, transitionOrder, recordIncident (implemented) | Sai tài xế, nhảy bước, request lặp; không liên lạc/từ chối nhận giữ DANG_GIAO; hoàn tất ghi timestamp và giải phóng tài xế |
-| UC-14 / T13 | cancelOrder | CHO_GAN/DA_GAN trước 300 giây; 299/300/301; thiếu lý do; đang giao/đã xong; đơn không có/khác chủ; cạnh tranh tiến trình/gán |
+| UC-14 / T13 | cancelOrder (implemented) | CHO_GAN/DA_GAN trước 300 giây; 299/300/301; thiếu lý do; đang giao/đã xong; đơn không có/khác chủ; cạnh tranh tiến trình/gán |
 | UC-15 / T17 | getRevenueReport, exportRevenueReport | Ngày sai; rỗng số 0; ranh giới ngày/tuần/tháng múi giờ VN; snapshot lịch sử; join nhiều payment không nhân tiền; lỗi export không mất báo cáo; chỉ quản trị |
 | UC-19 / T16 | listOrders, getOrder, listOrderEvents | Rỗng, ngày sai, page/size ngoài miền; tổng toàn bộ tập lọc; đơn người khác trả 404; quyền lịch sử tài xế |
 

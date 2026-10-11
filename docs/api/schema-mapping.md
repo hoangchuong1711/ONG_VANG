@@ -10,8 +10,8 @@ Schema nguồn: [designV1](../database/designV1.md). OpenAPI nguồn chạy th�
 | `bao_gia` | `BaoGia` | Quote lưu yêu cầu/kết quả JSON, mã biểu phí và hạn 300 giây. Tạo đơn tính lại và trả `QUOTE_CHANGED` nếu dữ liệu đã đổi. |
 | `don_hang`, `cuoc_don_hang`, `phu_thu_don_hang`, `chi_tiet_kien_hang` | `DonHang`, `CuocDonHang`, `PhuThuDonHang`, `KienHang` | Order gồm tuyến, trạng thái, kiện và cước. Tổng/tiền còn phải thu là giá trị tính, không là cột dư. `maTx` được suy từ phân công đang/đã hoàn thành. |
 | `yeu_cau_tao_don` | `YeuCauTaoDon` | Idempotency-Key theo tài khoản + thao tác; replay trả response gốc trong TTL và từ chối payload khác. |
-| `phan_cong_don_hang`, `nhat_ky_don_hang` | `PhanCongDonHang`, `SuKienDonHang` | Assign/reject/transition/incident và EventPage. Lịch sử phân công giữ `TU_CHOI`/`HOAN_TAT`, event có thứ tự riêng trong đơn. |
-| `thanh_toan`, `xac_nhan_thanh_toan_don_hang`, `su_kien_thanh_toan` | `LanThanhToan`, `XacNhanThanhToanDonHang`, `SuKienThanhToan` | T14 tạo/đọc attempt tiền mặt, xác nhận thu và suy ra trạng thái đã thanh toán từ liên kết. VNPay và callback thuộc T15. |
+| `phan_cong_don_hang`, `nhat_ky_don_hang` | `PhanCongDonHang`, `SuKienDonHang` | Assign/reject/transition/incident/cancel và EventPage. Lịch sử phân công giữ `TU_CHOI`/`HOAN_TAT`/`HUY_DON`, event có thứ tự riêng trong đơn. |
+| `thanh_toan`, `xac_nhan_thanh_toan_don_hang`, `su_kien_thanh_toan` | `LanThanhToan`, `XacNhanThanhToanDonHang`, `SuKienThanhToan` | T14 đã có endpoint tạo/đọc attempt và xác nhận tiền mặt; payment summary đọc attempt/xác nhận. VNPay và callback tiếp tục ở T15. |
 | `nhat_ky_kiem_toan` | `NhatKyKiemToan` | Dành cho audit thao tác quản trị/nhạy cảm ở M2; chưa coi là đã triển khai chỉ vì mapping tồn tại. |
 
 Ràng buộc DB và những điều service phải bảo vệ được phân rõ trong [ma trận constraint](../database/designV1-constraint-matrix.md). Mọi thay đổi cột/enum phải cập nhật migration, entity, API và test trong cùng thay đổi.
