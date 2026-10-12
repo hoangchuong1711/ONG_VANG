@@ -1,5 +1,7 @@
 # T15 — VNPay Sandbox (UC-10)
 
+T15 đã có implementation và hướng dẫn chạy local/ngrok. Giữ tài liệu này để tham khảo; đợt T18 hiện tại chỉ đồng bộ tài liệu, không chạy thêm kiểm thử thanh toán hoặc yêu cầu mọi thành viên dùng Sandbox. Môi trường thanh toán dùng chung sẽ được cấu hình/kiểm tra sau khi dự án hoàn thiện và deploy; xem [phạm vi T18](T18-sandbox-api.md).
+
 ## Cấu hình local
 
 Sao chép `.env.example` thành `.env` (không commit) và đặt `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL`. Ví dụ với tunnel hiện tại:

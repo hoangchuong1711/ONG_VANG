@@ -3,7 +3,7 @@
   "info": {
     "title": "Mini Ong Vàng API",
     "version": "0.5.0",
-    "description": "T06-T12, T14-T15 implemented; remaining operations are marked planned individually."
+    "description": "T06-T17 implemented on designV1; listCustomers remains planned. T18 currently aligns documentation only; shared sandbox setup and payment validation are deferred until deployment."
   },
   "servers": [
     {

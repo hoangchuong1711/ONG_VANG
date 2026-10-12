@@ -1,6 +1,6 @@
 # Truy vết hợp đồng T04
 
-UC-01/T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng T08) đã có implementation và test riêng; `createOrder` T10, 6 operation T11, 3 operation T12, `cancelOrder` T13, thanh toán tiền mặt T14 và VNPay Sandbox T15 đã triển khai; các endpoint còn lại vẫn **Not Run / chờ implementation BE**. Địa chỉ T07 là fixture cố định; username và ID trong OpenAPI còn là ví dụ. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
+UC-01/T06, `estimateRoute` của T07 và `createQuote` của T09 (dùng T08) đã có implementation và test riêng; `createOrder` T10, 6 operation T11, 3 operation T12, `cancelOrder` T13, thanh toán tiền mặt T14, VNPay Sandbox T15, lịch sử T16 và báo cáo/Excel T17 đã triển khai. Chỉ `listCustomers` còn planned. Implementation không đồng nghĩa mọi ca kiểm thử đã PASS. T18 hiện chỉ cập nhật tài liệu; chưa chạy thêm kiểm thử thanh toán và chưa yêu cầu môi trường Sandbox chung. Xem [phạm vi T18](../T18-sandbox-api.md). Địa chỉ T07 là fixture cố định; username và ID trong OpenAPI còn là ví dụ. `x-uc`, `x-roles`, `x-error-codes`, `x-implementation-status` nằm ngay trong mỗi operation.
 
 
 | UC / task | Operation ID | Nhánh và tiêu chí cần kiểm thử |
