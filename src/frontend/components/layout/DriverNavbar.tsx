@@ -52,14 +52,21 @@ export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
             <span>{isOnline ? "ĐANG TRỰC TUYẾN" : "TẠM NGHỈ (OFFLINE)"}</span>
           </button>
 
-          {/* Quick link back to customer portal */}
+          {/* Quick links to Dispatcher & Customer portals */}
+          <Link
+            href="/dieu-phoi"
+            className="hidden sm:inline-flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors px-2 py-1 rounded-lg border border-slate-700 bg-slate-900"
+            title="Chuyển sang Cổng Điều phối viên"
+          >
+            <span>⚡ Điều phối</span>
+          </Link>
+
           <Link
             href="/"
             className="hidden sm:inline-flex items-center gap-1 text-xs text-stone-400 hover:text-amber-400 transition-colors px-2 py-1 rounded-lg border border-stone-800 hover:border-stone-700"
             title="Chuyển sang Cổng Khách hàng"
           >
-            <span>Khách hàng</span>
-            <span>→</span>
+            <span>Khách hàng →</span>
           </Link>
         </div>
       </div>

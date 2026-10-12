@@ -44,10 +44,20 @@ export default function AuthPage() {
       return;
     }
 
+    // Determine target portal based on role/phone
+    let targetPath = "/";
+    if (phone.startsWith("08")) {
+      targetPath = "/tai-xe";
+    } else if (phone.startsWith("07") || phone.includes("dieuphoi")) {
+      targetPath = "/dieu-phoi";
+    } else if (phone.includes("admin") || phone.includes("chudoi") || phone === "0600000001") {
+      targetPath = "/dieu-phoi/bao-cao";
+    }
+
     // Simulate successful login
     setIsSuccess(true);
     setTimeout(() => {
-      router.push("/");
+      router.push(targetPath);
     }, 1200);
   };
 
@@ -262,27 +272,50 @@ export default function AuthPage() {
             </Button>
           </form>
 
-          {/* Quick Demo Accounts Helper */}
+          {/* Quick Demo Accounts Helper (4 Roles) */}
           <div className="pt-2 border-t border-stone-200 space-y-2.5">
             <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider block text-center">
-              Tài khoản mẫu để test nhanh (1 Click)
+              Chọn tài khoản mẫu theo vai trò (1 Click)
             </span>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
                 onClick={() => handleFillDemo("0900000001")}
-                className="p-2 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 text-left transition-colors"
+                className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200 hover:border-amber-400 text-left transition-colors"
               >
-                <div className="font-bold text-stone-900">Khách Hàng Vàng</div>
+                <div className="font-extrabold text-amber-950">1. Khách Hàng VIP</div>
                 <div className="font-mono text-[11px] text-amber-700">0900000001</div>
+                <div className="text-[10px] text-stone-500">→ Vào Cổng Khách hàng</div>
               </button>
+
               <button
                 type="button"
-                onClick={() => handleFillDemo("0900000002")}
-                className="p-2 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 text-left transition-colors"
+                onClick={() => handleFillDemo("0800000001")}
+                className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 text-left transition-colors"
               >
-                <div className="font-bold text-stone-900">Khách Hàng Thường</div>
-                <div className="font-mono text-[11px] text-stone-600">0900000002</div>
+                <div className="font-extrabold text-stone-900">2. Tài Xế Công Nghệ</div>
+                <div className="font-mono text-[11px] text-emerald-700 font-bold">0800000001</div>
+                <div className="text-[10px] text-stone-500">→ Vào Buồng lái Tài xế</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleFillDemo("0700000001")}
+                className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-700 hover:border-amber-400 text-left transition-colors"
+              >
+                <div className="font-extrabold text-amber-400">3. Điều Phối Viên</div>
+                <div className="font-mono text-[11px] text-slate-300">0700000001</div>
+                <div className="text-[10px] text-slate-400">→ Vào Bàn Điều phối</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleFillDemo("0600000001")}
+                className="p-2.5 rounded-xl bg-slate-800 text-white border border-slate-700 hover:border-amber-400 text-left transition-colors"
+              >
+                <div className="font-extrabold text-blue-400">4. Chủ Đội Xe</div>
+                <div className="font-mono text-[11px] text-slate-300">0600000001</div>
+                <div className="text-[10px] text-slate-400">→ Vào Quản trị & Báo cáo</div>
               </button>
             </div>
           </div>

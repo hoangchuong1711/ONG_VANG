@@ -40,6 +40,11 @@ export interface OrderItem {
     vehiclePlate: string;
     vehicleType: string;
   };
+  incident?: {
+    type: string;
+    note: string;
+    reportedAt: string;
+  };
 }
 
 export interface QuoteBreakdown {
@@ -49,4 +54,33 @@ export interface QuoteBreakdown {
   vipDiscountFee: number;
   totalFee: number;
   estimatedMinutes: number;
+}
+
+export type DriverStatus = "ONLINE_IDLE" | "ONLINE_BUSY" | "OFFLINE";
+
+export interface DriverItem {
+  id: string;
+  name: string;
+  phone: string;
+  vehiclePlate: string;
+  vehicleType: string;
+  currentDistrict: string;
+  status: DriverStatus;
+  idleSinceMinutes: number;
+  rating: number;
+  completedOrdersToday: number;
+  codCashHolding: number;
+  acceptanceRate: number;
+}
+
+export interface IncidentItem {
+  id: string;
+  orderId: string;
+  driverId: string;
+  driverName: string;
+  driverPhone: string;
+  type: string;
+  note: string;
+  reportedAt: string;
+  status: "CHO_XU_LY" | "DANG_XU_LY" | "DA_GIAI_QUYET";
 }
