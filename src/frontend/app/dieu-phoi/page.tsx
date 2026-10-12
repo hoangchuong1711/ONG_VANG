@@ -150,50 +150,50 @@ export default function DispatcherLiveBoardPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAFA] text-zinc-800">
+    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] font-sans">
       <DispatcherNavbar
         pendingCount={pendingOrders.length}
         incidentCount={incidents.filter((i) => i.status === "CHO_XU_LY").length}
       />
 
-      {/* OPERATIONS TELEMETRY STRIP (LIGHT THEME ANTI-SLOP) */}
-      <section className="bg-white border-b border-zinc-200 px-4 sm:px-6 py-2.5 shadow-2xs">
-        <div className="max-w-[1680px] mx-auto flex flex-wrap items-center justify-between gap-4">
-          {/* Asymmetric Telemetry Metrics */}
-          <div className="flex items-center gap-6 text-xs divide-x divide-zinc-200">
+      {/* OPERATIONS TELEMETRY STRIP */}
+      <section className="bg-white border-b border-stone-200 px-4 sm:px-6 py-3 shadow-2xs">
+        <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
+          {/* Telemetry Metrics */}
+          <div className="flex items-center gap-6 text-sm divide-x divide-stone-200">
             <div className="flex items-baseline gap-2">
-              <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-                Hàng đợi chờ gán
+              <span className="text-stone-500 font-semibold text-xs">
+                Hàng đợi chờ gán:
               </span>
-              <span className="font-mono text-base font-black text-amber-600">
+              <span className="text-lg font-extrabold text-amber-600">
                 {pendingOrders.length}
               </span>
             </div>
 
             <div className="flex items-baseline gap-2 pl-6">
-              <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-                Đang giao
+              <span className="text-stone-500 font-semibold text-xs">
+                Đang giao hàng:
               </span>
-              <span className="font-mono text-base font-bold text-zinc-900">
+              <span className="text-lg font-extrabold text-stone-900">
                 {deliveringOrders.length}
               </span>
             </div>
 
             <div className="flex items-baseline gap-2 pl-6">
-              <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-                Tài xế rảnh
+              <span className="text-stone-500 font-semibold text-xs">
+                Tài xế sẵn sàng:
               </span>
-              <span className="font-mono text-base font-bold text-emerald-600">
+              <span className="text-lg font-extrabold text-emerald-600">
                 {onlineIdleDrivers.length}
-                <span className="text-xs text-zinc-400 font-normal">/{drivers.length}</span>
+                <span className="text-xs text-stone-400 font-normal">/{drivers.length}</span>
               </span>
             </div>
 
             <div className="flex items-baseline gap-2 pl-6">
-              <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-                Sự cố can thiệp
+              <span className="text-stone-500 font-semibold text-xs">
+                Sự cố cần can thiệp:
               </span>
-              <span className={`font-mono text-base font-bold ${incidents.length > 0 ? "text-rose-600" : "text-zinc-400"}`}>
+              <span className={`text-lg font-extrabold ${incidents.length > 0 ? "text-rose-600" : "text-stone-400"}`}>
                 {incidents.filter((i) => i.status === "CHO_XU_LY").length}
               </span>
             </div>
@@ -204,13 +204,13 @@ export default function DispatcherLiveBoardPage() {
             <button
               type="button"
               onClick={handleSimulateNewOrder}
-              className="px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-800 text-xs font-mono font-medium transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-800 text-xs font-semibold transition-colors cursor-pointer"
             >
-              + Giả lập đơn Hotline mới
+              + Giả lập đơn Hotline
             </button>
             <Link
               href="/dieu-phoi/tao-don"
-              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-mono font-bold shadow-2xs transition-all active:scale-[0.98]"
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-900 text-xs font-bold shadow-sm transition-all active:scale-[0.98]"
             >
               + Tiếp Nhận Cuộc Gọi (UC-02)
             </Link>
@@ -219,57 +219,57 @@ export default function DispatcherLiveBoardPage() {
       </section>
 
       {/* 3-COLUMN OPERATIONS COCKPIT */}
-      <main className="flex-1 max-w-[1680px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* ================= COLUMN 1: PENDING QUEUE (4 COLS) ================= */}
-        <section className="lg:col-span-4 flex flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-2xs">
-          <div className="p-3.5 border-b border-zinc-200 bg-zinc-50/80 flex items-center justify-between">
+        <section className="lg:col-span-4 flex flex-col bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
+          <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-bold text-zinc-900 uppercase tracking-wider">
+              <span className="text-sm font-extrabold text-stone-900 tracking-tight">
                 Hàng Đợi Chờ Gán
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
                 {pendingOrders.length}
               </span>
             </div>
-            <span className="text-[10px] font-mono text-zinc-500">UC-12 AUTO QUEUE</span>
+            <span className="text-xs font-semibold text-stone-400">UC-12 Hàng đợi</span>
           </div>
 
-          <div className="flex-1 p-3 space-y-3 overflow-y-auto max-h-[calc(100vh-210px)]">
+          <div className="flex-1 p-3.5 space-y-3 overflow-y-auto max-h-[calc(100vh-220px)]">
             {pendingOrders.length === 0 ? (
-              <div className="py-12 text-center text-xs text-zinc-400 font-mono">
+              <div className="py-12 text-center text-xs sm:text-sm text-stone-400 font-medium">
                 Không có đơn hàng tồn đọng trong hàng đợi
               </div>
             ) : (
               pendingOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="p-3.5 rounded-lg bg-white border border-zinc-200 hover:border-amber-400 transition-colors space-y-2.5 shadow-2xs"
+                  className="p-4 rounded-xl bg-white border border-stone-200 hover:border-amber-400 hover:shadow-xs transition-all space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-amber-600">{order.id}</span>
-                    <span className="text-[11px] font-mono text-zinc-400">{order.createdAt}</span>
+                    <span className="text-sm font-extrabold text-amber-700">{order.id}</span>
+                    <span className="text-xs font-medium text-stone-400">{order.createdAt}</span>
                   </div>
 
-                  <div className="text-xs space-y-1">
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-emerald-600 font-bold text-[10px] mt-0.5">LẤY:</span>
-                      <span className="text-zinc-800 line-clamp-1">
+                  <div className="text-xs space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-700 font-bold text-xs shrink-0">Lấy:</span>
+                      <span className="text-stone-800 line-clamp-1 font-medium">
                         {order.sender.street}, {order.sender.district}
                       </span>
                     </div>
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-amber-600 font-bold text-[10px] mt-0.5">GIAO:</span>
-                      <span className="text-zinc-800 line-clamp-1">
+                    <div className="flex items-start gap-2">
+                      <span className="text-amber-700 font-bold text-xs shrink-0">Giao:</span>
+                      <span className="text-stone-800 line-clamp-1 font-medium">
                         {order.receiver.street}, {order.receiver.district}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-zinc-100 text-xs font-mono">
-                    <div className="text-zinc-500 text-[11px]">
-                      <span>{order.distanceKm}km</span> · <span>{order.packageWeightKg}kg</span>
+                  <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-xs">
+                    <div className="text-stone-500 font-medium">
+                      <span>{order.distanceKm} km</span> · <span>{order.packageWeightKg} kg</span>
                     </div>
-                    <span className="font-bold text-zinc-900">{formatVND(order.totalFee)}</span>
+                    <span className="text-sm font-extrabold text-stone-900">{formatVND(order.totalFee)}</span>
                   </div>
 
                   <div className="pt-1 flex items-center gap-2">
@@ -278,13 +278,13 @@ export default function DispatcherLiveBoardPage() {
                       size="sm"
                       fullWidth
                       onClick={() => handleOpenAssignModal(order)}
-                      className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs shadow-2xs"
+                      className="text-xs font-bold"
                     >
-                      PHÂN CÔNG TÀI XẾ (UC-12)
+                      Phân công tài xế (UC-12)
                     </Button>
                     <Link
                       href={`/dieu-phoi/don-hang/${order.id}`}
-                      className="px-2.5 py-1.5 rounded-md border border-zinc-200 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 text-xs font-mono"
+                      className="px-3 py-2 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold shrink-0 transition-colors"
                     >
                       Chi tiết
                     </Link>
@@ -296,46 +296,49 @@ export default function DispatcherLiveBoardPage() {
         </section>
 
         {/* ================= COLUMN 2: IN-FLIGHT OPS & INCIDENTS (5 COLS) ================= */}
-        <section className="lg:col-span-5 flex flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-2xs">
-          <div className="p-3.5 border-b border-zinc-200 bg-zinc-50/80 flex items-center justify-between">
+        <section className="lg:col-span-5 flex flex-col bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
+          <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-bold text-zinc-900 uppercase tracking-wider">
-                Đơn Hàng Đang Thực Hiện & Can Thiệp
+              <span className="text-sm font-extrabold text-stone-900 tracking-tight">
+                Đơn Đang Thực Hiện & Sự Cố
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-100 text-zinc-700 border border-zinc-300">
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-stone-100 text-stone-800 border border-stone-300">
                 {deliveringOrders.length}
               </span>
             </div>
-            <span className="text-[10px] font-mono text-zinc-500">LIVE TRACKING</span>
+            <span className="text-xs font-semibold text-stone-400">Theo dõi trực tiếp</span>
           </div>
 
-          <div className="flex-1 p-3 space-y-3 overflow-y-auto max-h-[calc(100vh-210px)]">
-            {/* INCIDENT ALERTS (SEPARATE CONTAINER) */}
+          <div className="flex-1 p-3.5 space-y-3 overflow-y-auto max-h-[calc(100vh-220px)]">
+            {/* INCIDENT ALERTS */}
             {incidents.filter((i) => i.status === "CHO_XU_LY").length > 0 && (
-              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 space-y-2">
-                <div className="flex items-center justify-between text-xs font-mono font-bold text-rose-800 uppercase">
-                  <span>Cảnh báo sự cố can thiệp ({incidents.length})</span>
-                  <span className="text-[10px] text-rose-600">UC-13 / UC-14</span>
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 space-y-2.5">
+                <div className="flex items-center justify-between text-xs font-bold text-rose-900">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-600" />
+                    <span>Cảnh báo sự cố cần can thiệp ({incidents.length})</span>
+                  </div>
+                  <span className="text-[11px] text-rose-700 font-semibold">UC-13 / UC-14</span>
                 </div>
                 {incidents.map((inc) => (
-                  <div key={inc.id} className="p-2.5 rounded bg-white border border-rose-200 text-xs space-y-1.5">
+                  <div key={inc.id} className="p-3 rounded-lg bg-white border border-rose-200 text-xs space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-rose-700">{inc.orderId}</span>
-                      <span className="text-[10px] font-mono text-zinc-400">{inc.reportedAt}</span>
+                      <span className="font-extrabold text-rose-800">{inc.orderId}</span>
+                      <span className="text-[11px] text-stone-400 font-medium">{inc.reportedAt}</span>
                     </div>
-                    <p className="text-zinc-700 text-xs font-sans">{inc.note}</p>
+                    <p className="text-stone-700 leading-relaxed font-medium">{inc.note}</p>
                     <div className="flex items-center gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => handleReassignIncidentOrder(inc.orderId)}
-                        className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono text-[11px] font-bold transition-colors"
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-900 text-xs font-bold transition-colors cursor-pointer"
                       >
                         Đổi tài xế khác (UC-13)
                       </button>
                       <button
                         type="button"
                         onClick={() => handleCancelOrder(inc.orderId, inc.note)}
-                        className="px-2 py-1 rounded bg-zinc-100 hover:bg-rose-100 text-rose-700 font-mono text-[11px] border border-zinc-200 transition-colors"
+                        className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-rose-100 text-rose-800 text-xs font-semibold border border-stone-200 transition-colors cursor-pointer"
                       >
                         Hủy đơn (UC-14)
                       </button>
@@ -349,26 +352,26 @@ export default function DispatcherLiveBoardPage() {
             {deliveringOrders.map((order) => (
               <div
                 key={order.id}
-                className="p-3.5 rounded-lg bg-white border border-zinc-200 hover:border-zinc-300 transition-colors space-y-2 shadow-2xs"
+                className="p-4 rounded-xl bg-white border border-stone-200 hover:border-stone-300 transition-all space-y-2.5"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-zinc-900">{order.id}</span>
+                    <span className="text-sm font-extrabold text-stone-900">{order.id}</span>
                     <Badge status={order.status} />
                   </div>
-                  <span className="text-[11px] font-mono text-zinc-400">{order.createdAt}</span>
+                  <span className="text-xs text-stone-400 font-medium">{order.createdAt}</span>
                 </div>
 
-                <div className="text-xs space-y-1 text-zinc-600">
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">Lộ trình:</span>
-                    <span className="font-medium text-zinc-800">
+                <div className="text-xs space-y-1.5 text-stone-600">
+                  <div className="flex justify-between font-medium">
+                    <span className="text-stone-400">Tuyến đường:</span>
+                    <span className="text-stone-800 font-semibold">
                       {order.sender.district} → {order.receiver.district}
                     </span>
                   </div>
                   {order.driver && (
-                    <div className="flex justify-between items-baseline font-mono text-[11px]">
-                      <span className="text-zinc-400">Tài xế phụ trách:</span>
+                    <div className="flex justify-between items-baseline text-xs font-medium">
+                      <span className="text-stone-400">Tài xế giao:</span>
                       <span className="text-amber-800 font-bold">
                         {order.driver.name} ({order.driver.vehiclePlate})
                       </span>
@@ -376,13 +379,13 @@ export default function DispatcherLiveBoardPage() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-zinc-100 text-xs">
-                  <span className="font-mono text-zinc-900 font-bold">{formatVND(order.totalFee)}</span>
+                <div className="flex items-center justify-between pt-2.5 border-t border-stone-100 text-xs">
+                  <span className="text-sm font-extrabold text-stone-900">{formatVND(order.totalFee)}</span>
                   <Link
                     href={`/dieu-phoi/don-hang/${order.id}`}
-                    className="font-mono text-[11px] text-amber-700 hover:underline font-bold"
+                    className="text-xs text-amber-700 hover:text-amber-800 font-bold"
                   >
-                    Mở bàn can thiệp →
+                    Xem chi tiết & Can thiệp →
                   </Link>
                 </div>
               </div>
@@ -391,25 +394,25 @@ export default function DispatcherLiveBoardPage() {
         </section>
 
         {/* ================= COLUMN 3: FLEET ROSTER (3 COLS) ================= */}
-        <section className="lg:col-span-3 flex flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-2xs">
-          <div className="p-3.5 border-b border-zinc-200 bg-zinc-50/80 flex items-center justify-between">
+        <section className="lg:col-span-3 flex flex-col bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
+          <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-bold text-zinc-900 uppercase tracking-wider">
+              <span className="text-sm font-extrabold text-stone-900 tracking-tight">
                 Đội Xe Trực Tuyến
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                 {onlineIdleDrivers.length} rảnh
               </span>
             </div>
             <Link
               href="/dieu-phoi/doi-xe"
-              className="text-[10px] font-mono text-zinc-500 hover:text-amber-600"
+              className="text-xs font-semibold text-stone-500 hover:text-amber-600"
             >
-              TẤT CẢ →
+              Tất cả →
             </Link>
           </div>
 
-          <div className="flex-1 p-3 space-y-2.5 overflow-y-auto max-h-[calc(100vh-210px)]">
+          <div className="flex-1 p-3.5 space-y-2.5 overflow-y-auto max-h-[calc(100vh-220px)]">
             {drivers.map((driver) => {
               const isIdle = driver.status === "ONLINE_IDLE";
               const isBusy = driver.status === "ONLINE_BUSY";
@@ -417,29 +420,29 @@ export default function DispatcherLiveBoardPage() {
               return (
                 <div
                   key={driver.id}
-                  className="p-3 rounded-lg bg-white border border-zinc-200 hover:border-zinc-300 transition-colors space-y-1.5 shadow-2xs"
+                  className="p-3.5 rounded-xl bg-white border border-stone-200 hover:border-stone-300 transition-all space-y-2"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="font-bold text-xs text-zinc-900 block">{driver.name}</span>
-                      <span className="font-mono text-[10px] text-zinc-500">{driver.vehiclePlate}</span>
+                      <span className="font-bold text-xs text-stone-900 block">{driver.name}</span>
+                      <span className="text-xs font-semibold text-stone-500">{driver.vehiclePlate}</span>
                     </div>
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                      className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
                         isIdle
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                           : isBusy
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-zinc-100 text-zinc-500 border-zinc-200"
+                          ? "bg-amber-50 text-amber-800 border-amber-200"
+                          : "bg-stone-100 text-stone-500 border-stone-200"
                       }`}
                     >
-                      {isIdle ? `RẢNH ${driver.idleSinceMinutes}m` : isBusy ? "ĐANG GIAO" : "OFFLINE"}
+                      {isIdle ? `Rảnh ${driver.idleSinceMinutes}m` : isBusy ? "Đang giao" : "Tạm nghỉ"}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500 pt-1 border-t border-zinc-100">
+                  <div className="flex items-center justify-between text-xs text-stone-500 font-medium pt-1.5 border-t border-stone-100">
                     <span>{driver.currentDistrict}</span>
-                    <span>COD: {formatVND(driver.codCashHolding)}</span>
+                    <span className="font-semibold text-stone-700">COD: {formatVND(driver.codCashHolding)}</span>
                   </div>
                 </div>
               );
@@ -450,50 +453,50 @@ export default function DispatcherLiveBoardPage() {
 
       {/* MODAL PHÂN CÔNG TÀI XẾ THÔNG MINH (UC-12) */}
       {assigningOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white border border-zinc-200 rounded-xl shadow-2xl p-6 space-y-5 text-zinc-800">
-            <div className="flex items-start justify-between border-b border-zinc-200 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white border border-stone-200 rounded-2xl shadow-xl p-6 space-y-5 text-stone-800">
+            <div className="flex items-start justify-between border-b border-stone-200 pb-3">
               <div>
-                <span className="font-mono text-[10px] font-bold text-amber-700 uppercase tracking-widest block">
-                  ĐIỀU PHỐI TÀI XẾ TỨC THÌ (UC-12)
+                <span className="text-xs font-bold text-amber-800 uppercase tracking-wider block">
+                  ĐIỀU PHỐI TÀI XẾ (UC-12)
                 </span>
-                <h3 className="text-base font-bold text-zinc-900 mt-0.5">
+                <h3 className="text-lg font-extrabold text-stone-900 mt-1">
                   Phân công tài xế cho đơn {assigningOrder.id}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setAssigningOrder(null)}
-                className="text-zinc-400 hover:text-zinc-600 font-mono text-sm"
+                className="text-stone-400 hover:text-stone-600 text-base font-bold cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200 space-y-1.5 text-xs font-mono">
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Lấy hàng:</span>
-                <span className="text-zinc-800 font-sans font-medium">
+            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-2 text-xs">
+              <div className="flex justify-between font-medium">
+                <span className="text-stone-500">Điểm lấy:</span>
+                <span className="text-stone-900 font-semibold">
                   {assigningOrder.sender.street}, {assigningOrder.sender.district}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Giao hàng:</span>
-                <span className="text-zinc-800 font-sans font-medium">
+              <div className="flex justify-between font-medium">
+                <span className="text-stone-500">Điểm giao:</span>
+                <span className="text-stone-900 font-semibold">
                   {assigningOrder.receiver.street}, {assigningOrder.receiver.district}
                 </span>
               </div>
-              <div className="flex justify-between pt-1 border-t border-zinc-200">
-                <span className="text-zinc-500">Cự ly & Cước:</span>
-                <span className="text-amber-700 font-bold">
+              <div className="flex justify-between pt-1.5 border-t border-stone-200">
+                <span className="text-stone-500 font-medium">Cự ly & Cước phí:</span>
+                <span className="text-amber-800 font-extrabold text-sm">
                   {assigningOrder.distanceKm} km · {formatVND(assigningOrder.totalFee)}
                 </span>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-mono font-bold text-zinc-700 uppercase">
-                Gợi ý tài xế tối ưu (Đang rảnh & gần vị trí lấy hàng):
+            <div className="space-y-2.5">
+              <label className="block text-xs font-bold text-stone-800 uppercase tracking-wide">
+                Gợi ý tài xế tối ưu (Đang trực tuyến rảnh):
               </label>
 
               <div className="space-y-2 max-h-56 overflow-y-auto">
@@ -504,10 +507,10 @@ export default function DispatcherLiveBoardPage() {
                   return (
                     <label
                       key={d.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
+                      className={`flex items-center justify-between p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
                         isSelected
-                          ? "border-amber-500 bg-amber-50/80"
-                          : "border-zinc-200 bg-white hover:border-zinc-300"
+                          ? "border-amber-500 bg-amber-50 shadow-2xs"
+                          : "border-stone-200 bg-white hover:border-stone-300"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -519,14 +522,14 @@ export default function DispatcherLiveBoardPage() {
                           className="text-amber-500 focus:ring-0"
                         />
                         <div>
-                          <div className="font-bold text-zinc-900">{d.name}</div>
-                          <div className="font-mono text-[11px] text-zinc-500">
+                          <div className="font-bold text-sm text-stone-900">{d.name}</div>
+                          <div className="text-xs text-stone-500 font-medium">
                             {d.vehiclePlate} · {d.currentDistrict}
                           </div>
                         </div>
                       </div>
 
-                      <div className="text-right font-mono text-[11px]">
+                      <div className="text-right text-xs">
                         <span
                           className={`font-bold block ${
                             isIdle ? "text-emerald-700" : "text-amber-700"
@@ -534,7 +537,7 @@ export default function DispatcherLiveBoardPage() {
                         >
                           {isIdle ? `Rảnh ${d.idleSinceMinutes}m` : "Đang giao"}
                         </span>
-                        <span className="text-zinc-400 text-[10px]">Đánh giá: ★{d.rating}</span>
+                        <span className="text-stone-400 text-[11px] font-medium">Đánh giá: ★{d.rating}</span>
                       </div>
                     </label>
                   );
@@ -542,12 +545,12 @@ export default function DispatcherLiveBoardPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-200">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-200">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setAssigningOrder(null)}
-                className="border-zinc-200 text-zinc-700 hover:bg-zinc-100"
+                className="text-xs font-semibold"
               >
                 Hủy bỏ
               </Button>
@@ -555,9 +558,9 @@ export default function DispatcherLiveBoardPage() {
                 variant="primary"
                 size="sm"
                 onClick={handleConfirmAssignment}
-                className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs shadow-2xs"
+                className="text-xs font-bold shadow-sm"
               >
-                XÁC NHẬN PHÂN CÔNG (UC-12)
+                Xác nhận phân công (UC-12)
               </Button>
             </div>
           </div>

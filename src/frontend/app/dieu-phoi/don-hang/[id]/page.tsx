@@ -71,21 +71,21 @@ export default function DispatcherOrderDetailPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAFA] text-zinc-800">
+    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] font-sans">
       <DispatcherNavbar />
 
-      <main className="flex-1 max-w-[1280px] w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-[1240px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Top Header & Breadcrumb */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-200">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-200">
           <div className="flex items-center gap-3">
             <Link
               href="/dieu-phoi"
-              className="text-xs font-mono font-medium text-zinc-500 hover:text-amber-700 transition-colors"
+              className="text-xs sm:text-sm font-semibold text-stone-500 hover:text-amber-800 transition-colors"
             >
-              ← BÀN ĐIỀU PHỐI
+              ← Bàn điều phối
             </Link>
-            <span className="text-zinc-300">/</span>
-            <span className="font-mono text-sm font-bold text-amber-700">{order.id}</span>
+            <span className="text-stone-300">/</span>
+            <span className="text-sm sm:text-base font-extrabold text-stone-900">{order.id}</span>
             <Badge status={order.status} />
           </div>
 
@@ -95,30 +95,30 @@ export default function DispatcherOrderDetailPage() {
                 variant="danger"
                 size="sm"
                 onClick={() => setIsCancelModalOpen(true)}
-                className="text-xs font-mono font-medium"
+                className="text-xs font-bold"
               >
-                HỦY ĐƠN KHẨN CẤP (UC-14)
+                Hủy đơn khẩn cấp (UC-14)
               </Button>
             )}
           </div>
         </div>
 
-        {/* INCIDENT BANNER IF PRESENT (LIGHT THEME) */}
+        {/* INCIDENT BANNER IF PRESENT */}
         {order.incident && (
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 space-y-3">
+          <div className="p-4 sm:p-5 rounded-2xl bg-rose-50 border border-rose-200 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-rose-800 font-mono text-xs font-bold uppercase tracking-wider">
-                <span className="px-1.5 py-0.5 rounded bg-rose-100 border border-rose-300 text-[10px]">
+              <div className="flex items-center gap-2 text-rose-900 font-bold text-xs uppercase tracking-wide">
+                <span className="px-2 py-0.5 rounded-full bg-rose-100 border border-rose-300 text-[11px] text-rose-800 font-extrabold">
                   CẢNH BÁO SỰ CỐ
                 </span>
                 <span>{order.incident.type}</span>
               </div>
-              <span className="text-[11px] font-mono text-zinc-500">
+              <span className="text-xs font-medium text-stone-500">
                 Ghi nhận lúc: {order.incident.reportedAt}
               </span>
             </div>
 
-            <p className="text-xs text-rose-900 font-sans leading-relaxed">
+            <p className="text-xs sm:text-sm text-rose-950 leading-relaxed font-medium">
               {order.incident.note}
             </p>
 
@@ -127,7 +127,7 @@ export default function DispatcherOrderDetailPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setIsReassignModalOpen(true)}
-                className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shadow-2xs"
+                className="text-xs font-bold shadow-sm"
               >
                 Thu hồi & Đổi tài xế khác (UC-13)
               </Button>
@@ -135,7 +135,7 @@ export default function DispatcherOrderDetailPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsCancelModalOpen(true)}
-                className="border-rose-300 text-rose-700 hover:bg-rose-100 text-xs font-medium"
+                className="border-rose-300 text-rose-700 hover:bg-rose-100 text-xs font-semibold"
               >
                 Hủy đơn do sự cố
               </Button>
@@ -148,48 +148,48 @@ export default function DispatcherOrderDetailPage() {
           {/* LEFT COLUMN: ROUTE & SENDER/RECEIVER (7 COLS) */}
           <div className="lg:col-span-7 space-y-6">
             {/* Điểm lấy & Giao hàng */}
-            <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden divide-y divide-zinc-200 shadow-2xs">
-              <div className="p-4 sm:p-5 space-y-2.5">
+            <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden divide-y divide-stone-200 shadow-2xs">
+              <div className="p-5 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-500">
+                  <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
                     Điểm lấy hàng (Người gửi)
                   </span>
                   <a
                     href={`tel:${order.sender.phone}`}
-                    className="text-xs font-mono font-medium text-amber-700 hover:underline"
+                    className="text-xs font-bold text-amber-800 hover:underline"
                   >
                     Gọi: {order.sender.phone}
                   </a>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-sm font-semibold text-zinc-900">{order.sender.name}</div>
-                  <div className="text-xs text-zinc-600 font-sans">
+                  <div className="text-base font-extrabold text-stone-900">{order.sender.name}</div>
+                  <div className="text-xs sm:text-sm text-stone-600 font-medium">
                     {order.sender.street}, {order.sender.district}, {order.sender.city}
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5 space-y-2.5">
+              <div className="p-5 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-700">
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-800">
                     Điểm giao hàng (Người nhận)
                   </span>
                   <a
                     href={`tel:${order.receiver.phone}`}
-                    className="text-xs font-mono font-medium text-amber-700 hover:underline"
+                    className="text-xs font-bold text-amber-800 hover:underline"
                   >
                     Gọi: {order.receiver.phone}
                   </a>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-sm font-semibold text-zinc-900">{order.receiver.name}</div>
-                  <div className="text-xs text-zinc-600 font-sans">
+                  <div className="text-base font-extrabold text-stone-900">{order.receiver.name}</div>
+                  <div className="text-xs sm:text-sm text-stone-600 font-medium">
                     {order.receiver.street}, {order.receiver.district}, {order.receiver.city}
                   </div>
                   {order.receiver.notes && (
-                    <div className="text-xs text-amber-900 bg-amber-50 border border-amber-200 p-2.5 rounded-lg mt-2">
-                      <span className="font-mono font-bold text-[10px] uppercase block text-amber-800">
-                        Chỉ dẫn giao hàng:
+                    <div className="text-xs text-amber-950 bg-amber-50 border border-amber-200 p-3 rounded-xl mt-2.5 font-medium">
+                      <span className="font-bold text-amber-900 block mb-0.5">
+                        Chỉ dẫn cho tài xế:
                       </span>
                       {order.receiver.notes}
                     </div>
@@ -199,13 +199,13 @@ export default function DispatcherOrderDetailPage() {
             </div>
 
             {/* Thông số kiện hàng & Snapshot Cước phí */}
-            <div className="bg-white border border-zinc-200 rounded-xl p-5 space-y-4 shadow-2xs">
-              <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-500">
+            <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
                   Thông số kiện hàng & Cước phí
                 </span>
                 <span
-                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                     order.paid
                       ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                       : "bg-amber-50 text-amber-800 border-amber-200"
@@ -215,39 +215,39 @@ export default function DispatcherOrderDetailPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-mono">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
                 <div>
-                  <span className="text-zinc-400 block text-[10px] uppercase">Loại hàng</span>
-                  <span className="text-zinc-800 font-sans font-medium">{order.packageType}</span>
+                  <span className="text-stone-400 block font-medium mb-0.5">Loại bưu phẩm</span>
+                  <span className="text-stone-900 font-bold text-sm">{order.packageType}</span>
                 </div>
                 <div>
-                  <span className="text-zinc-400 block text-[10px] uppercase">Trọng lượng</span>
-                  <span className="text-zinc-800">{order.packageWeightKg} kg</span>
+                  <span className="text-stone-400 block font-medium mb-0.5">Khối lượng</span>
+                  <span className="text-stone-900 font-bold text-sm">{order.packageWeightKg} kg</span>
                 </div>
                 <div>
-                  <span className="text-zinc-400 block text-[10px] uppercase">Khoảng cách</span>
-                  <span className="text-zinc-800">{order.distanceKm} km</span>
+                  <span className="text-stone-400 block font-medium mb-0.5">Khoảng cách</span>
+                  <span className="text-stone-900 font-bold text-sm">{order.distanceKm} km</span>
                 </div>
               </div>
 
-              <div className="space-y-2 pt-3 border-t border-zinc-200 text-xs font-mono">
-                <div className="flex justify-between text-zinc-600">
-                  <span>Cước cơ bản:</span>
-                  <span>{formatVND(order.baseFee)}</span>
+              <div className="space-y-2 pt-3 border-t border-stone-200 text-xs sm:text-sm">
+                <div className="flex justify-between text-stone-600 font-medium">
+                  <span>Cước vận chuyển cơ bản:</span>
+                  <span className="font-semibold text-stone-900">{formatVND(order.baseFee)}</span>
                 </div>
-                <div className="flex justify-between text-zinc-600">
-                  <span>Phụ phí kiện nặng/cồng kềnh:</span>
-                  <span>{formatVND(order.surchargeFee)}</span>
+                <div className="flex justify-between text-stone-600 font-medium">
+                  <span>Phụ phí cồng kềnh:</span>
+                  <span className="font-semibold text-stone-900">{formatVND(order.surchargeFee)}</span>
                 </div>
                 {order.vipDiscountFee > 0 && (
-                  <div className="flex justify-between text-emerald-700">
+                  <div className="flex justify-between text-emerald-700 font-medium">
                     <span>Ưu đãi VIP Vàng:</span>
-                    <span>-{formatVND(order.vipDiscountFee)}</span>
+                    <span className="font-bold">-{formatVND(order.vipDiscountFee)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-baseline pt-2 border-t border-zinc-200 text-sm">
-                  <span className="text-zinc-800 font-sans font-bold">Tổng thu:</span>
-                  <span className="font-mono font-bold text-amber-700 text-base">
+                <div className="flex justify-between items-baseline pt-2.5 border-t border-stone-200">
+                  <span className="text-stone-900 font-bold text-sm sm:text-base">Tổng tiền thu:</span>
+                  <span className="font-extrabold text-amber-700 text-lg sm:text-xl">
                     {formatVND(order.totalFee)}
                   </span>
                 </div>
@@ -260,9 +260,9 @@ export default function DispatcherOrderDetailPage() {
                     size="sm"
                     fullWidth
                     onClick={handleConfirmCODCollect}
-                    className="border-amber-300 text-amber-800 hover:bg-amber-50 font-mono text-xs font-medium"
+                    className="border-amber-300 text-amber-900 hover:bg-amber-50 text-xs font-bold"
                   >
-                    XÁC NHẬN THU COD TẠI BÀN (UC-08)
+                    Xác nhận đã thu tiền mặt COD tại bàn (UC-08)
                   </Button>
                 </div>
               )}
@@ -272,16 +272,16 @@ export default function DispatcherOrderDetailPage() {
           {/* RIGHT COLUMN: DRIVER & AUDIT TRAIL (5 COLS) */}
           <div className="lg:col-span-5 space-y-6">
             {/* Driver in-charge */}
-            <div className="bg-white border border-zinc-200 rounded-xl p-5 space-y-4 shadow-2xs">
-              <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-500">
+            <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
                   Tài xế tiếp nhận
                 </span>
                 {order.driver && (
                   <button
                     type="button"
                     onClick={() => setIsReassignModalOpen(true)}
-                    className="text-xs font-mono text-amber-700 hover:underline"
+                    className="text-xs font-bold text-amber-800 hover:underline cursor-pointer"
                   >
                     Đổi tài xế
                   </button>
@@ -292,21 +292,21 @@ export default function DispatcherOrderDetailPage() {
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="text-sm font-bold text-zinc-900">{order.driver.name}</div>
-                      <div className="text-xs font-mono text-zinc-500">Mã: {order.driver.id}</div>
+                      <div className="text-base font-extrabold text-stone-900">{order.driver.name}</div>
+                      <div className="text-xs text-stone-500 font-medium">Mã TX: {order.driver.id}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-mono text-sm font-bold text-amber-700">
+                      <div className="text-sm font-extrabold text-amber-700">
                         {order.driver.vehiclePlate}
                       </div>
-                      <div className="text-[11px] text-zinc-500">{order.driver.vehicleType}</div>
+                      <div className="text-xs text-stone-500 font-medium">{order.driver.vehicleType}</div>
                     </div>
                   </div>
 
-                  <div className="pt-2">
+                  <div className="pt-1">
                     <a
                       href={`tel:${order.driver.phone}`}
-                      className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-xs font-mono font-medium text-zinc-800 transition-colors"
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-xs font-bold text-stone-800 transition-colors"
                     >
                       Gọi tài xế: {order.driver.phone}
                     </a>
@@ -314,12 +314,12 @@ export default function DispatcherOrderDetailPage() {
                 </div>
               ) : (
                 <div className="py-6 text-center space-y-2">
-                  <p className="text-xs text-zinc-400">Chưa gán tài xế cho đơn hàng này</p>
+                  <p className="text-xs text-stone-400 font-medium">Chưa gán tài xế cho đơn hàng này</p>
                   <Button
                     variant="primary"
                     size="sm"
                     onClick={() => setIsReassignModalOpen(true)}
-                    className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shadow-2xs"
+                    className="text-xs font-bold shadow-sm"
                   >
                     Gán tài xế ngay (UC-12)
                   </Button>
@@ -328,41 +328,41 @@ export default function DispatcherOrderDetailPage() {
             </div>
 
             {/* Audit Trail / Timeline */}
-            <div className="bg-white border border-zinc-200 rounded-xl p-5 space-y-4 shadow-2xs">
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-500 block border-b border-zinc-200 pb-3">
+            <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+              <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block border-b border-stone-200 pb-3">
                 Nhật ký vận hành (Audit Trail)
               </span>
 
-              <div className="relative pl-5 space-y-4 text-xs font-mono before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-px before:bg-zinc-200">
+              <div className="relative pl-5 space-y-4 text-xs before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-px before:bg-stone-200">
                 <div className="relative space-y-1">
-                  <span className="absolute -left-5 top-1 w-2 h-2 rounded-full bg-zinc-400" />
-                  <div className="text-zinc-800 font-bold">10:15 - Tiếp nhận yêu cầu</div>
-                  <div className="text-zinc-500 font-sans text-[11px]">
+                  <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-stone-400" />
+                  <div className="text-stone-900 font-bold">10:15 - Tiếp nhận yêu cầu</div>
+                  <div className="text-stone-500 font-medium text-xs">
                     Khách hàng khởi tạo đơn qua hệ thống Mini Ong Vàng.
                   </div>
                 </div>
 
                 <div className="relative space-y-1">
-                  <span className="absolute -left-5 top-1 w-2 h-2 rounded-full bg-amber-500" />
-                  <div className="text-zinc-800 font-bold">10:18 - Phân công cuốc xe</div>
-                  <div className="text-zinc-500 font-sans text-[11px]">
+                  <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <div className="text-stone-900 font-bold">10:18 - Phân công cuốc xe</div>
+                  <div className="text-stone-500 font-medium text-xs">
                     Hệ thống điều phối gán tài xế tiếp nhận lộ trình.
                   </div>
                 </div>
 
                 <div className="relative space-y-1">
-                  <span className="absolute -left-5 top-1 w-2 h-2 rounded-full bg-emerald-500" />
-                  <div className="text-zinc-800 font-bold">10:35 - Lấy hàng thành công</div>
-                  <div className="text-zinc-500 font-sans text-[11px]">
+                  <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <div className="text-stone-900 font-bold">10:35 - Lấy hàng thành công</div>
+                  <div className="text-stone-500 font-medium text-xs">
                     Tài xế đã nhận bưu kiện từ người gửi.
                   </div>
                 </div>
 
                 {order.incident && (
                   <div className="relative space-y-1">
-                    <span className="absolute -left-5 top-1 w-2 h-2 rounded-full bg-rose-500" />
-                    <div className="text-rose-700 font-bold">10:55 - Báo cáo sự cố</div>
-                    <div className="text-rose-800 font-sans text-[11px]">
+                    <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <div className="text-rose-800 font-bold">10:55 - Báo cáo sự cố</div>
+                    <div className="text-rose-900 font-medium text-xs">
                       {order.incident.note}
                     </div>
                   </div>
@@ -375,17 +375,17 @@ export default function DispatcherOrderDetailPage() {
 
       {/* MODAL HỦY ĐƠN HÀNG (UC-14) */}
       {isCancelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-2xl p-6 space-y-4 text-zinc-800">
-            <h3 className="text-sm font-mono font-bold text-zinc-900 uppercase tracking-wide">
-              HỦY ĐƠN HÀNG {order.id}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white border border-stone-200 rounded-2xl shadow-xl p-6 space-y-4 text-stone-800">
+            <h3 className="text-base font-extrabold text-stone-900 tracking-tight">
+              Hủy đơn hàng {order.id}
             </h3>
-            <p className="text-xs text-zinc-600 leading-relaxed font-sans">
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-medium">
               Tài xế phụ trách sẽ được giải phóng ngay lập tức về trạng thái trực tuyến rảnh.
             </p>
 
             <div className="space-y-2 pt-1">
-              <label className="block text-[11px] font-mono font-bold text-zinc-600 uppercase">
+              <label className="block text-xs font-bold text-stone-700">
                 Lý do hủy đơn:
               </label>
               {[
@@ -396,10 +396,10 @@ export default function DispatcherOrderDetailPage() {
               ].map((r) => (
                 <label
                   key={r}
-                  className={`flex items-center gap-2.5 p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
+                  className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs cursor-pointer transition-all ${
                     cancelReason === r
-                      ? "border-rose-400 bg-rose-50 text-rose-900"
-                      : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300"
+                      ? "border-rose-400 bg-rose-50 text-rose-900 font-semibold"
+                      : "border-stone-200 bg-stone-50 text-stone-700 hover:border-stone-300"
                   }`}
                 >
                   <input
@@ -414,12 +414,12 @@ export default function DispatcherOrderDetailPage() {
               ))}
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-200">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-200">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsCancelModalOpen(false)}
-                className="border-zinc-200 text-zinc-700 hover:bg-zinc-100"
+                className="text-xs font-semibold"
               >
                 Đóng
               </Button>
@@ -427,9 +427,9 @@ export default function DispatcherOrderDetailPage() {
                 variant="danger"
                 size="sm"
                 onClick={handleConfirmCancel}
-                className="font-mono text-xs font-bold"
+                className="text-xs font-bold"
               >
-                XÁC NHẬN HỦY ĐƠN
+                Xác nhận hủy đơn
               </Button>
             </div>
           </div>
@@ -438,23 +438,23 @@ export default function DispatcherOrderDetailPage() {
 
       {/* MODAL ĐIỀU PHỐI LẠI TÀI XẾ (UC-13) */}
       {isReassignModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-2xl p-6 space-y-4 text-zinc-800">
-            <h3 className="text-sm font-mono font-bold text-zinc-900 uppercase tracking-wide">
-              ĐIỀU PHỐI TÀI XẾ MỚI CHO {order.id}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white border border-stone-200 rounded-2xl shadow-xl p-6 space-y-4 text-stone-800">
+            <h3 className="text-base font-extrabold text-stone-900 tracking-tight">
+              Điều phối tài xế mới cho {order.id}
             </h3>
 
             <div className="space-y-2">
-              <label className="block text-[11px] font-mono font-bold text-zinc-600 uppercase">
-                Tài xế đang trực tuyến rảnh:
+              <label className="block text-xs font-bold text-stone-700">
+                Chọn tài xế đang trực tuyến rảnh:
               </label>
               {SAMPLE_DRIVERS.filter((d) => d.status === "ONLINE_IDLE").map((d) => (
                 <label
                   key={d.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
+                  className={`flex items-center justify-between p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
                     selectedDriverId === d.id
-                      ? "border-amber-500 bg-amber-50/80"
-                      : "border-zinc-200 bg-zinc-50 hover:border-zinc-300"
+                      ? "border-amber-500 bg-amber-50 shadow-2xs"
+                      : "border-stone-200 bg-stone-50 hover:border-stone-300"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -466,25 +466,25 @@ export default function DispatcherOrderDetailPage() {
                       className="text-amber-500 focus:ring-0"
                     />
                     <div>
-                      <span className="font-bold text-zinc-900 block">{d.name}</span>
-                      <span className="font-mono text-[11px] text-zinc-500">
+                      <span className="font-bold text-sm text-stone-900 block">{d.name}</span>
+                      <span className="text-xs text-stone-500 font-medium">
                         {d.vehiclePlate} · {d.currentDistrict}
                       </span>
                     </div>
                   </div>
-                  <span className="font-mono text-[11px] font-bold text-emerald-700">
+                  <span className="font-bold text-emerald-700 text-xs">
                     Rảnh {d.idleSinceMinutes}m
                   </span>
                 </label>
               ))}
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-200">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-200">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsReassignModalOpen(false)}
-                className="border-zinc-200 text-zinc-700 hover:bg-zinc-100"
+                className="text-xs font-semibold"
               >
                 Hủy bỏ
               </Button>
@@ -492,9 +492,9 @@ export default function DispatcherOrderDetailPage() {
                 variant="primary"
                 size="sm"
                 onClick={handleConfirmReassign}
-                className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs shadow-2xs"
+                className="text-xs font-bold shadow-sm"
               >
-                GÁN TÀI XẾ THAY THẾ
+                Gán tài xế thay thế
               </Button>
             </div>
           </div>
