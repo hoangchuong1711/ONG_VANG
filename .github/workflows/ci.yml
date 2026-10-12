@@ -94,6 +94,8 @@ jobs:
         run: npm run smoke:cancel --prefix tools/api
       - name: Smoke test T17 reports and Excel
         run: npm run smoke:reports --prefix tools/api
+      - name: Smoke test T14 cash payment
+        run: npm run smoke:payment --prefix tools/api
       - name: Smoke test T11 dispatch and concurrent assignment
         run: npm run smoke:dispatch --prefix tools/api
       - name: Isolate demo fixtures for T12 progress checks
