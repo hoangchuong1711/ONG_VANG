@@ -23,7 +23,7 @@ const PACKAGE_TYPES = [
   "Mỹ phẩm & Dược phẩm",
   "Hàng điện tử & Phụ kiện",
   "Quần áo thời trang",
-  "Khác...",
+  "Khác",
 ];
 
 export default function DispatcherCreateOrderPage() {
@@ -88,7 +88,7 @@ export default function DispatcherCreateOrderPage() {
 
     const orderId = `DH-2025-${Math.floor(100000 + Math.random() * 900000)}`;
     showToast(
-      `Đã tạo đơn hotline thành công mã ${orderId}! Đơn đã được chuyển thẳng vào hàng đợi điều phối.`,
+      `Tạo đơn hotline thành công (${orderId})! Đã chuyển vào hàng đợi chờ gán tài xế.`,
       "success"
     );
 
@@ -98,100 +98,114 @@ export default function DispatcherCreateOrderPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#09090B] text-zinc-200">
       <DispatcherNavbar />
 
-      <main className="flex-1 max-w-[1024px] w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-[1120px] w-full mx-auto p-4 sm:p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Tổng Đài Tiếp Nhận Cuộc Gọi Tạo Đơn (UC-02)
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Tra cứu khách hàng theo SĐT, tạo đơn tức thì và đẩy trực tiếp vào hàng đợi gán tài xế
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] font-bold text-amber-400 uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                HOTLINE INTAKE (UC-02)
+              </span>
+              <h1 className="text-lg sm:text-xl font-bold text-zinc-100 tracking-tight">
+                Tiếp Nhận Cuộc Gọi Tạo Đơn Nhanh
+              </h1>
+            </div>
+            <p className="text-xs text-zinc-400 mt-1">
+              Tra cứu hồ sơ khách hàng theo SĐT, tự động tính cước snapshot và đẩy vào hàng đợi tác chiến.
             </p>
           </div>
+
           <Link
             href="/dieu-phoi"
-            className="text-xs text-slate-400 hover:text-amber-400 font-bold"
+            className="text-xs font-mono font-medium text-zinc-400 hover:text-amber-400 transition-colors"
           >
-            ← Về Bàn Điều Phối
+            ← BÀN ĐIỀU PHỐI
           </Link>
         </div>
 
         <form onSubmit={handleCreateOrder} className="space-y-6">
-          {/* PHẦN 1: TÌM KIẾM KHÁCH HÀNG GỌI ĐẾN */}
-          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-extrabold text-amber-400 uppercase tracking-wider">
-                1. Khách Hàng Gọi Đến (Người Gửi)
-              </h2>
+          {/* STEP 1: KHÁCH HÀNG GỌI ĐẾN */}
+          <section className="bg-zinc-900/50 border border-zinc-800/80 rounded-xl p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300">
+                1. Thông tin khách gọi đến (Người gửi)
+              </span>
               {isVipMember && (
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">
-                  👑 Thành Viên VIP Vàng (-10.000đ)
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  HỘI VIÊN VIP VÀNG (GIẢM 10.000Đ)
                 </span>
               )}
             </div>
 
-            {/* Tra cứu nhanh */}
-            <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
-                Số điện thoại khách gọi (Nhập SĐT để tự động tra cứu hồ sơ):
+            {/* Quick lookup by phone */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-zinc-300">
+                Số điện thoại khách gọi:
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap gap-2">
                 <input
                   type="tel"
                   required
                   value={callerPhone}
                   onChange={(e) => handleLookupCustomer(e.target.value)}
                   placeholder="Ví dụ: 0900000001"
-                  className="flex-1 h-11 px-3.5 rounded-xl border border-slate-700 bg-slate-800 text-white font-mono text-sm focus:border-amber-500 outline-none"
+                  className="flex-1 h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 font-mono text-xs focus:border-amber-400 focus:outline-hidden"
                 />
                 <button
                   type="button"
                   onClick={() => handleLookupCustomer("0900000001")}
-                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-amber-400 font-bold"
+                  className="h-10 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-medium text-amber-400 border border-zinc-700 transition-colors"
                 >
-                  Khách VIP (Thu Hà)
+                  Mẫu VIP (Thu Hà)
                 </button>
                 <button
                   type="button"
                   onClick={() => handleLookupCustomer("0900000002")}
-                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 font-bold"
+                  className="h-10 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-medium text-zinc-300 border border-zinc-700 transition-colors"
                 >
-                  Khách thường
+                  Mẫu Thường
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Họ tên người gửi:</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Họ tên người gửi:
+                </label>
                 <input
                   type="text"
                   required
                   value={senderName}
                   onChange={(e) => setSenderName(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Địa chỉ lấy hàng:</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Địa chỉ lấy hàng:
+                </label>
                 <input
                   type="text"
                   required
                   value={senderStreet}
                   onChange={(e) => setSenderStreet(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Quận / Huyện:</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Quận huyện:
+                </label>
                 <select
                   value={senderDistrict}
                   onChange={(e) => setSenderDistrict(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
                 >
                   {DISTRICTS.map((d) => (
                     <option key={d} value={d}>
@@ -203,52 +217,62 @@ export default function DispatcherCreateOrderPage() {
             </div>
           </section>
 
-          {/* PHẦN 2: THÔNG TIN NGƯỜI NHẬN */}
-          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
-            <h2 className="text-sm font-extrabold text-blue-400 uppercase tracking-wider">
-              2. Điểm Giao Hàng (Người Nhận)
-            </h2>
+          {/* STEP 2: ĐIỂM GIAO HÀNG (NGƯỜI NHẬN) */}
+          <section className="bg-zinc-900/50 border border-zinc-800/80 rounded-xl p-5 space-y-4">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300 block border-b border-zinc-800/80 pb-3">
+              2. Điểm giao hàng (Người nhận)
+            </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Họ tên người nhận:</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Họ tên người nhận:
+                </label>
                 <input
                   type="text"
                   required
                   value={receiverName}
                   onChange={(e) => setReceiverName(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Số điện thoại người nhận:</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Số điện thoại người nhận:
+                </label>
                 <input
                   type="tel"
                   required
                   value={receiverPhone}
                   onChange={(e) => setReceiverPhone(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white font-mono text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 font-mono text-xs focus:border-amber-400 focus:outline-hidden"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-300 mb-1">Địa chỉ chi tiết:</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Địa chỉ chi tiết:
+                </label>
                 <input
                   type="text"
                   required
                   value={receiverStreet}
                   onChange={(e) => setReceiverStreet(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Quận / Huyện:</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Quận huyện giao:
+                </label>
                 <select
                   value={receiverDistrict}
                   onChange={(e) => setReceiverDistrict(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
                 >
                   {DISTRICTS.map((d) => (
                     <option key={d} value={d}>
@@ -260,29 +284,33 @@ export default function DispatcherCreateOrderPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Ghi chú cho tài xế:</label>
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                Ghi chú điều phối cho tài xế:
+              </label>
               <input
                 type="text"
                 value={receiverNotes}
                 onChange={(e) => setReceiverNotes(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
               />
             </div>
           </section>
 
-          {/* PHẦN 3: KIỆN HÀNG & BÁO GIÁ SNAPSHOT */}
-          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
-            <h2 className="text-sm font-extrabold text-emerald-400 uppercase tracking-wider">
-              3. Kiện Hàng & Báo Giá Cước Tức Thì (UC-04 / UC-05)
-            </h2>
+          {/* STEP 3: KIỆN HÀNG & BÁO GIÁ CƯỚC TỨC THÌ */}
+          <section className="bg-zinc-900/50 border border-zinc-800/80 rounded-xl p-5 space-y-4">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300 block border-b border-zinc-800/80 pb-3">
+              3. Kiện hàng & Tính cước tức thì (UC-04 / UC-05)
+            </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Loại bưu phẩm:</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Phân loại bưu phẩm:
+                </label>
                 <select
                   value={packageType}
                   onChange={(e) => setPackageType(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
                 >
                   {PACKAGE_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -293,7 +321,9 @@ export default function DispatcherCreateOrderPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Khối lượng (kg):</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Khối lượng (kg):
+                </label>
                 <input
                   type="number"
                   min={0.1}
@@ -301,35 +331,37 @@ export default function DispatcherCreateOrderPage() {
                   step={0.1}
                   value={weightKg}
                   onChange={(e) => setWeightKg(Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 font-mono text-xs focus:border-amber-400 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Phương thức thu cước:</label>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Phương thức thanh toán:
+                </label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value as "TIEN_MAT" | "VNPAY")}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white text-xs focus:border-amber-500 outline-none"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
                 >
-                  <option value="TIEN_MAT">💵 Thu tiền mặt COD khi giao</option>
-                  <option value="VNPAY">💳 Khách thanh toán VNPay Online</option>
+                  <option value="TIEN_MAT">Tiền mặt COD khi giao</option>
+                  <option value="VNPAY">Cổng VNPay trực tuyến</option>
                 </select>
               </div>
             </div>
 
-            {/* BẢNG TÍNH CƯỚC SNAPSHOT */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between flex-wrap gap-4">
-              <div className="space-y-1 text-xs text-slate-300">
-                <div>Cự ly lộ trình: <strong>{distanceKm} km</strong></div>
-                <div>Cước cơ bản: <strong>{formatVND(baseFee)}</strong></div>
+            {/* BẢNG TÍNH CƯỚC TELEMETRY */}
+            <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
+              <div className="space-y-1 text-zinc-400">
+                <div>Khoảng cách dự kiến: <span className="text-zinc-200 font-bold">{distanceKm} km</span></div>
+                <div>Cước cơ bản: <span className="text-zinc-200 font-bold">{formatVND(baseFee)}</span></div>
                 {vipDiscount > 0 && (
-                  <div className="text-emerald-400">Giảm VIP Vàng: <strong>-{formatVND(vipDiscount)}</strong></div>
+                  <div className="text-emerald-400">Giảm hội viên VIP: <strong>-{formatVND(vipDiscount)}</strong></div>
                 )}
               </div>
 
               <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">
+                <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">
                   Tổng cước thanh toán
                 </span>
                 <span className="text-2xl font-black text-amber-400">
@@ -339,20 +371,20 @@ export default function DispatcherCreateOrderPage() {
             </div>
           </section>
 
-          {/* ACTION BUTTON */}
-          <div className="pt-2 flex items-center justify-end gap-3">
+          {/* ACTIONS */}
+          <div className="flex items-center justify-end gap-3 pt-2">
             <Link href="/dieu-phoi">
-              <Button variant="outline" size="md" className="border-slate-700 text-slate-300">
-                Hủy bỏ
+              <Button variant="outline" size="md" className="border-zinc-800 text-zinc-400 hover:text-zinc-200">
+                HỦY BỎ
               </Button>
             </Link>
             <Button
               variant="primary"
               size="lg"
               type="submit"
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black shadow-md h-12 px-6"
+              className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs h-11 px-6 tracking-wide"
             >
-              ⚡ TẠO ĐƠN & ĐƯA VÀO HÀNG ĐỢI ĐIỀU PHỐI ➔
+              TẠO ĐƠN & ĐẨY VÀO HÀNG ĐỢI ĐIỀU PHỐI ➔
             </Button>
           </div>
         </form>

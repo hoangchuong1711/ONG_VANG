@@ -27,77 +27,77 @@ export default function DispatcherFleetPage() {
   const offlineCount = drivers.filter((d) => d.status === "OFFLINE").length;
 
   const handlePingDriver = (driver: DriverItem) => {
-    showToast(`Đã gửi tín hiệu kiểm tra định vị đến tài xế ${driver.name}!`, "info");
+    showToast(`Đã gửi tín hiệu kiểm tra định vị GPS đến tài xế ${driver.name}!`, "info");
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#09090B] text-zinc-200">
       <DispatcherNavbar />
 
-      <main className="flex-1 max-w-[1400px] w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-[1440px] w-full mx-auto p-4 sm:p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Quản Lý Đội Xe & Tài Xế (DP-04)
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Theo dõi trạng thái trực tuyến, khu vực hoạt động và tiền mặt COD tạm giữ của tài xế
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] font-bold text-amber-400 uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                FLEET ROSTER (DP-04)
+              </span>
+              <h1 className="text-lg sm:text-xl font-bold text-zinc-100 tracking-tight">
+                Giám Sát Đội Xe & Tài Xế Tác Chiến
+              </h1>
+            </div>
+            <p className="text-xs text-zinc-400 mt-1">
+              Theo dõi trạng thái trực tuyến, khu vực tác chiến và hạn mức tiền mặt COD tạm giữ của đội ngũ tài xế.
             </p>
           </div>
+
           <Link
             href="/dieu-phoi"
-            className="text-xs text-slate-400 hover:text-amber-400 font-bold"
+            className="text-xs font-mono font-medium text-zinc-400 hover:text-amber-400 transition-colors"
           >
-            ← Bàn Điều Phối
+            ← BÀN ĐIỀU PHỐI
           </Link>
         </div>
 
-        {/* 4 THẺ KPI ĐỘI XE */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm text-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+        {/* FLEET TELEMETRY STRIP (ANTI-SLOP: DENSE INTEGRATED METRICS, NO 4 EQUAL CARDBOARD BOXES) */}
+        <section className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-zinc-800 border border-zinc-800/80 bg-zinc-900/40 rounded-xl overflow-hidden font-mono">
+          <div className="p-4 sm:p-5 space-y-1">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 block">
               Tổng số tài xế
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-white mt-1">{drivers.length}</div>
-            <span className="text-[11px] text-slate-500">Đã đăng ký hệ thống</span>
+            <div className="text-2xl font-bold text-zinc-100">{drivers.length}</div>
+            <span className="text-[11px] text-zinc-400 font-sans block">Đã đăng ký vận hành</span>
           </div>
 
-          <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-4 shadow-sm text-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">
+          <div className="p-4 sm:p-5 space-y-1">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400/90 block">
               Đang trực tuyến (Rảnh)
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-400 mt-1">
-              {onlineIdleCount}
-            </div>
-            <span className="text-[11px] text-emerald-300/80">Sẵn sàng nhận cuốc ngay</span>
+            <div className="text-2xl font-bold text-emerald-400">{onlineIdleCount}</div>
+            <span className="text-[11px] text-zinc-400 font-sans block">Sẵn sàng nhận cuốc ngay</span>
           </div>
 
-          <div className="bg-slate-900 border border-amber-500/30 rounded-2xl p-4 shadow-sm text-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
+          <div className="p-4 sm:p-5 space-y-1">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400/90 block">
               Đang chạy chuyến
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-amber-400 mt-1">
-              {onlineBusyCount}
-            </div>
-            <span className="text-[11px] text-amber-300/80">Đang đi lấy / giao hàng</span>
+            <div className="text-2xl font-bold text-amber-400">{onlineBusyCount}</div>
+            <span className="text-[11px] text-zinc-400 font-sans block">Đang lấy hoặc giao hàng</span>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm text-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+          <div className="p-4 sm:p-5 space-y-1">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 block">
               Tạm nghỉ (Offline)
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-slate-400 mt-1">
-              {offlineCount}
-            </div>
-            <span className="text-[11px] text-slate-500">Ngoài ca trực</span>
+            <div className="text-2xl font-bold text-zinc-400">{offlineCount}</div>
+            <span className="text-[11px] text-zinc-400 font-sans block">Ngoài khung giờ nhận đơn</span>
           </div>
         </section>
 
         {/* BỘ LỌC TÀI XẾ */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-1.5 overflow-x-auto">
-            <span className="text-slate-400 font-bold mr-1">Trạng thái:</span>
+            <span className="text-zinc-400 font-mono text-[11px] font-bold mr-1 uppercase">Lọc:</span>
             {[
               { key: "ALL", label: "Tất cả" },
               { key: "ONLINE_IDLE", label: "Đang rảnh" },
@@ -108,10 +108,10 @@ export default function DispatcherFleetPage() {
                 key={st.key}
                 type="button"
                 onClick={() => setFilter(st.key as FilterStatus)}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-colors ${
+                className={`px-3 py-1.5 rounded-lg font-mono text-xs font-medium transition-colors ${
                   filter === st.key
-                    ? "bg-amber-500 text-slate-950 shadow-xs"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    ? "bg-amber-500 text-zinc-950 font-bold"
+                    : "bg-zinc-800/80 text-zinc-300 hover:bg-zinc-800"
                 }`}
               >
                 {st.label}
@@ -120,11 +120,11 @@ export default function DispatcherFleetPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 font-bold">Khu vực:</span>
+            <span className="text-zinc-400 font-mono text-[11px] font-bold uppercase">Khu vực:</span>
             <select
               value={searchDistrict}
               onChange={(e) => setSearchDistrict(e.target.value)}
-              className="h-9 px-3 rounded-xl border border-slate-700 bg-slate-800 text-white font-semibold outline-none"
+              className="h-8 px-2.5 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-200 text-xs font-mono outline-hidden focus:border-amber-400"
             >
               <option value="ALL">Tất cả quận</option>
               <option value="Quận 1">Quận 1</option>
@@ -135,91 +135,88 @@ export default function DispatcherFleetPage() {
           </div>
         </div>
 
-        {/* BẢNG DANH SÁCH TÀI XẾ */}
-        <section className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        {/* BẢNG DANH SÁCH TÀI XẾ (HIGH DENSITY ROSTER) */}
+        <section className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-zinc-950 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800">
                 <tr>
-                  <th className="p-3.5 pl-5">Tài xế & Mã TX</th>
+                  <th className="p-3.5 pl-5">Tài xế & Mã</th>
                   <th className="p-3.5">Phương tiện</th>
-                  <th className="p-3.5">Khu vực</th>
+                  <th className="p-3.5">Khu vực tác chiến</th>
                   <th className="p-3.5">Trạng thái</th>
-                  <th className="p-3.5">Cuốc hôm nay</th>
+                  <th className="p-3.5">Cuốc hoàn tất</th>
                   <th className="p-3.5">Đánh giá</th>
                   <th className="p-3.5">COD tạm giữ</th>
                   <th className="p-3.5 pr-5 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-zinc-800/80">
                 {filteredDrivers.map((d) => {
                   const isIdle = d.status === "ONLINE_IDLE";
                   const isBusy = d.status === "ONLINE_BUSY";
                   const hasHighCod = d.codCashHolding > 500000;
 
                   return (
-                    <tr key={d.id} className="hover:bg-slate-800/50 transition-colors">
+                    <tr key={d.id} className="hover:bg-zinc-800/40 transition-colors">
                       <td className="p-3.5 pl-5">
-                        <div className="font-bold text-white text-sm">{d.name}</div>
-                        <div className="font-mono text-[11px] text-slate-400">{d.id} · {d.phone}</div>
+                        <div className="font-sans font-bold text-zinc-100 text-sm">{d.name}</div>
+                        <div className="text-[11px] text-zinc-500">{d.id} · {d.phone}</div>
                       </td>
                       <td className="p-3.5">
-                        <div className="font-mono font-bold text-amber-400">{d.vehiclePlate}</div>
-                        <div className="text-[11px] text-slate-400">{d.vehicleType}</div>
+                        <div className="font-bold text-amber-400">{d.vehiclePlate}</div>
+                        <div className="text-[11px] text-zinc-400 font-sans">{d.vehicleType}</div>
                       </td>
-                      <td className="p-3.5 font-semibold text-slate-300">
+                      <td className="p-3.5 font-sans font-medium text-zinc-300">
                         {d.currentDistrict}
                       </td>
                       <td className="p-3.5">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
                             isIdle
-                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                               : isBusy
-                              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                              : "bg-slate-800 text-slate-400 border-slate-700"
+                              ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                              : "bg-zinc-800 text-zinc-400 border-zinc-700"
                           }`}
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              isIdle ? "bg-emerald-400 animate-pulse" : isBusy ? "bg-amber-400" : "bg-slate-500"
-                            }`}
-                          />
-                          <span>{isIdle ? `Rảnh (${d.idleSinceMinutes}m)` : isBusy ? "Đang giao" : "Tạm nghỉ"}</span>
+                          {isIdle ? `RẢNH (${d.idleSinceMinutes}m)` : isBusy ? "ĐANG GIAO" : "OFFLINE"}
                         </span>
                       </td>
-                      <td className="p-3.5 font-bold text-slate-200">
+                      <td className="p-3.5 text-zinc-200">
                         {d.completedOrdersToday} cuốc
                       </td>
                       <td className="p-3.5">
                         <span className="font-bold text-amber-400">★ {d.rating}</span>
-                        <div className="text-[10px] text-slate-400">Nhận: {d.acceptanceRate}%</div>
+                        <div className="text-[10px] text-zinc-500">Nhận: {d.acceptanceRate}%</div>
                       </td>
                       <td className="p-3.5">
                         <span
-                          className={`font-mono font-bold ${
-                            hasHighCod ? "text-rose-400" : "text-slate-300"
+                          className={`font-bold ${
+                            hasHighCod ? "text-rose-400" : "text-zinc-300"
                           }`}
                         >
                           {formatVND(d.codCashHolding)}
                         </span>
                         {hasHighCod && (
-                          <span className="block text-[10px] text-rose-400">Cần nộp về quỹ</span>
+                          <span className="block text-[10px] text-rose-400/90 font-sans">
+                            Cần nộp về quỹ
+                          </span>
                         )}
                       </td>
                       <td className="p-3.5 pr-5 text-right space-x-2">
                         <a
                           href={`tel:${d.phone}`}
-                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold inline-block"
+                          className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono font-medium inline-block transition-colors"
                         >
-                          📞 Gọi
+                          GỌI
                         </a>
                         <button
                           type="button"
                           onClick={() => handlePingDriver(d)}
-                          className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold border border-amber-500/30"
+                          className="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-mono font-medium border border-amber-500/30 transition-colors"
                         >
-                          Ping
+                          PING GPS
                         </button>
                       </td>
                     </tr>
