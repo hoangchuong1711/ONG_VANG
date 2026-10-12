@@ -17,6 +17,7 @@ import com.miniongvang.integration.FakeRouteProvider;
 import com.miniongvang.integration.RouteFailure;
 import com.miniongvang.seed.DesignV1DemoSeeder;
 import com.miniongvang.service.AuthService;
+import com.miniongvang.service.CustomerService;
 import com.miniongvang.service.DispatchService;
 import com.miniongvang.service.OrderService;
 import com.miniongvang.service.MembershipPolicyService;
@@ -90,6 +91,31 @@ class DesignV1IntegrationTest {
         return orders.create(customer(1), UUID.randomUUID().toString(),
                 new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
                         "0901234567", null, parcel)).maDon();
+    }
+
+    @Test void t20DispatcherCanFindCustomersForOrderWithoutLeakingLockedAccounts() {
+        var customers = new CustomerService(db.entityManagerFactory());
+        var firstPage = customers.search(dispatcher(), 0, 1, null);
+        assertEquals(2, firstPage.totalElements());
+        assertEquals(2, firstPage.totalPages());
+        assertEquals(1, firstPage.items().size());
+        assertEquals(1, customers.search(dispatcher(), 1, 1, null).items().size());
+        var selected = customers.search(dispatcher(), 0, 20, "0900000002");
+        assertEquals(1, selected.totalElements());
+        assertEquals("KH-DEMO-2", selected.items().getFirst().maKh());
+        assertEquals("VANG", selected.items().getFirst().hangThanhVien().maHang());
+        assertTrue(selected.items().getFirst().hangThanhVien().conHieuLuc());
+        assertEquals(0, customers.search(dispatcher(), 0, 20, "not-found").totalElements());
+        assertThrows(SecurityException.class, () -> customers.search(customer(1), 0, 20, null));
+        assertThrows(IllegalArgumentException.class, () -> customers.search(dispatcher(), -1, 20, null));
+        assertThrows(IllegalArgumentException.class, () -> customers.search(dispatcher(), 0, 101, null));
+        assertThrows(IllegalArgumentException.class, () -> customers.search(dispatcher(), 0, 20, " "));
+        tx.run(em -> {
+            em.find(com.miniongvang.entity.TaiKhoan.class, "TK-DEMO-KH-2")
+                    .setTrangThai(com.miniongvang.entity.enums.AccountStatus.KHOA);
+            return null;
+        });
+        assertEquals(1, customers.search(dispatcher(), 0, 20, null).totalElements());
     }
 
     @Test void dt09IdempotencyExpiresAtExactlyTwentyFourHoursWithoutDeletingOldOrder() {

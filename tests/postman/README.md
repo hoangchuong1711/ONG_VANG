@@ -9,11 +9,13 @@ Import `mini-ong-vang.postman_collection.json` và `local.postman_environment.js
 3. Chạy folder `01 - Implemented smoke`: kiểm tra spec, trang Swagger, health 200/database connected.
 4. Health 503 khi DB lỗi là response đã đặc tả, nhưng smoke môi trường khỏe phải FAIL. Không chấp nhận mọi status để làm test xanh.
 
-Các request chưa có BE mặc định **skip** bằng `pm.execution.skipRequest()`, không phải PASS. Dùng Postman phiên bản hỗ trợ API này. Không chạy toàn bộ collection như một kịch bản liên tục: các request cần vai trò/fixture khác nhau.
+Hiện 29 operation đã có BE; `listCustomers` nằm trong folder implemented và cần phiên tổng đài. Không chạy toàn bộ collection như một kịch bản liên tục: các request cần vai trò/fixture khác nhau.
 
 ## Sau khi từng task BE hoàn thành
 
-`estimateRoute` và `createQuote` đã nằm trong folder implemented; đăng nhập khách hoặc tổng đài và lấy lại CSRF trước khi chạy. Địa chỉ mặc định `Điểm mẫu A/B` là alias của Quận 1/3. Báo giá cần biểu phí seed T03; khách hàng dùng ID từ session, tổng đài phải điền `customerId`. Giữ `runPlanned=false` khi dùng các operation implemented: T06–T17 đã được cập nhật, chỉ `listCustomers` còn planned. Folder negative vẫn có guard riêng dùng chung biến `runPlanned`; chỉ bật khi chạy riêng ca negative đã chuẩn bị fixture, không chạy cả collection. T03 cung cấp [manifest seed](../../docs/database/README.md). Các API nghiệp vụ vẫn cần được gọi theo luồng/role thích hợp, không xem folder implemented là một scenario tự động.
+`estimateRoute` và `createQuote` đã nằm trong folder implemented; đăng nhập khách hoặc tổng đài và lấy lại CSRF trước khi chạy. Địa chỉ mặc định `Điểm mẫu A/B` là alias của Quận 1/3. Báo giá cần biểu phí seed T03; khách hàng dùng ID từ session, tổng đài phải điền `maKh`. Giữ `runPlanned=false` khi dùng các operation implemented; folder negative vẫn có guard riêng dùng chung biến `runPlanned`, chỉ bật khi chạy riêng ca negative đã chuẩn bị fixture. T03 cung cấp [manifest seed](../../docs/database/README.md). Các API nghiệp vụ vẫn cần được gọi theo luồng/role thích hợp, không xem folder implemented là một scenario tự động.
+
+Tổng đài dùng `listCustomers` với `q` là tên/SĐT và `page`/`size` để chọn `maKh` đang hoạt động trước khi gọi `createQuote`/`createOrder`. Nếu danh sách rỗng, kiểm tra bộ lọc và trạng thái tài khoản; không tự tạo ID khách ở FE.
 
 Session được Postman cookie jar giữ qua Set-Cookie. Không đặt Cookie/JSESSIONID thủ công. Đăng nhập mỗi vai trò theo thứ tự:
 

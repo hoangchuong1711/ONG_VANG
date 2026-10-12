@@ -2,7 +2,7 @@
 
 ## Tài liệu và kiểm thử API (T04)
 
-Hiện `/api/health` và nghiệp vụ T06–T17 đã triển khai trên designV1, gồm tiền mặt/VNPay, lịch sử đơn và báo cáo/Excel. Chỉ `listCustomers` còn planned; xem trạng thái từng operation trong OpenAPI.
+Hiện `/api/health` và nghiệp vụ T06–T17 đã triển khai trên designV1, gồm tiền mặt/VNPay, lịch sử đơn và báo cáo/Excel. T20 bổ sung tìm khách cho tổng đài; xem trạng thái từng operation trong OpenAPI và [báo cáo nghiệm thu T20](tests/T20-acceptance.md).
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ designV1 với API](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
@@ -20,6 +20,7 @@ T17: [báo cáo doanh thu và xuất Excel](docs/T17-revenue-reports.md).
 
 T18: [đối chiếu tài liệu và phạm vi hoãn tới khi deploy](docs/T18-sandbox-api.md).
 T19: [báo cáo hồi quy backend trên designV1](tests/T19-validation.md).
+T20: [đối chiếu mốc nghiệm thu backend](tests/T20-acceptance.md).
 
 Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).
 
@@ -340,4 +341,4 @@ Luồng xử lý nghiệp vụ dự kiến là:
 Controller → Service → DAO → Hibernate/JPA → SQL Server
 ```
 
-Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; T06 đã triển khai auth; T07–T09 đã triển khai lộ trình, chính sách thành viên và báo giá. Endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, T10 đã có API tạo đơn, T11 có API điều phối/gán/từ chối; T12 có tiến trình, sự cố và nhật ký; T13 hủy đơn, T14–T15 thanh toán, T16 lịch sử và T17 báo cáo/Excel đã triển khai. `listCustomers` còn planned.
+Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; T06 đã triển khai auth; T07–T09 đã triển khai lộ trình, chính sách thành viên và báo giá. Endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, T10 đã có API tạo đơn, T11 có API điều phối/gán/từ chối; T12 có tiến trình, sự cố và nhật ký; T13 hủy đơn, T14–T15 thanh toán, T16 lịch sử và T17 báo cáo/Excel đã triển khai. T20 bổ sung `listCustomers` cho tổng đài.
