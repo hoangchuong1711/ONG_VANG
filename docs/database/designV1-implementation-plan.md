@@ -398,3 +398,6 @@ Nếu cần chia nhỏ hơn, chia theo luồng nghiệp vụ như bảng trên, 
 
 
 **Cập nhật T19 (12/10/2026):** Nhánh `feat/t19-backend-integration` đối chiếu yêu cầu DT01–DT27 và chạy OpenAPI/Postman check cùng 12 unit test độc lập DB; các kiểm tra này đạt. Maven biên dịch/đóng WAR thành công với test bị skip có chủ ý. Chưa chạy Maven integration, HTTP smoke SQL Server hoặc truy vấn invariant trong đợt T19 này vì Docker không tải được image SQL Server 2022 từ MCR (`Forbidden`). Xem [báo cáo T19](../../tests/T19-validation.md). Không lấy kết quả M1 cũ làm kết quả T19; M2/T19 vẫn Blocked cho đến khi chạy lại trên SQL Server designV1.
+
+
+**Retest T19 trên Windows (12/10/2026):** Log người dùng cung cấp xác nhận SQL Server designV1: 63 Java tests, 0 fail/error/skip; 348 HTTP checks nghiệp vụ và invariant sau progress đạt. Xem [báo cáo T19](../../tests/T19-validation.md) để phân biệt kết quả local mới với lần cloud bị chặn, phạm vi callback giả lập và bằng chứng/độ phủ DT còn cần bổ sung.

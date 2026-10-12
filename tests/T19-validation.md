@@ -1,5 +1,42 @@
 # T19 — Hồi quy tích hợp backend trên designV1
 
+## Kết quả thực thi trên Windows — 12/10/2026
+
+Người chạy: Le Nguyen Thanh Hien; nhánh `feat/t19-backend-integration`. Bằng chứng là ba log terminal người dùng cung cấp trong phiên làm việc, ghi thời gian Maven 15:17 và reset/seed 15:23 ngày 12/10/2026 (+07:00). Chưa có output `git rev-parse HEAD` trên máy chạy, nên chưa xác nhận mã commit thực thi. DB là SQL Server 16.0 (`mini_ong_vang_test`, cổng 15433), migration designV1; không dùng kết quả PostgreSQL cũ.
+
+| Bước | Expected | Actual | Kết quả |
+| --- | --- | --- | --- |
+| SQL Server test + initializer | DB test cô lập sẵn sàng | Docker DB healthy, initializer hoàn tất; JDBC/Flyway kết nối SQL Server 16.0, databaseName=mini_ong_vang_test | PASS |
+| Maven clean verify | Test DB thực sự chạy; không failure/error/skip | 63 tests: Auth 5, SQL Server 2, DesignV1 44, unit khác 12; 0 failure/error/skipped; BUILD SUCCESS | PASS |
+| OpenAPI/Postman/CSRF | Contract và artifacts đồng bộ | npm check đạt: 29 operations, 12 UCs, 287 examples; 2 CSRF tests đạt | PASS |
+| Smoke chung | WAR/spec/assets và BE/DB hoạt động | Spec khớp source; Swagger assets được phục vụ; health=200 connected | PASS |
+| T10 tạo đơn | Validation, replay và concurrent create đạt | 24 HTTP checks passed | PASS |
+| T16 lịch sử | Ownership, pagination, filters, totals, schema đạt | 27 HTTP checks passed | PASS |
+| T13 hủy | Quyền, lý do, hủy đơn chờ/đã gán và giải phóng tài xế đạt | 34 HTTP checks passed | PASS |
+| T17 báo cáo/Excel | Quyền quản trị, receipts, unallocated receipts và XLSX khớp API | 53 HTTP checks passed | PASS |
+| T14 tiền mặt | Đúng trạng thái/người xác nhận, replay và chặn thanh toán trùng | 32 HTTP checks passed | PASS |
+| T11 điều phối | Quyền/CSRF, gán/từ chối và hai race 8 request đạt | 85 HTTP checks passed | PASS |
+| Reset/seed rồi T12 tiến trình | Fixture mới; state machine và completion đạt | Reset/seed BUILD SUCCESS; 93 HTTP checks passed | PASS |
+| Đối chiếu designV1 sau progress | Các invariant được script kiểm tra không có vi phạm | sqlcmd -b: `designV1 invariant reconciliation passed` | PASS |
+
+Tổng: **63 Java tests và 348 HTTP checks nghiệp vụ đạt**, cộng smoke chung và API contract check. Các log ERROR do test cố ý inject lỗi/vi phạm constraint có suite kết thúc với 0 failure/error. VNPay callback được kiểm tra bằng gateway giả lập trong DesignV1IntegrationTest; chưa có bằng chứng thanh toán VNPay Sandbox thật.
+
+## Bug và retest cập nhật
+
+- `ENV-T19-01`: cloud vẫn không tải được MCR; trên máy Windows người dùng, image SQL Server tải được và toàn suite/HTTP đã chạy. Trở ngại thực thi local đã giải quyết.
+- `T19-COV-01`: smoke tiền mặt mới thêm vào workflow đã được chạy local: 32 checks PASS. CI trên PR vẫn cần kết quả riêng.
+- Lần đầu người dùng dán cú pháp PowerShell vào Git Bash, nên DB tests không chạy (chỉ 12 unit tests). Sau đổi sang `export`, chạy lại đạt 63 tests, gồm 44 DesignV1 integration tests. Chỉ lần chạy lại được dùng làm bằng chứng DB.
+
+## Phạm vi còn cần xác nhận
+
+Kết quả PASS của suite không tự chứng minh đủ mọi nhánh trong DT01–DT27. Ma trận Expected bên dưới giữ làm checklist; các trạng thái BLOCKED trong đó mô tả lần cloud ban đầu, đã được thay bằng kết quả suite local ở trên. Cần đối chiếu từng assertion với từng nhánh DT, đặc biệt ca chưa có test riêng như key hết hạn đúng 24 giờ, sai role/profile, và bảo vệ xóa lịch sử; không đánh dấu toàn bộ 27 ca PASS chỉ dựa trên tổng số test.
+
+Truy vấn invariant trong log cuối chạy sau reset/seed và smoke progress. Nó xác nhận dữ liệu của lượt progress; không phải đối chiếu dữ liệu tiền mặt/báo cáo từ lượt trước, vì reset đã xóa lượt đó. Cần chạy invariant trước reset giữa hai nhóm để có bằng chứng riêng cho dữ liệu thanh toán/báo cáo/điều phối. T19 chưa được ghi Done cho đến khi hoàn tất đối chiếu độ phủ, phần bằng chứng còn thiếu và PR review/CI/merge.
+
+---
+
+# Lần thử ban đầu trên cloud — lịch sử
+
 Ngày: 12/10/2026. Nhánh: `feat/t19-backend-integration`. Commit nền: `a2a5aefaf8fb91e2be8beb4cb6ba50b0a70897ee` (`source/develop`, PR #16 đã merge). Schema yêu cầu: SQL Server 2022, designV1 Flyway V1 + V2, DB kiểm thử cô lập `mini_ong_vang_test`.
 
 ## Kết luận lần chạy hiện tại
