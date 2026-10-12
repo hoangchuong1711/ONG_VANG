@@ -13,6 +13,7 @@
     "smoke:progress": "node progress-smoke.mjs",
     "smoke:cancel": "node cancel-smoke.mjs",
     "smoke:payment": "node payment-smoke.mjs",
+    "smoke:reports": "node report-smoke.mjs",
     "smoke:history": "node history-smoke.mjs"
   },
   "devDependencies": {
