@@ -94,8 +94,12 @@ jobs:
         run: npm run smoke:cancel --prefix tools/api
       - name: Smoke test T17 reports and Excel
         run: npm run smoke:reports --prefix tools/api
+      - name: Smoke test T14 cash payment
+        run: npm run smoke:payment --prefix tools/api
       - name: Smoke test T11 dispatch and concurrent assignment
         run: npm run smoke:dispatch --prefix tools/api
+      - name: Reconcile designV1 after payments and dispatch before reset
+        run: docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test < scripts/check-design-v1-invariants.sql
       - name: Isolate demo fixtures for T12 progress checks
         run: |
           docker compose -f docker-compose.ci.yml stop backend-test

@@ -395,3 +395,15 @@ Nếu cần chia nhỏ hơn, chia theo luồng nghiệp vụ như bảng trên, 
 **Cập nhật tiếp (11/10/2026):** Migration V2 thêm ba trigger bất biến policy; `PolicyPublicationService` công bố/đóng ba loại policy bằng application lock và audit nguyên tử. SQL đối chiếu role/profile, đơn–phân công–event và policy đã đạt trên DB test. Clean verify có 28 test đạt, gồm TTL 299.999/300 giây, replay khi route lỗi, công bố cùng phạm vi đồng thời và chặn sửa policy đã công bố. FE hiện chỉ gọi health, nhãn SQL Server đã được cập nhật. ERD/Class Diagram người dùng đã vẽ lại nên không thuộc đợt triển khai này.
 
 **Cập nhật nghiệm thu local:** V2 và truy vấn đối chiếu đã đạt trên DB dev/test; WAR V2 sau reset/seed đạt smoke chung, T10 24, T11 85, T12 93. Clean verify có 32 test, thêm biên thành viên 0%/100%, rollback khi ghi đơn/audit thất bại và tranh chấp khóa account/ngừng xe khi gán. FE lint/build đạt. Báo cáo PostgreSQL cũ được đánh dấu lịch sử. ERD/Class Diagram người dùng đã vẽ lại, không thuộc đợt việc này. Chưa có bằng chứng GitHub Actions trên commit/PR; không gộp M1 với T13–T20/M2.
+
+
+**Cập nhật T19 (12/10/2026):** Nhánh `feat/t19-backend-integration` đối chiếu yêu cầu DT01–DT27 và chạy OpenAPI/Postman check cùng 12 unit test độc lập DB; các kiểm tra này đạt. Maven biên dịch/đóng WAR thành công với test bị skip có chủ ý. Chưa chạy Maven integration, HTTP smoke SQL Server hoặc truy vấn invariant trong đợt T19 này vì Docker không tải được image SQL Server 2022 từ MCR (`Forbidden`). Xem [báo cáo T19](../../tests/T19-validation.md). Không lấy kết quả M1 cũ làm kết quả T19; M2/T19 vẫn Blocked cho đến khi chạy lại trên SQL Server designV1.
+
+
+**Retest T19 trên Windows (12/10/2026):** Log người dùng cung cấp xác nhận SQL Server designV1: 63 Java tests, 0 fail/error/skip; 348 HTTP checks nghiệp vụ và invariant sau progress đạt. Xem [báo cáo T19](../../tests/T19-validation.md) để phân biệt kết quả local mới với lần cloud bị chặn, phạm vi callback giả lập và bằng chứng/độ phủ DT còn cần bổ sung.
+
+
+**Tổng hợp T19 (12/10/2026):** Retest local tại HEAD f3b94f1 đạt 70 Java tests, 348 HTTP checks và invariant mới trước/sau reset trên SQL Server designV1 V1–V4. Ma trận DT trong [báo cáo T19](../../tests/T19-validation.md) còn DT04/DT05/DT07 PARTIAL vì thiếu assertion một số nhánh; chưa đóng T19/M2/T20. Hai lỗi role/profile và NOCOUNT đã sửa, retest local đạt.
+
+
+**Chốt kiểm thử T19 local (12/10/2026, 16:08 +07:00):** Retest đạt 73 Java tests (DesignV1 54), 348 HTTP checks và invariant trước/sau reset. DT04/DT05/DT07 đã bổ sung assertion và chạy đạt; xem ma trận Expected/Actual, bug/retest trong [báo cáo T19](../../tests/T19-validation.md). T19 sẵn sàng review; Done còn phụ thuộc PR review/CI/merge, không đồng nghĩa T20 nghiệm thu hoặc Sandbox thật đã chạy.

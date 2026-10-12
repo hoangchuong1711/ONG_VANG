@@ -92,6 +92,276 @@ class DesignV1IntegrationTest {
                         "0901234567", null, parcel)).maDon();
     }
 
+    @Test void dt09IdempotencyExpiresAtExactlyTwentyFourHoursWithoutDeletingOldOrder() {
+        Instant start = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        var route = new RouteService(new FakeRouteProvider(), 30_000);
+        var firstQuotes = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC));
+        var firstOrders = new OrderService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC));
+        var quote = firstQuotes.create(customer(1), null, "Quận 1", "Quận 3", parcels());
+        var request = new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels());
+        String key = UUID.randomUUID().toString();
+        var original = firstOrders.create(customer(1), key, request);
+        Instant expiry = start.plusSeconds(86400);
+        assertEquals(original, new OrderService(db.entityManagerFactory(), route,
+                Clock.fixed(expiry.minusMillis(1), ZoneOffset.UTC)).create(customer(1), key, request));
+        var expiredOrders = new OrderService(db.entityManagerFactory(), route, Clock.fixed(expiry, ZoneOffset.UTC));
+        assertEquals("QUOTE_EXPIRED", assertThrows(OrderService.Conflict.class,
+                () -> expiredOrders.create(customer(1), key, request)).getMessage());
+        var freshQuote = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(expiry, ZoneOffset.UTC))
+                .create(customer(1), null, "Quận 1", "Quận 3", parcels());
+        var fresh = expiredOrders.create(customer(1), key, new OrderService.CreateOrder(freshQuote.maBaoGia(), null,
+                "Quận 1", "Quận 3", "0901234567", null, parcels()));
+        assertNotEquals(original.maDon(), fresh.maDon());
+        assertEquals(original.maDon(), dispatch.order(customer(1), original.maDon()).maDon());
+        assertArrayEquals(new long[]{2, 1}, tableCounts(new String[]{"don_hang", "yeu_cau_tao_don"}));
+    }
+
+    @Test void dt12SuggestionsAndAssignmentRejectEveryIneligibleDriver() throws Exception {
+        for (String change : List.of(
+                "DELETE FROM dbo.phuong_tien WHERE ma_tx='TX-DEMO-1'",
+                "UPDATE dbo.phuong_tien SET dang_hoat_dong=0 WHERE ma_tx='TX-DEMO-1'",
+                "UPDATE dbo.tai_xe SET ngay_het_han_gplx='2000-01-01' WHERE ma_tx='TX-DEMO-1'",
+                "UPDATE dbo.tai_khoan SET trang_thai='KHOA' WHERE ma_tk='TK-DEMO-TX-1'")) {
+            resetFixture();
+            String id = newOrder();
+            tx.run(em -> { em.createNativeQuery(change).executeUpdate(); return null; });
+            assertTrue(dispatch.suggestions(dispatcher(), id, 0, 20).items().stream()
+                    .noneMatch(d -> d.maTx().equals("TX-DEMO-1")), change);
+            assertEquals("DRIVER_UNAVAILABLE", assertThrows(DispatchService.Conflict.class,
+                    () -> dispatch.assign(dispatcher(), id, "TX-DEMO-1"), change).getMessage());
+            assertEquals("CHO_GAN", dispatch.order(customer(1), id).trangThai());
+            assertEquals(1, dispatch.events(customer(1), id, 0, 20).items().size());
+            assertEquals(0, tableCounts(new String[]{"phan_cong_don_hang"})[0]);
+        }
+    }
+
+    @Test void dt15CompletedReplayCannotCloseDriversNewAssignment() {
+        String old = completedOrder();
+        var before = dispatch.order(customer(1), old);
+        int oldEvents = dispatch.events(customer(1), old, 0, 20).items().size();
+        String current = newOrder();
+        dispatch.assign(dispatcher(), current, "TX-DEMO-1");
+        var replay = dispatch.transition(driver(), old, OrderStatus.HOAN_TAT);
+        assertEquals(before.hoanTatLuc(), replay.hoanTatLuc());
+        assertEquals(oldEvents, dispatch.events(customer(1), old, 0, 20).items().size());
+        assertEquals("DA_GAN", dispatch.order(customer(1), current).trangThai());
+        tx.run(em -> {
+            var active = new com.miniongvang.DAO.DispatchDAO(em).activeOrder(current);
+            assertNotNull(active); assertNull(active.getKetThucLuc()); assertNull(active.getKetQuaKetThuc());
+            assertNull(em.find(com.miniongvang.entity.TaiXe.class, "TX-DEMO-1").getRanhTu());
+            return null;
+        });
+    }
+
+    @Test void dt16CancellationRacingPickupLeavesOneConsistentOutcome() throws Exception {
+        String id = newOrder(); dispatch.assign(dispatcher(), id, "TX-DEMO-1");
+        var ready = new java.util.concurrent.CountDownLatch(2);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var cancel = pool.submit(() -> { ready.countDown(); start.await();
+                try { return dispatch.cancel(customer(1), id, "Race cancellation").trangThai(); }
+                catch (DispatchService.Conflict e) { return e.getMessage(); } });
+            var pickup = pool.submit(() -> { ready.countDown(); start.await();
+                try { return dispatch.transition(driver(), id, OrderStatus.DA_LAY_HANG).trangThai(); }
+                catch (DispatchService.Conflict e) { return e.getMessage(); }
+                catch (NoSuchElementException e) { return "RESOURCE_NOT_FOUND"; } });
+            assertTrue(ready.await(10, TimeUnit.SECONDS)); start.countDown();
+            String a = cancel.get(20, TimeUnit.SECONDS), b = pickup.get(20, TimeUnit.SECONDS);
+            assertTrue((a.equals("DA_HUY") && (b.equals("ORDER_STATE_CONFLICT") || b.equals("RESOURCE_NOT_FOUND")))
+                    || (a.equals("ORDER_STATE_CONFLICT") && b.equals("DA_LAY_HANG")), a + "/" + b);
+        } finally { start.countDown(); pool.shutdownNow(); assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS)); }
+        tx.run(em -> {
+            var order = em.find(DonHang.class, id);
+            var assignment = em.createQuery("from PhanCongDonHang p where p.donHang.id=:id", PhanCongDonHang.class)
+                    .setParameter("id", id).getSingleResult();
+            var driver = em.find(com.miniongvang.entity.TaiXe.class, "TX-DEMO-1");
+            if (order.getTrangThai() == OrderStatus.DA_HUY) {
+                assertNotNull(assignment.getKetThucLuc()); assertEquals(AssignmentOutcome.HUY_DON, assignment.getKetQuaKetThuc());
+                assertNotNull(driver.getRanhTu());
+            } else {
+                assertEquals(OrderStatus.DA_LAY_HANG, order.getTrangThai()); assertNull(assignment.getKetThucLuc());
+                assertNull(assignment.getKetQuaKetThuc()); assertNull(driver.getRanhTu());
+            }
+            return null;
+        });
+        assertEquals(3, dispatch.events(customer(1), id, 0, 20).items().size());
+    }
+
+    @Test void dt26DeletingReferencedAccountPolicyOrOrderCannotEraseHistory() {
+        String id = completedOrder();
+        String[] tables = {"tai_khoan", "cau_hinh_cuoc", "don_hang", "cuoc_don_hang", "nhat_ky_don_hang", "phan_cong_don_hang"};
+        long[] before = tableCounts(tables);
+        for (String sql : List.of("DELETE FROM dbo.tai_khoan WHERE ma_tk='TK-DEMO-KH-1'",
+                "DELETE FROM dbo.cau_hinh_cuoc WHERE ma_bieu_phi='CUOC-DEMO-1'",
+                "DELETE FROM dbo.don_hang WHERE ma_don='" + id + "'")) {
+            Throwable error = assertThrows(RuntimeException.class,
+                    () -> tx.run(em -> { em.createNativeQuery(sql).executeUpdate(); return null; }));
+            while (error.getCause() != null) error = error.getCause();
+            assertInstanceOf(java.sql.SQLException.class, error);
+            assertArrayEquals(before, tableCounts(tables));
+        }
+        assertEquals("HOAN_TAT", dispatch.order(customer(1), id).trangThai());
+        assertEquals(5, dispatch.events(customer(1), id, 0, 20).items().size());
+    }
+
+    @Test void t19InvariantQueryAcceptsValidPaymentAndDetectsWrongConfirmedAmount() throws Exception {
+        String id = completedOrder();
+        var payment = payments.createCash(customer(1), id, "t19-reconcile");
+        payments.confirmCash(driver(), payment.maGiaoDich(), new BigDecimal(payment.soTien()));
+        var scriptPath = java.nio.file.Path.of("scripts/check-design-v1-invariants.sql");
+        if (!java.nio.file.Files.exists(scriptPath)) scriptPath = java.nio.file.Path.of("../../scripts/check-design-v1-invariants.sql");
+        String sql = java.nio.file.Files.readString(scriptPath);
+        try (var connection = db.dataSource().getConnection(); var statement = connection.createStatement()) {
+            try { statement.execute(sql); }
+            finally { statement.execute("SET NOCOUNT OFF"); }
+        }
+        tx.run(em -> { em.createNativeQuery("UPDATE dbo.thanh_toan SET so_tien_thuc_nhan=so_tien_thuc_nhan+1 WHERE ma_giao_dich=:id")
+                .setParameter("id", payment.maGiaoDich()).executeUpdate(); return null; });
+        try (var connection = db.dataSource().getConnection(); var statement = connection.createStatement()) {
+            try {
+                var error = assertThrows(java.sql.SQLException.class, () -> statement.execute(sql));
+                assertEquals(51010, error.getErrorCode());
+            } finally {
+                // Hikari returns this physical connection to Hibernate; restore
+                // JDBC row counts even when the reconciliation batch throws.
+                statement.execute("SET NOCOUNT OFF");
+            }
+        } finally {
+            tx.run(em -> { em.createNativeQuery("UPDATE dbo.thanh_toan SET so_tien_thuc_nhan=:amount WHERE ma_giao_dich=:id")
+                    .setParameter("amount", new BigDecimal(payment.soTien())).setParameter("id", payment.maGiaoDich())
+                    .executeUpdate(); return null; });
+        }
+    }
+
+    @Test void dt01WrongProfileRoleAndDuplicateProfileAreRejectedAtomically() {
+        String[] tables = {"tai_khoan", "khach_hang", "tai_xe"};
+        long[] before = tableCounts(tables);
+        var statements = List.of(
+                "UPDATE dbo.khach_hang SET ma_tk='TK-DEMO-ADMIN' WHERE ma_kh='KH-DEMO-1'",
+                "UPDATE dbo.tai_xe SET ma_tk='TK-DEMO-NV' WHERE ma_tx='TX-DEMO-1'",
+                "UPDATE dbo.tai_khoan SET vai_tro='TONG_DAI' WHERE ma_tk='TK-DEMO-KH-1'",
+                "UPDATE dbo.khach_hang SET ma_tk='TK-DEMO-KH-1' WHERE ma_kh='KH-DEMO-2'");
+        int[] expected = {51080, 51081, 51082, 2601};
+        for (int i=0; i<statements.size(); i++) {
+            String sql = statements.get(i);
+            Throwable error = assertThrows(RuntimeException.class, () -> tx.run(em -> {
+                em.createNativeQuery(sql).executeUpdate(); return null;
+            }));
+            while(error.getCause()!=null) error=error.getCause();
+            assertInstanceOf(java.sql.SQLException.class, error);
+            int code = ((java.sql.SQLException)error).getErrorCode();
+            if (i==3) assertTrue(code==2601 || code==2627); else assertEquals(expected[i],code);
+            assertArrayEquals(before, tableCounts(tables));
+        }
+        var auth = new AuthService(db.entityManagerFactory());
+        assertEquals("KH-DEMO-1", auth.current("TK-DEMO-KH-1").maKh());
+        assertEquals("TX-DEMO-1", auth.current("TK-DEMO-TX-1").maTx());
+    }
+
+    private static String publishFareSuccessor(Instant now, Instant boundary) {
+        var publication = new PolicyPublicationService(db.entityManagerFactory(), Clock.fixed(now, ZoneOffset.UTC));
+        publication.closeFare(admin(), "CUOC-DEMO-1", boundary);
+        String id = UUID.randomUUID().toString();
+        tx.run(em -> {
+            var fare = new BieuPhi();
+            fare.setId(id); fare.setTenBieuPhi("T19 successor");
+            fare.setCuocCoBan(new BigDecimal("12345.00")); fare.setDonGiaKm(new BigDecimal("10000.00"));
+            fare.setKmToiThieu(BigDecimal.ZERO); fare.setHieuLucTu(boundary);
+            fare.setTrangThai(PolicyStatus.NHAP); em.persist(fare); return null;
+        });
+        publication.publishFare(admin(), id);
+        return id;
+    }
+
+    @Test void dt04PublishedSuccessorNeverChangesCommittedOrderFare() {
+        Instant start = Instant.now().truncatedTo(ChronoUnit.MILLIS), boundary = start.plusSeconds(120);
+        var route = new RouteService(new FakeRouteProvider(), 30_000);
+        var quote = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC))
+                .create(customer(1), null, "Quận 1", "Quận 3", parcels());
+        var original = new OrderService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC))
+                .create(customer(1), UUID.randomUUID().toString(), new OrderService.CreateOrder(quote.maBaoGia(), null,
+                        "Quận 1", "Quận 3", "0901234567", null, parcels()));
+        var before = dispatch.detail(customer(1), original.maDon());
+        String successor = publishFareSuccessor(start, boundary);
+        var next = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(boundary, ZoneOffset.UTC))
+                .create(customer(1), null, "Quận 1", "Quận 3", parcels());
+        assertNotEquals(quote.cuoc().tongCuoc(), next.cuoc().tongCuoc());
+        assertEquals(original.cuoc(), dispatch.order(customer(1), original.maDon()).cuoc());
+        var after = dispatch.detail(customer(1), original.maDon());
+        // Closing a published policy's future validity window is permitted;
+        // its pricing content and the order's policy reference remain immutable.
+        var oldPolicy = before.phienBanChinhSach().bieuPhi();
+        var historicalPolicy = after.phienBanChinhSach().bieuPhi();
+        assertEquals(oldPolicy.maBieuPhi(), historicalPolicy.maBieuPhi());
+        assertEquals(oldPolicy.tenBieuPhi(), historicalPolicy.tenBieuPhi());
+        assertEquals(oldPolicy.cuocCoBan(), historicalPolicy.cuocCoBan());
+        assertEquals(oldPolicy.donGiaKm(), historicalPolicy.donGiaKm());
+        assertEquals(oldPolicy.kmToiThieu(), historicalPolicy.kmToiThieu());
+        assertEquals(oldPolicy.kmToiDa(), historicalPolicy.kmToiDa());
+        assertEquals(oldPolicy.hieuLucTu(), historicalPolicy.hieuLucTu());
+        assertNull(oldPolicy.hieuLucDen());
+        assertEquals(boundary.toString(), historicalPolicy.hieuLucDen());
+        assertEquals(before.phienBanChinhSach().giamGia(), after.phienBanChinhSach().giamGia());
+        assertEquals(before.phienBanChinhSach().phuThu(), after.phienBanChinhSach().phuThu());
+        assertEquals(before.cuoc(), after.cuoc());
+        tx.run(em -> {
+            assertEquals("CUOC-DEMO-1", em.find(CuocDonHang.class, original.maDon()).getBieuPhi().getId());
+            assertEquals(successor, em.find(com.miniongvang.entity.BaoGia.class, next.maBaoGia()).getMaBieuPhi());
+            return null;
+        });
+    }
+
+    @Test void dt05PublishedMembershipPolicyExpiresAtExactBoundaryInEveryClockZone() {
+        Instant start = Instant.now().truncatedTo(ChronoUnit.MILLIS), boundary = start.plusSeconds(120);
+        new PolicyPublicationService(db.entityManagerFactory(), Clock.fixed(start, ZoneOffset.UTC))
+                .closeMembership(admin(), "TV-DEMO-VANG-1", boundary);
+        tx.run(em -> {
+            var member = em.find(KhachHang.class, "KH-DEMO-2");
+            member.setThanhVienTu(start.minusSeconds(60)); member.setThanhVienDen(boundary.plusSeconds(3600));
+            for (String zone : List.of("UTC", "Asia/Ho_Chi_Minh", "America/New_York")) {
+                var clock = Clock.fixed(boundary, java.time.ZoneId.of(zone));
+                var service = new MembershipPolicyService(clock);
+                var before = service.evaluate(em, member, new BigDecimal("100.00"), clock.instant().minusMillis(1));
+                assertEquals("TV-DEMO-VANG-1", before.policy().getId()); assertEquals(new BigDecimal("10.00"), before.discount());
+                for (Instant at : List.of(clock.instant(), clock.instant().plusMillis(1))) {
+                    var expired = service.evaluate(em, member, new BigDecimal("100.00"), at);
+                    assertNull(expired.policy(), zone); assertFalse(expired.active(), zone);
+                    assertEquals(new BigDecimal("0.00"), expired.discount(), zone);
+                }
+            }
+            return null;
+        });
+    }
+
+    @Test void dt07ChangedPolicyOrParcelsRejectsQuoteWithoutPartialOrder() {
+        Instant start = Instant.now().truncatedTo(ChronoUnit.MILLIS), boundary = start.plusSeconds(120);
+        var route = new RouteService(new FakeRouteProvider(), 30_000);
+        var quote = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC))
+                .create(customer(1), null, "Quận 1", "Quận 3", parcels());
+        var original = new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels());
+        String[] tables = {"don_hang", "cuoc_don_hang", "chi_tiet_kien_hang", "phu_thu_don_hang", "nhat_ky_don_hang", "yeu_cau_tao_don"};
+        long[] before = tableCounts(tables);
+        var changedParcels = new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null,
+                List.of(new QuoteService.Parcel("Tài liệu", null, "2.00")));
+        var atStart = new OrderService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC));
+        assertEquals("QUOTE_CHANGED", assertThrows(OrderService.Conflict.class,
+                () -> atStart.create(customer(1), UUID.randomUUID().toString(), changedParcels)).getMessage());
+        assertArrayEquals(before, tableCounts(tables));
+        publishFareSuccessor(start, boundary);
+        var atBoundary = new OrderService(db.entityManagerFactory(), route, Clock.fixed(boundary, ZoneOffset.UTC));
+        assertEquals("QUOTE_CHANGED", assertThrows(OrderService.Conflict.class,
+                () -> atBoundary.create(customer(1), UUID.randomUUID().toString(), original)).getMessage());
+        assertArrayEquals(before, tableCounts(tables));
+        // A fresh quote permits a deliberate retry; stale quote is never repriced silently.
+        var fresh = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(boundary, ZoneOffset.UTC))
+                .create(customer(1), null, "Quận 1", "Quận 3", parcels());
+        var accepted = atBoundary.create(customer(1), UUID.randomUUID().toString(), new OrderService.CreateOrder(
+                fresh.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels()));
+        assertEquals(fresh.cuoc(), accepted.cuoc());
+        assertEquals(1, tableCounts(new String[]{"don_hang"})[0]);
+    }
+
     @BeforeAll static void start() throws Exception {
         url = System.getenv("TEST_DB_URL");
         if (Boolean.parseBoolean(System.getenv("REQUIRE_TEST_DB"))) assertNotNull(url);

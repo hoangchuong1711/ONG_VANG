@@ -19,6 +19,7 @@ T16: [lịch sử và chi tiết đơn hàng](docs/T16-order-history.md).
 T17: [báo cáo doanh thu và xuất Excel](docs/T17-revenue-reports.md).
 
 T18: [đối chiếu tài liệu và phạm vi hoãn tới khi deploy](docs/T18-sandbox-api.md).
+T19: [báo cáo hồi quy backend trên designV1](tests/T19-validation.md).
 
 Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).
 
@@ -257,7 +258,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-test-db.ps1
 docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
 npm.cmd run smoke --prefix tools/api
 npm.cmd run smoke:orders --prefix tools/api
+npm.cmd run smoke:history --prefix tools/api
 npm.cmd run smoke:cancel --prefix tools/api
+npm.cmd run smoke:reports --prefix tools/api
+npm.cmd run smoke:payment --prefix tools/api
+npm.cmd run smoke:dispatch --prefix tools/api
+docker compose -f docker-compose.ci.yml cp scripts/check-design-v1-invariants.sql db-test:/tmp/check-design-v1-invariants.sql
+docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/check-design-v1-invariants.sql
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-test-db.ps1
+docker compose -f docker-compose.ci.yml up --no-deps --wait --wait-timeout 120 backend-test
+npm.cmd run smoke:progress --prefix tools/api
+docker compose -f docker-compose.ci.yml cp scripts/check-design-v1-invariants.sql db-test:/tmp/check-design-v1-invariants.sql
+docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/check-design-v1-invariants.sql
 ```
 
 Mỗi lệnh phải thành công trước khi tiếp tục. Chạy xong, kể cả khi test lỗi:
