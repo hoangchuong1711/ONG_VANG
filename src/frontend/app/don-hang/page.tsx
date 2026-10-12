@@ -5,8 +5,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
-import { OrderStatus, OrderItem } from "@/lib/types";
+import { OrderStatus } from "@/lib/types";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import { OrderCardSkeleton } from "@/components/ui/Skeleton";
@@ -191,19 +190,21 @@ export default function MyOrdersPage() {
 
           {/* Tab lọc trạng thái với đếm số lượng */}
           <div className="pt-3 border-t border-stone-100 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {[
-              { key: "ALL", label: "Tất cả" },
-              { key: "DANG_GIAO", label: "Đang giao" },
-              { key: "CHO_GAN", label: "Chờ gán" },
-              { key: "CHUA_THANH_TOAN", label: "Chờ thanh toán" },
-              { key: "HOAN_TAT", label: "Hoàn tất" },
-            ].map((f) => {
-              const count = getCountForStatus(f.key as any);
+            {(
+              [
+                { key: "ALL", label: "Tất cả" },
+                { key: "DANG_GIAO", label: "Đang giao" },
+                { key: "CHO_GAN", label: "Chờ gán" },
+                { key: "CHUA_THANH_TOAN", label: "Chờ thanh toán" },
+                { key: "HOAN_TAT", label: "Hoàn tất" },
+              ] as const
+            ).map((f) => {
+              const count = getCountForStatus(f.key);
               const isActive = statusFilter === f.key;
               return (
                 <button
                   key={f.key}
-                  onClick={() => setStatusFilter(f.key as any)}
+                  onClick={() => setStatusFilter(f.key)}
                   className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                     isActive
                       ? "bg-stone-900 text-white font-bold shadow-xs"

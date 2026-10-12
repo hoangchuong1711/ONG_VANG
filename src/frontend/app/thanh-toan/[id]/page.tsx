@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -16,7 +16,6 @@ type PaymentState = "SELECTION" | "PROCESSING" | "SUCCESS" | "FAILURE";
 
 export default function PaymentPage() {
   const { showToast } = useToast();
-  const router = useRouter();
   const params = useParams();
   const orderId = (params?.id as string) || "DH-2025-001231";
 

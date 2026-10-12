@@ -5,8 +5,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
-import { OrderItem, OrderStatus } from "@/lib/types";
+import { OrderStatus } from "@/lib/types";
 import { formatVND } from "@/lib/utils";
 
 import { useToast } from "@/components/ui/Toast";
@@ -169,7 +168,7 @@ export default function CustomerDashboardKH01() {
         {showPaymentSuccess && (
           <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-emerald-900 text-xs sm:text-sm font-semibold flex items-center gap-2 animate-fadeIn">
             <span className="text-emerald-600 text-base">✓</span>
-            Giao dịch thanh toán sandbox qua VNPay thành công! Đơn hàng đã được cập nhật trạng thái "Đã thanh toán".
+            Giao dịch thanh toán sandbox qua VNPay thành công! Đơn hàng đã được cập nhật trạng thái &quot;Đã thanh toán&quot;.
           </div>
         )}
 
@@ -255,18 +254,20 @@ export default function CustomerDashboardKH01() {
 
             {/* Filter buttons */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-              {[
-                { key: "ALL", label: "Tất cả" },
-                { key: "DANG_GIAO", label: "Đang giao" },
-                { key: "CHO_GAN", label: "Chờ gán" },
-                { key: "CHUA_THANH_TOAN", label: "Chưa trả" },
-                { key: "HOAN_TAT", label: "Hoàn tất" },
-              ].map((f) => {
+              {(
+                [
+                  { key: "ALL", label: "Tất cả" },
+                  { key: "DANG_GIAO", label: "Đang giao" },
+                  { key: "CHO_GAN", label: "Chờ gán" },
+                  { key: "CHUA_THANH_TOAN", label: "Chưa trả" },
+                  { key: "HOAN_TAT", label: "Hoàn tất" },
+                ] as const
+              ).map((f) => {
                 const isSelected = statusFilter === f.key;
                 return (
                   <button
                     key={f.key}
-                    onClick={() => setStatusFilter(f.key as any)}
+                    onClick={() => setStatusFilter(f.key)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                       isSelected
                         ? "bg-stone-900 text-white font-bold"

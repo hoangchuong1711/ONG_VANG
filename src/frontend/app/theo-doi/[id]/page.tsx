@@ -16,18 +16,17 @@ export default function OrderTrackingPage() {
   const params = useParams();
   const orderId = (params?.id as string) || "DH-2025-001235";
 
-  // Tìm đơn hàng theo ID hoặc fallback đơn mẫu
-  const initialOrder =
-    SAMPLE_ORDERS.find((o) => o.id === orderId) || {
-      ...SAMPLE_ORDERS[2],
-      id: orderId,
-      createdTimestamp: Date.now() - 90 * 1000, // 90 giây trước (còn khoảng 210 giây để hủy)
-    };
+  // Tìm đơn hàng theo ID hoặc fallback đơn mẫu (pure initialization)
+  const [order, setOrder] = useState<OrderItem>(() => {
+    return (
+      SAMPLE_ORDERS.find((o) => o.id === orderId) || {
+        ...SAMPLE_ORDERS[2],
+        id: orderId,
+      }
+    );
+  });
 
-  const [order, setOrder] = useState<OrderItem>(initialOrder);
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    getCancelRemainingSeconds(initialOrder.createdTimestamp)
-  );
+  const [remainingSeconds, setRemainingSeconds] = useState(210);
 
   // Modal Hủy đơn (K9 / K10)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -44,9 +43,11 @@ export default function OrderTrackingPage() {
     showToast("Đã sao chép liên kết theo dõi hành trình!", "info");
   };
 
-  // Đếm ngược 300 giây
+  // Đếm ngược 300 giây (tính toán an toàn bên trong useEffect)
   useEffect(() => {
     if (order.status === "DA_HUY" || order.status === "HOAN_TAT") return;
+
+    setRemainingSeconds(getCancelRemainingSeconds(order.createdTimestamp));
 
     const interval = setInterval(() => {
       const remaining = getCancelRemainingSeconds(order.createdTimestamp);
@@ -54,7 +55,7 @@ export default function OrderTrackingPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [order]);
+  }, [order.status, order.createdTimestamp]);
 
   const handleCancelOrder = () => {
     setOrder({
@@ -141,7 +142,7 @@ export default function OrderTrackingPage() {
               Đơn hàng này đã được hủy thành công
             </h2>
             <p className="text-xs text-stone-500 max-w-sm mx-auto">
-              Lý do: <em>"{cancelReason}"</em>. Tài xế (nếu có) đã được giải phóng về trạng thái sẵn sàng phục vụ.
+              Lý do: <em>&quot;{cancelReason}&quot;</em>. Tài xế (nếu có) đã được giải phóng về trạng thái sẵn sàng phục vụ.
             </p>
             <Link href="/tao-don">
               <Button variant="primary" size="sm">
