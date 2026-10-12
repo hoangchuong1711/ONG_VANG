@@ -289,7 +289,21 @@ class DesignV1IntegrationTest {
         assertNotEquals(quote.cuoc().tongCuoc(), next.cuoc().tongCuoc());
         assertEquals(original.cuoc(), dispatch.order(customer(1), original.maDon()).cuoc());
         var after = dispatch.detail(customer(1), original.maDon());
-        assertEquals(before.phienBanChinhSach(), after.phienBanChinhSach());
+        // Closing a published policy's future validity window is permitted;
+        // its pricing content and the order's policy reference remain immutable.
+        var oldPolicy = before.phienBanChinhSach().bieuPhi();
+        var historicalPolicy = after.phienBanChinhSach().bieuPhi();
+        assertEquals(oldPolicy.maBieuPhi(), historicalPolicy.maBieuPhi());
+        assertEquals(oldPolicy.tenBieuPhi(), historicalPolicy.tenBieuPhi());
+        assertEquals(oldPolicy.cuocCoBan(), historicalPolicy.cuocCoBan());
+        assertEquals(oldPolicy.donGiaKm(), historicalPolicy.donGiaKm());
+        assertEquals(oldPolicy.kmToiThieu(), historicalPolicy.kmToiThieu());
+        assertEquals(oldPolicy.kmToiDa(), historicalPolicy.kmToiDa());
+        assertEquals(oldPolicy.hieuLucTu(), historicalPolicy.hieuLucTu());
+        assertNull(oldPolicy.hieuLucDen());
+        assertEquals(boundary.toString(), historicalPolicy.hieuLucDen());
+        assertEquals(before.phienBanChinhSach().giamGia(), after.phienBanChinhSach().giamGia());
+        assertEquals(before.phienBanChinhSach().phuThu(), after.phienBanChinhSach().phuThu());
         assertEquals(before.cuoc(), after.cuoc());
         tx.run(em -> {
             assertEquals("CUOC-DEMO-1", em.find(CuocDonHang.class, original.maDon()).getBieuPhi().getId());
