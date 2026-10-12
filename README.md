@@ -2,7 +2,7 @@
 
 ## Tài liệu và kiểm thử API (T04)
 
-Hiện `/api/health`, các API T06–T13, thanh toán tiền mặt T14 và VNPay Sandbox T15 đã triển khai. Các API còn lại vẫn là hợp đồng chờ triển khai.
+Hiện `/api/health` và nghiệp vụ T06–T17 đã triển khai trên designV1, gồm tiền mặt/VNPay, lịch sử đơn và báo cáo/Excel. Chỉ `listCustomers` còn planned; xem trạng thái từng operation trong OpenAPI.
 
 Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ designV1 với API](docs/api/schema-mapping.md)
 và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
@@ -18,9 +18,11 @@ T15: [tích hợp VNPay Sandbox](docs/T15-vnpay.md).
 T16: [lịch sử và chi tiết đơn hàng](docs/T16-order-history.md).
 T17: [báo cáo doanh thu và xuất Excel](docs/T17-revenue-reports.md).
 
+T18: [đối chiếu tài liệu và phạm vi hoãn tới khi deploy](docs/T18-sandbox-api.md).
+
 Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).
 
-Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T13, tiền mặt T14 và VNPay Sandbox T15, các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
+Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T17, các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
 
 ## Công nghệ và phiên bản
 
@@ -109,6 +111,8 @@ Lệnh `docker compose down` giữ dữ liệu database trong Docker volume. Kh�
 
 Khi dự án còn chạy local, dùng **một backend và database test chung** trên máy của người mở ngrok. VNPay gửi IPN đến URL đã đăng ký, nên người tạo lần thanh toán và nơi nhận IPN phải dùng cùng database. Các thành viên khác gọi backend này qua ngrok; không cần chạy ngrok hoặc nhận authtoken/VNPay Hash Secret.
 
+Hướng dẫn dưới đây đã có từ T15, được giữ để tham khảo khi cần. Hiện chưa yêu cầu mọi thành viên chạy thanh toán Sandbox; môi trường thanh toán dùng chung sẽ được cấu hình và kiểm tra sau khi dự án hoàn thiện và deploy.
+
 **Người host:**
 
 1. Trong `.env` riêng trên máy, đặt `DEMO_SEED=true`, `DEMO_PASSWORD`, `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` và `VNPAY_RETURN_URL=https://<domain-ngrok>/api/payments/vnpay/return`. Không commit `.env`.
@@ -118,7 +122,7 @@ Khi dự án còn chạy local, dùng **một backend và database test chung** 
 
 **Thành viên test:**
 
-1. Pull nhánh có T15. Import `tests/postman/mini-ong-vang.postman_collection.json` và `tests/postman/local.postman_environment.json` vào Postman; chọn environment vừa import.
+1. Pull nhánh hiện tại đã có T06–T17. Import `tests/postman/mini-ong-vang.postman_collection.json` và `tests/postman/local.postman_environment.json` vào Postman; chọn environment vừa import.
 2. Đổi `baseUrl` trong environment thành `https://<domain-ngrok>` (không có `/` cuối), giữ `runPlanned=false`. Không dùng `localhost:8081`: địa chỉ đó sẽ trỏ về máy của chính bạn.
 3. Dùng tài khoản demo để đi theo luồng `getCsrf` → `login` → `getCsrf` → `createQuote` → `createOrder` → tổng đài `assignDriver` → tài xế chuyển đơn đến `HOAN_TAT` → khách `createPayment`. Khi đổi vai trò, đăng xuất rồi đăng nhập/lấy CSRF mới. Mỗi người tạo **đơn mới và Idempotency-Key mới**, tránh dùng chung mã đơn/lần thanh toán.
 4. Mở `paymentUrl` từ `createPayment`, thanh toán bằng thẻ Sandbox, rồi gọi `getPayment` bằng `maGiaoDich`. Chỉ coi là đã thu khi backend báo `trangThai=THANH_CONG`, `daXacNhanDu=true` và đơn `DA_THANH_TOAN`; trang Return của VNPay không tự xác nhận thanh toán. Nếu chưa có IPN, báo người host kiểm tra ngrok và dùng `reconcilePayment` để tra cứu khi cần.
@@ -273,7 +277,7 @@ FE hiện chưa có bộ test UI, không ghi lint/build là test chức năng đ
 Test Java kiểm tra kết nối, migration designV1, Hibernate mapping, seed, constraint, cước chốt theo đơn,
 commit/rollback và cạnh tranh phân công. Bộ test reset dữ liệu trên DB test riêng trước từng case;
 chỉ khởi động backend-test sau khi Maven verify xong. Chạy Maven không có `TEST_DB_URL` thì test DB skip;
-CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06–T09 có test tương ứng; T10 có integration test tạo đơn và HTTP smoke; T11 có test SQL Server và HTTP với cạnh tranh gán/từ chối; T12 có kiểm thử tiến trình/sự cố/hoàn tất; T13 có test SQL Server và HTTP smoke; test T14–T18 tiếp tục bổ sung theo task.
+CI đặt `REQUIRE_TEST_DB=true` để thiếu cấu hình phải fail. T06–T09 có test tương ứng; T10 có integration test tạo đơn và HTTP smoke; T11 có test SQL Server và HTTP với cạnh tranh gán/từ chối; T12 có kiểm thử tiến trình/sự cố/hoàn tất; T13 có test SQL Server và HTTP smoke; T14–T17 đã có test thanh toán, lịch sử và báo cáo. T18 hiện chỉ đồng bộ tài liệu; chưa bổ sung seed hoặc chạy kiểm thử thanh toán trong đợt cập nhật này.
 
 Trên GitHub, xem tab **Actions → CI** hoặc checks của PR. Job BE lưu Surefire reports và
 container logs vào artifact `backend-test-results` trong 7 ngày, kể cả test thất bại;
@@ -324,4 +328,4 @@ Luồng xử lý nghiệp vụ dự kiến là:
 Controller → Service → DAO → Hibernate/JPA → SQL Server
 ```
 
-Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; T06 đã triển khai auth; T07–T09 đã triển khai lộ trình, chính sách thành viên và báo giá. Endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, T10 đã có API tạo đơn, T11 có API điều phối/gán/từ chối; T12 có tiến trình, sự cố và nhật ký; các API còn lại triển khai tiếp.
+Controller nhận yêu cầu, Service xử lý quy tắc nghiệp vụ, DAO làm việc với dữ liệu qua Hibernate/JPA. Controller không gọi DAO trực tiếp. T03 đã triển khai lớp persistence; T06 đã triển khai auth; T07–T09 đã triển khai lộ trình, chính sách thành viên và báo giá. Endpoint `/api/health` vẫn là công cụ kiểm tra hạ tầng, T10 đã có API tạo đơn, T11 có API điều phối/gán/từ chối; T12 có tiến trình, sự cố và nhật ký; T13 hủy đơn, T14–T15 thanh toán, T16 lịch sử và T17 báo cáo/Excel đã triển khai. `listCustomers` còn planned.

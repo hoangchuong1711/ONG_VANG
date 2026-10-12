@@ -1,6 +1,6 @@
 # Quy ước API v0.5.0
 
-Các quy ước API hiện tại được đối chiếu với [designV1](../database/designV1.md). Một số nghiệp vụ T13–T20 trong tài liệu vẫn là phạm vi dự kiến, chưa có endpoint chạy thực tế.
+Các quy ước API hiện tại được đối chiếu với [designV1](../database/designV1.md). Nghiệp vụ T06–T17 đã có implementation; chỉ `listCustomers` còn planned. T18 hiện đồng bộ tài liệu; cấu hình/kiểm tra thanh toán dùng chung được hoãn tới khi deploy theo [phạm vi cập nhật](../T18-sandbox-api.md).
 
 ## HTTP, DTO, validation
 
@@ -71,7 +71,7 @@ Yêu cầu bổ sung ngày 08/10/2026, đã có trong OpenAPI 0.3.0 và implemen
 - Swagger UI chạy cùng BE origin. Cookie không nhập thủ công; token lưu trong bộ nhớ trang, không localStorage. Interceptor chỉ thêm token cho origin của trang.
 - FE tương lai ưu tiên proxy cùng origin `/api` về BE; cần giữ Set-Cookie/Cookie, CSRF header và thông tin HTTPS trusted proxy. T04 chưa thay FE health/proxy hiện có.
 - Nếu cấu hình direct-origin dev: chỉ allowlist chính xác `http://localhost:3001` (Docker FE), `http://localhost:3000` (FE trực tiếp), credentials=true, Vary: Origin; methods GET/POST/PUT/PATCH/DELETE/OPTIONS, headers Content-Type/X-CSRF-Token/Idempotency-Key. Preflight không đòi đăng nhập. Không dùng wildcard với credentials. CORS health hiện có chưa phải filter nghiệp vụ này.
-- VNPay IPN/return không cần cookie/CSRF. IPN phải xác minh signature, merchant, reference, amount và trạng thái; return không tự ghi nhận đã trả. Endpoint nhận IPN cần HTTPS public ở T18; localhost không đủ cho callback từ cổng.
+- VNPay IPN/return không cần cookie/CSRF. IPN phải xác minh signature, merchant, reference, amount và trạng thái; return không tự ghi nhận đã trả. T15 đã có hướng dẫn HTTPS public qua ngrok; localhost trực tiếp không đủ cho callback từ cổng. Khi triển khai môi trường dùng chung sau này, cập nhật IPN/Return theo domain deploy và kiểm tra lại.
 
 ## Báo giá, trạng thái và retry
 

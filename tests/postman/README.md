@@ -2,7 +2,7 @@
 
 Import `mini-ong-vang.postman_collection.json` và `local.postman_environment.json` vào Postman Desktop, chọn environment local. File environment chỉ là template, không chứa tài khoản thật. Giữ giá trị credential/session trên máy; không export giá trị thật vào Git.
 
-## Chạy được ngay sau T04
+## Trạng thái hiện tại sau T17
 
 1. Cấu hình `.env`, chạy `docker compose up --build backend` từ gốc repo.
 2. Giữ `baseUrl=http://localhost:8081`, không có slash cuối. Không bật `runPlanned`.
@@ -13,7 +13,7 @@ Các request chưa có BE mặc định **skip** bằng `pm.execution.skipReques
 
 ## Sau khi từng task BE hoàn thành
 
-`estimateRoute` và `createQuote` đã nằm trong folder implemented; đăng nhập khách hoặc tổng đài và lấy lại CSRF trước khi chạy. Địa chỉ mặc định `Điểm mẫu A/B` là alias của Quận 1/3. Báo giá cần biểu phí seed T03; khách hàng dùng ID từ session, tổng đài phải điền `customerId`. Đặt `runPlanned=true` chỉ để chạy riêng những request nghiệp vụ về sau đã được hiện thực nhưng chưa cập nhật collection. T03 cung cấp [manifest seed](../../docs/database/README.md). Các API nghiệp vụ vẫn cần được gọi theo luồng/role thích hợp, không xem folder implemented là một scenario tự động.
+`estimateRoute` và `createQuote` đã nằm trong folder implemented; đăng nhập khách hoặc tổng đài và lấy lại CSRF trước khi chạy. Địa chỉ mặc định `Điểm mẫu A/B` là alias của Quận 1/3. Báo giá cần biểu phí seed T03; khách hàng dùng ID từ session, tổng đài phải điền `customerId`. Giữ `runPlanned=false` khi dùng các operation implemented: T06–T17 đã được cập nhật, chỉ `listCustomers` còn planned. Folder negative vẫn có guard riêng dùng chung biến `runPlanned`; chỉ bật khi chạy riêng ca negative đã chuẩn bị fixture, không chạy cả collection. T03 cung cấp [manifest seed](../../docs/database/README.md). Các API nghiệp vụ vẫn cần được gọi theo luồng/role thích hợp, không xem folder implemented là một scenario tự động.
 
 Session được Postman cookie jar giữ qua Set-Cookie. Không đặt Cookie/JSESSIONID thủ công. Đăng nhập mỗi vai trò theo thứ tự:
 
@@ -23,6 +23,8 @@ Session được Postman cookie jar giữ qua Set-Cookie. Không đặt Cookie/J
 4. Khi đổi người: `logout`, đổi credential rồi làm lại 1–3. Cookie jar theo host; không chạy song song nhiều vai trò với cùng jar/environment.
 
 ## Main Flow thủ công có lưu biến
+
+Đây là kịch bản tham khảo đầy đủ, không phải yêu cầu mọi thành viên chạy thanh toán ngay. Phần VNPay ở bước 6–7 sẽ kiểm tra trên môi trường dùng chung sau khi deploy. Có thể kiểm tra API khác độc lập với các fixture phù hợp; chưa chạy bước nào thì ghi Not Run cho bước đó.
 
 Luồng register của T06: dùng cookie jar riêng cho khách mới → `getCsrf` → `register` với SĐT chưa tồn tại → kiểm tra 201 và role KHACH_HANG → `getCurrentUser` phải báo chưa đăng nhập → `getCsrf` → `login` bằng SĐT/mật khẩu vừa đăng ký → `getCsrf` → `getCurrentUser` → `logout` → xác nhận phiên không còn dùng được. Register không cấp VIP, nên không dùng khách mới thay fixture VIP ở Main Flow bên dưới. Chạy thêm nhánh thiếu/sai dữ liệu, SĐT trùng sau chuẩn hóa, CSRF thiếu/sai và gửi field role trái phép; kiểm thử đồng thời/rollback nằm ở bộ integration T06.
 
