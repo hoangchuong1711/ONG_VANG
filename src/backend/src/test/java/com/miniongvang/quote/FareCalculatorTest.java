@@ -26,11 +26,11 @@ class FareCalculatorTest {
     @Test void rejectsInvalidAmountAndOverflow() {
         assertThrows(IllegalArgumentException.class,
                 () -> calculator.calculateV1(BigDecimal.ZERO, tariff("10", "2"), List.of(), BigDecimal.ZERO));
-        assertThrows(FareCalculator.FareConfigurationException.class,
+        assertThrows(com.miniongvang.service.FareCalculator.FareConfigurationException.class,
                 () -> calculator.calculateV1(BigDecimal.ONE, tariff("-1", "2"), List.of(), BigDecimal.ZERO));
-        assertThrows(FareCalculator.FareConfigurationException.class,
+        assertThrows(com.miniongvang.service.FareCalculator.FareConfigurationException.class,
                 () -> calculator.calculateV1(BigDecimal.ONE, tariff("10", "2"), List.of(), new BigDecimal("100")));
-        assertThrows(FareCalculator.FareConfigurationException.class,
+        assertThrows(com.miniongvang.service.FareCalculator.FareConfigurationException.class,
                 () -> calculator.calculateV1(new BigDecimal("1000"), tariff("0", "9999999999999"),
                         List.of(), BigDecimal.ZERO));
     }

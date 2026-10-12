@@ -1,6 +1,11 @@
 package com.miniongvang.service;
+import com.miniongvang.security.ActorContext;
+import com.miniongvang.dto.report.ReportDtos.Bucket;
+import com.miniongvang.dto.report.ReportDtos.Metrics;
+import com.miniongvang.dto.report.ReportDtos.Report;
+import com.miniongvang.dto.report.ReportDtos.Group;
 
-import com.miniongvang.DAO.ReportDAO;
+import com.miniongvang.dao.ReportDAO;
 import com.miniongvang.entity.TaiKhoan;
 import com.miniongvang.entity.enums.AccountRole;
 import com.miniongvang.entity.enums.AccountStatus;
@@ -15,7 +20,7 @@ public final class ReportService {
     private static final ZoneId ZONE=ZoneId.of("Asia/Ho_Chi_Minh");
     private final TransactionRunner transactions;
     public ReportService(EntityManagerFactory factory) { transactions=new TransactionRunner(factory); }
-    public Report revenue(AuthService.User actor, LocalDate from, LocalDate to, Group group) {
+    public Report revenue(ActorContext actor, LocalDate from, LocalDate to, Group group) {
         if (actor==null || actor.vaiTro()!=AccountRole.CHU_DOI_XE || actor.maNguoiDung()==null)
             throw new SecurityException("Administrator required");
         if (from==null || to==null || !from.isBefore(to)) throw new DateRangeInvalid();
@@ -50,10 +55,6 @@ public final class ReportService {
         return new Metrics(money(t.completed()),money(t.received()),money(t.unallocated()),money(t.receivable()),t.completedCount(),t.cancelledCount());
     }
     private static String money(BigDecimal value) { return value.setScale(2).toPlainString(); }
-    public enum Group { NGAY, TUAN, THANG }
-    public record Metrics(String giaTriDonHoanTat,String tienThucThu,String tienThuChuaPhanBo,
-                          String cuocConPhaiThuCuoiKy,long soDonHoanTat,long soDonHuy) {}
-    public record Bucket(String batDau,String ketThuc,Metrics chiTieu) {}
-    public record Report(String tuNgay,String denNgay,String muiGio,Group nhomTheo,Metrics tong,List<Bucket> items) {}
+
     public static final class DateRangeInvalid extends RuntimeException {}
 }

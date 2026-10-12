@@ -1,16 +1,24 @@
 package com.miniongvang.service;
+import com.miniongvang.dto.dispatch.DispatchDtos.Event;
+import com.miniongvang.dto.order.OrderDtos.Order;
+import com.miniongvang.dto.order.OrderHistoryDtos.Assignment;
+import com.miniongvang.dto.order.OrderHistoryDtos.Confirmation;
+import com.miniongvang.dto.order.OrderHistoryDtos.Detail;
+import com.miniongvang.dto.order.OrderHistoryDtos.DiscountPolicy;
+import com.miniongvang.dto.order.OrderHistoryDtos.FarePolicy;
+import com.miniongvang.dto.order.OrderHistoryDtos.PolicyVersions;
+import com.miniongvang.dto.order.OrderHistoryDtos.SurchargePolicy;
 
-import com.miniongvang.DAO.OrderHistoryDAO;
+import com.miniongvang.dao.OrderHistoryDAO;
 import com.miniongvang.entity.*;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.List;
 
 /** Reads persisted policy versions; never re-quotes an existing order. */
 public final class OrderHistoryService {
     private OrderHistoryService() {}
-    static Detail read(EntityManager em, OrderService.Order o) {
+    static Detail read(EntityManager em, Order o) {
         var dao = new OrderHistoryDAO(em);
         var fare = dao.fare(o.maDon());
         var policy = fare.getBieuPhi();
@@ -34,7 +42,7 @@ public final class OrderHistoryService {
         var confirmation = p == null ? null : new Confirmation(p.getId(), p.getPhuongThuc().name(),
                 money(p.getSoTienThucNhan()), time(p.getThuLuc()),
                 p.getTaiKhoanXacNhan() == null ? null : p.getTaiKhoanXacNhan().getId());
-        var events = dao.events(o.maDon()).stream().map(e -> new DispatchService.Event(
+        var events = dao.events(o.maDon()).stream().map(e -> new Event(
                 e.getId(), o.maDon(), e.getThuTu(), e.getLoaiSuKien(), e.getTrangThaiTruoc(), e.getTrangThaiSau(),
                 time(e.getThoiGian()), e.getTaiKhoanThucHien().getId(), e.getTaiKhoanThucHien().getHoTen(),
                 e.getGhiChu(), e.getLoaiSuCo())).toList();
@@ -42,18 +50,5 @@ public final class OrderHistoryService {
     }
     private static String money(BigDecimal value) { return value == null ? null : value.setScale(2).toPlainString(); }
     private static String time(Instant value) { return value == null ? null : value.toString(); }
-    public record FarePolicy(String maBieuPhi, String tenBieuPhi, String cuocCoBan, String donGiaKm,
-                             String kmToiThieu, String kmToiDa, String hieuLucTu, String hieuLucDen) {}
-    public record DiscountPolicy(String maChinhSach, String hang, String tyLeGiam, String hieuLucTu, String hieuLucDen) {}
-    public record SurchargePolicy(String maPhuThu, String maLoaiPhuThu, String tenPhuThu, String soTien,
-                                  String hieuLucTu, String hieuLucDen) {}
-    public record PolicyVersions(FarePolicy bieuPhi, DiscountPolicy giamGia, List<SurchargePolicy> phuThu) {}
-    public record Assignment(String maPhanCong, String maTx, String maTkDieuPhoi, String batDauLuc,
-                             String ketThucLuc, String ketQuaKetThuc, String lyDo) {}
-    public record Confirmation(String maGiaoDich, String phuongThuc, String soTienThucNhan, String thuLuc, String maTkXacNhan) {}
-    public record Detail(String maDon, String thoiGianTao, String diemLayHang, String diemGiaoHang, String sdtNguoiNhan,
-                        String quangDuongKm, String ghiChuGiaoHang, String trangThai, String maKh, String maTx, String maTkTao,
-                        FareCalculator.Fare cuoc, List<QuoteService.Parcel> kienHang, OrderService.PaymentSummary thanhToan,
-                        String hoanTatLuc, String huyLuc, PolicyVersions phienBanChinhSach, List<Assignment> phanCong,
-                         Confirmation xacNhanThanhToan, List<DispatchService.Event> nhatKy) {}
+
 }

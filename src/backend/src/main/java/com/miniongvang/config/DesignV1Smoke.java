@@ -1,10 +1,12 @@
 package com.miniongvang.config;
+import com.miniongvang.security.ActorContext;
+import com.miniongvang.dto.order.OrderDtos.CreateOrder;
+import com.miniongvang.dto.quote.QuoteDtos.Parcel;
 
 import com.miniongvang.entity.enums.AccountRole;
 import com.miniongvang.entity.enums.IncidentType;
 import com.miniongvang.entity.enums.OrderStatus;
 import com.miniongvang.integration.FakeRouteProvider;
-import com.miniongvang.service.AuthService;
 import com.miniongvang.service.DispatchService;
 import com.miniongvang.service.OrderService;
 import com.miniongvang.service.QuoteService;
@@ -18,17 +20,17 @@ public final class DesignV1Smoke {
 
     public static void run(EntityManagerFactory factory) {
         var route = new RouteService(new FakeRouteProvider(), 30_000);
-        var customer = new AuthService.User("TK-DEMO-KH-1", "Khách thường",
+        var customer = new ActorContext("TK-DEMO-KH-1", "Khách thường",
                 AccountRole.KHACH_HANG, "KH-DEMO-1", null);
-        var dispatcher = new AuthService.User("TK-DEMO-NV", "Tổng đài demo",
+        var dispatcher = new ActorContext("TK-DEMO-NV", "Tổng đài demo",
                 AccountRole.TONG_DAI, null, null);
-        var driver = new AuthService.User("TK-DEMO-TX-1", "Tài xế demo 1",
+        var driver = new ActorContext("TK-DEMO-TX-1", "Tài xế demo 1",
                 AccountRole.TAI_XE, null, "TX-DEMO-1");
-        var parcel = new QuoteService.Parcel("Tài liệu", null, "1.00");
+        var parcel = new Parcel("Tài liệu", null, "1.00");
         var quote = new QuoteService(factory, route).create(customer, null,
                 "Quận 1", "Quận 3", List.of(parcel));
         var order = new OrderService(factory, route).create(customer, "design-v1-smoke-1",
-                new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
+                new CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
                         "0900000000", null, List.of(parcel)));
         var dispatch = new DispatchService(factory);
         var current = dispatch.order(customer, order.maDon());

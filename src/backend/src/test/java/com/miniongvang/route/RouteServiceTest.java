@@ -1,4 +1,5 @@
 package com.miniongvang.route;
+import com.miniongvang.dto.route.RouteDtos.Route;
 
 import com.miniongvang.config.RouteConfiguration;
 import com.miniongvang.integration.FakeRouteProvider;
@@ -12,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class RouteServiceTest {
     @Test void fixedRoutesAndAddressNormalization() {
         RouteService service = RouteConfiguration.from(Map.of("ROUTE_PROVIDER", "fake"));
-        RouteService.Route route = service.estimate("  QUẬN   1, TP.HCM  ", "  điểm mẫu b ");
+        Route route = service.estimate("  QUẬN   1, TP.HCM  ", "  điểm mẫu b ");
         assertEquals("Quận 1, TP.HCM", route.diemLayHang());
         assertEquals("Quận 3, TP.HCM", route.diemGiaoHang());
         assertEquals("5.00", route.quangDuongKm());

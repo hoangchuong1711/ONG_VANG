@@ -1,4 +1,5 @@
 package com.miniongvang.controller;
+import com.miniongvang.dto.auth.AuthDtos.User;
 
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
@@ -16,7 +17,6 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.EnumSet;
 import java.util.Set;
-import java.util.UUID;
 
 /** Role gate shared by future business servlets; ownership remains each service's responsibility. */
 @WebFilter("/api/*")
@@ -54,7 +54,7 @@ public final class ApiSecurityFilter implements Filter {
         String id = session == null ? null : (String) session.getAttribute("auth.userId");
         if (id == null) { error(resp, 401, missingSessionCode(req)); return; }
         PersistenceContext persistence = (PersistenceContext) req.getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
-        AuthService.User user = new AuthService(persistence.entityManagerFactory()).current(id);
+        User user = new AuthService(persistence.entityManagerFactory()).current(id);
         if (user == null) { session.invalidate(); error(resp, 403, "FORBIDDEN"); return; }
         if (!roles.contains(user.vaiTro())) { error(resp, 403, "FORBIDDEN"); return; }
         if (!"GET".equals(req.getMethod()) && !"HEAD".equals(req.getMethod())) {
@@ -87,15 +87,11 @@ public final class ApiSecurityFilter implements Filter {
     }
 
     private static void error(HttpServletResponse resp, int status, String code) throws IOException {
-        resp.setStatus(status);
-        resp.setContentType("application/json;charset=UTF-8");
-        new tools.jackson.databind.ObjectMapper().writeValue(resp.getOutputStream(),
-                new ErrorDto(code, "Không thể thực hiện yêu cầu: " + code, new Object[0], UUID.randomUUID().toString()));
+        com.miniongvang.web.WebResponses.error(resp, status, code);
     }
     private static String missingSessionCode(HttpServletRequest req) {
         if (req.getCookies() != null) for (var cookie : req.getCookies())
             if ("JSESSIONID".equals(cookie.getName())) return "SESSION_EXPIRED";
         return "AUTH_REQUIRED";
     }
-    private record ErrorDto(String code, String message, Object[] fieldErrors, String traceId) {}
 }

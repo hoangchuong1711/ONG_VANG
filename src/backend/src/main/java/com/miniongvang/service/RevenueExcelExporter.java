@@ -1,4 +1,6 @@
 package com.miniongvang.service;
+import com.miniongvang.dto.report.ReportDtos.Metrics;
+import com.miniongvang.dto.report.ReportDtos.Report;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,10 +11,10 @@ import java.util.zip.ZipOutputStream;
 
 /** Minimal OOXML workbook with numeric cells; uses exactly the API's calculated report. */
 public final class RevenueExcelExporter {
-    public byte[] export(ReportService.Report report) throws IOException {
+    public byte[] export(Report report) throws IOException {
         var output=new ByteArrayOutputStream(); write(report,output); return output.toByteArray();
     }
-    public void write(ReportService.Report report,OutputStream output) throws IOException {
+    public void write(Report report,OutputStream output) throws IOException {
         try (var zip=new ZipOutputStream(output,StandardCharsets.UTF_8)) {
             entry(zip,"[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/><Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/><Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/></Types>");
             entry(zip,"_rels/.rels","<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/></Relationships>");
@@ -30,7 +32,7 @@ public final class RevenueExcelExporter {
             sheet.append("</sheetData></worksheet>");entry(zip,"xl/worksheets/sheet1.xml",sheet.toString());
         }
     }
-    private static void metrics(StringBuilder xml,int index,String from,String to,ReportService.Metrics m) {
+    private static void metrics(StringBuilder xml,int index,String from,String to,Metrics m) {
         row(xml,index,new String[]{from,to,m.giaTriDonHoanTat(),m.tienThucThu(),m.tienThuChuaPhanBo(),m.cuocConPhaiThuCuoiKy(),Long.toString(m.soDonHoanTat()),Long.toString(m.soDonHuy())},true);
     }
     private static void row(StringBuilder xml,int index,String[] values,boolean metrics) {

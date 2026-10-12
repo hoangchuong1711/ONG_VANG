@@ -1,4 +1,7 @@
 package com.miniongvang.service;
+import com.miniongvang.dto.report.ReportDtos.Bucket;
+import com.miniongvang.dto.report.ReportDtos.Metrics;
+import com.miniongvang.dto.report.ReportDtos.Report;
 
 import org.junit.jupiter.api.Test;
 import java.io.*;
@@ -8,10 +11,10 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RevenueExcelExporterTest {
-    private static ReportService.Report sample() {
-        var m=new ReportService.Metrics("50000.00","55000.00","5000.00","0.00",1,0);
-        return new ReportService.Report("2026-10-05","2026-10-06","Asia/Ho_Chi_Minh",ReportService.Group.NGAY,m,
-                List.of(new ReportService.Bucket("2026-10-04T17:00:00Z","2026-10-05T17:00:00Z",m)));
+    private static Report sample() {
+        var m=new Metrics("50000.00","55000.00","5000.00","0.00",1,0);
+        return new Report("2026-10-05","2026-10-06","Asia/Ho_Chi_Minh",com.miniongvang.dto.report.ReportDtos.Group.NGAY,m,
+                List.of(new Bucket("2026-10-04T17:00:00Z","2026-10-05T17:00:00Z",m)));
     }
     @Test void workbookContainsActualNumbersAndSameFilterAndMetricsAsReport() throws Exception {
         var report=sample();var bytes=new RevenueExcelExporter().export(report);

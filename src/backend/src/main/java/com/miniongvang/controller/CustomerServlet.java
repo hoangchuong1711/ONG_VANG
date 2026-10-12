@@ -9,12 +9,9 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.UUID;
-import tools.jackson.databind.ObjectMapper;
 
 @WebServlet("/api/customers")
 public final class CustomerServlet extends HttpServlet {
-    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
@@ -22,7 +19,7 @@ public final class CustomerServlet extends HttpServlet {
             var factory = persistence.entityManagerFactory();
             var session = req.getSession(false);
             String userId = session == null ? null : (String) session.getAttribute("auth.userId");
-            var actor = userId == null ? null : new AuthService(factory).current(userId);
+            var actor = userId == null ? null : new AuthService(factory).currentActor(userId);
             var result = new CustomerService(factory).search(actor, integer(req, "page", 0),
                     integer(req, "size", 20), parameter(req, "q"));
             send(resp, 200, result);
@@ -45,13 +42,9 @@ public final class CustomerServlet extends HttpServlet {
         return value == null ? fallback : Integer.parseInt(value);
     }
     private static void send(HttpServletResponse resp, int status, Object body) throws IOException {
-        resp.setStatus(status);
-        resp.setContentType("application/json;charset=UTF-8");
-        JSON.writeValue(resp.getOutputStream(), body);
+        com.miniongvang.web.WebResponses.json(resp, status, body);
     }
     private static void error(HttpServletResponse resp, int status, String code) throws IOException {
-        send(resp, status, new ErrorDto(code, "Không thể thực hiện yêu cầu: " + code,
-                new Object[0], UUID.randomUUID().toString()));
+        com.miniongvang.web.WebResponses.error(resp, status, code);
     }
-    private record ErrorDto(String code, String message, Object[] fieldErrors, String traceId) {}
 }
