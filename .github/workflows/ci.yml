@@ -88,6 +88,8 @@ jobs:
         run: npm run smoke --prefix tools/api
       - name: Smoke test T10 order creation
         run: npm run smoke:orders --prefix tools/api
+      - name: Smoke test T16 order history and detail
+        run: npm run smoke:history --prefix tools/api
       - name: Smoke test T13 cancellation
         run: npm run smoke:cancel --prefix tools/api
       - name: Smoke test T17 reports and Excel

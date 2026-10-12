@@ -14,6 +14,7 @@
     "smoke:cancel": "node cancel-smoke.mjs",
     "smoke:payment": "node payment-smoke.mjs",
     "smoke:reports": "node report-smoke.mjs"
+    "smoke:history": "node history-smoke.mjs"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "12.1.0",
