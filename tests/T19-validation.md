@@ -2,7 +2,7 @@
 
 ## Kết quả thực thi trên Windows — 12/10/2026
 
-Người chạy: Le Nguyen Thanh Hien; nhánh `feat/t19-backend-integration`. Bằng chứng là ba log terminal người dùng cung cấp trong phiên làm việc, ghi thời gian Maven 15:17 và reset/seed 15:23 ngày 12/10/2026 (+07:00). Chưa có output `git rev-parse HEAD` trên máy chạy, nên chưa xác nhận mã commit thực thi. DB là SQL Server 16.0 (`mini_ong_vang_test`, cổng 15433), migration designV1; không dùng kết quả PostgreSQL cũ.
+Người chạy: Le Nguyen Thanh Hien; nhánh `feat/t19-backend-integration`. Bằng chứng là ba log terminal người dùng cung cấp trong phiên làm việc, ghi thời gian Maven 15:17 và reset/seed 15:23 ngày 12/10/2026 (+07:00). Lượt retest 15:31 ngày 12/10/2026 cung cấp `git rev-parse HEAD`: `d00db8c07c456c43b15ed3b8f4b5c6dcb2d14cee`. DB là SQL Server 16.0 (`mini_ong_vang_test`, cổng 15433), migration designV1; không dùng kết quả PostgreSQL cũ.
 
 | Bước | Expected | Actual | Kết quả |
 | --- | --- | --- | --- |
@@ -20,6 +20,26 @@ Người chạy: Le Nguyen Thanh Hien; nhánh `feat/t19-backend-integration`. B�
 | Đối chiếu designV1 sau progress | Các invariant được script kiểm tra không có vi phạm | sqlcmd -b: `designV1 invariant reconciliation passed` | PASS |
 
 Tổng: **63 Java tests và 348 HTTP checks nghiệp vụ đạt**, cộng smoke chung và API contract check. Các log ERROR do test cố ý inject lỗi/vi phạm constraint có suite kết thúc với 0 failure/error. VNPay callback được kiểm tra bằng gateway giả lập trong DesignV1IntegrationTest; chưa có bằng chứng thanh toán VNPay Sandbox thật.
+
+## Bổ sung hồi quy và đối chiếu — chờ chạy lại bản mới
+
+Lượt người dùng chạy lại lúc 15:31 (+07:00) tại `d00db8c` đạt 53 HTTP checks báo cáo, 32 tiền mặt và invariant trước reset. Script của commit đó chưa có truy vấn kiểm tra số tiền xác nhận thanh toán, nên kết quả chỉ chứng minh các invariant cũ.
+
+T19 hiện bổ sung migration V4: trigger chặn hồ sơ khách/tài xế gắn sai role và chặn thay đổi vai trò tài khoản. FK trước đó chỉ chứng minh tài khoản tồn tại, chưa bảo vệ role/profile. Ghi nhận `T19-BUG-01`, phát hiện qua rà DDL; sửa đã biên dịch nhưng kiểm chứng SQL Server còn PENDING, chưa ghi PASS.
+
+Script invariant được bổ sung đối chiếu khoản xác nhận với đúng đơn HOAN_TAT, payment thành công và đúng tổng cước; chặn nhiều payment chưa giải quyết trên một đơn, payment trước hoàn tất/đơn miễn cước và callback DA_AP_DUNG thiếu chữ ký hợp lệ/liên kết payment. CI và README chạy invariant cả trước reset lẫn sau progress.
+
+| DT / nhánh thiếu | Test bổ sung | Expected | Actual / kết quả |
+| --- | --- | --- | --- |
+| DT01 | dt01WrongProfileRoleAndDuplicateProfileAreRejectedAtomically | Sai role, đổi role hoặc hồ sơ trùng bị SQL Server chặn; không đổi hồ sơ cũ | Biên dịch đạt; runtime PENDING |
+| DT09 | dt09IdempotencyExpiresAtExactlyTwentyFourHoursWithoutDeletingOldOrder | Replay trước 24 giờ; đúng 24 giờ cần quote mới; đơn cũ giữ nguyên | Biên dịch đạt; runtime PENDING |
+| DT12 | dt12SuggestionsAndAssignmentRejectEveryIneligibleDriver | Cả gợi ý và gán chặn thiếu xe/xe tắt/GPLX hết hạn/account khóa | Biên dịch đạt; runtime PENDING |
+| DT15 | dt15CompletedReplayCannotCloseDriversNewAssignment | Retry đơn cũ không đổi timestamp/event hoặc assignment mới | Biên dịch đạt; runtime PENDING |
+| DT16 | dt16CancellationRacingPickupLeavesOneConsistentOutcome | Barrier cho hai worker; chỉ hủy hoặc lấy hàng thắng, trạng thái/assignment/tài xế nhất quán | Biên dịch đạt; runtime PENDING |
+| DT26 | dt26DeletingReferencedAccountPolicyOrOrderCannotEraseHistory | Xóa lịch sử bị chặn bởi FK/trigger, toàn bộ số dòng giữ nguyên | Biên dịch đạt; runtime PENDING |
+| Payment invariant | t19InvariantQueryAcceptsValidPaymentAndDetectsWrongConfirmedAmount | Script chấp nhận khoản thu đúng; sai số tiền xác nhận bị lỗi 51010 | Biên dịch đạt; runtime PENDING |
+
+Cần pull bản mới, chạy `clean verify` với REQUIRE_TEST_DB=true (dự kiến **70 test**, trong đó DesignV1 51), rồi chạy lại nhóm reports/payment và script invariant mới trước reset. 70 là số mong đợi, chưa phải kết quả đã chạy. Gateway VNPay vẫn giả lập; không ghi Sandbox thật đã PASS.
 
 ## Bug và retest cập nhật
 

@@ -41,3 +41,6 @@ mvn.cmd -f src/backend/pom.xml clean verify
 ## Giới hạn đang theo dõi
 
 M1 đã chạy các luồng T06–T12 trên schema mới và HTTP smoke đạt. Đã có đường quản trị policy nội bộ, trigger bất biến và truy vấn đối chiếu; vẫn cần rà các ca lỗi/rollback còn thiếu trước khi đóng gate M1. T13–T17 đã có implementation; T18 hiện đồng bộ tài liệu, chưa bổ sung seed đơn/thanh toán. Hồi quy và nghiệm thu M2 chưa được coi là hoàn tất; xem [phạm vi T18](../T18-sandbox-api.md). Trạng thái chi tiết nằm trong [kế hoạch triển khai](designV1-implementation-plan.md).
+
+
+T19 bổ sung V4 bảo vệ role/profile và vai trò tài khoản bất biến. Script invariant hiện kiểm tra cả xác nhận thanh toán, tổng tiền, payment chưa giải quyết và điều kiện khởi tạo. Chạy script trước reset dữ liệu của nhóm thanh toán/báo cáo và sau progress; kết quả V4 và các truy vấn mới chờ retest trong [báo cáo T19](../../tests/T19-validation.md).

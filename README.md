@@ -263,6 +263,8 @@ npm.cmd run smoke:cancel --prefix tools/api
 npm.cmd run smoke:reports --prefix tools/api
 npm.cmd run smoke:payment --prefix tools/api
 npm.cmd run smoke:dispatch --prefix tools/api
+docker compose -f docker-compose.ci.yml cp scripts/check-design-v1-invariants.sql db-test:/tmp/check-design-v1-invariants.sql
+docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/check-design-v1-invariants.sql
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-test-db.ps1
 docker compose -f docker-compose.ci.yml up --no-deps --wait --wait-timeout 120 backend-test
 npm.cmd run smoke:progress --prefix tools/api
