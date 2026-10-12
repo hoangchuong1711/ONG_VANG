@@ -12,7 +12,7 @@ assert.equal(health.databaseName, 'mini_ong_vang_test', 'Dispatch smoke writes f
 assert(process.env.DEMO_PASSWORD, 'Seed isolated DB with DEMO_PASSWORD before dispatch smoke');
 const spec = JSON.parse(readFileSync(new URL('../../src/backend/src/main/webapp/openapi.json', import.meta.url), 'utf8'));
 const ajv = new Ajv2020({ strict: false }); addFormats(ajv);
-const schemas = Object.fromEntries(['Order', 'OrderDetail', 'OrderPage', 'DriverPage', 'Error'].map(name => [name,
+const schemas = Object.fromEntries(['Order', 'OrderDetail', 'OrderPage', 'DriverPage', 'CustomerPage', 'Error'].map(name => [name,
   ajv.compile({ $ref: '#/components/schemas/' + name, components: spec.components })]));
 let checks = 0;
 class Client {
@@ -63,6 +63,20 @@ await customer.login(username, password);
 await dispatcher.login('demo_dispatcher', process.env.DEMO_PASSWORD);
 await driver1.login('0800000001', process.env.DEMO_PASSWORD);
 await driver2.login('0800000002', process.env.DEMO_PASSWORD);
+await anon.call('/api/customers', undefined, 401, 'Error', 'AUTH_REQUIRED');
+await customer.call('/api/customers', undefined, 403, 'Error', 'FORBIDDEN');
+await driver1.call('/api/customers', undefined, 403, 'Error', 'FORBIDDEN');
+const customers = await dispatcher.call('/api/customers?size=1', undefined, 200, 'CustomerPage');
+assert(customers.totalElements >= 3); // Two seed customers and the newly registered test customer.
+assert.equal(customers.totalPages, customers.totalElements);
+assert.equal(customers.items.length, 1);
+const selectedCustomer = await dispatcher.call('/api/customers?q=0900000002', undefined, 200, 'CustomerPage');
+assert.deepEqual(selectedCustomer.items.map(c => c.maKh), ['KH-DEMO-2']);
+assert.equal(selectedCustomer.items[0].hangThanhVien.maHang, 'VANG');
+await dispatcher.call('/api/customers?q=not-found', undefined, 200, 'CustomerPage');
+await dispatcher.call('/api/customers?page=-1', undefined, 400, 'Error', 'VALIDATION_ERROR');
+await dispatcher.call('/api/customers?size=101', undefined, 400, 'Error', 'VALIDATION_ERROR');
+await dispatcher.call('/api/customers?q=', undefined, 400, 'Error', 'VALIDATION_ERROR');
 const quoteInput = { diemLayHang: 'Điểm mẫu A', diemGiaoHang: 'Điểm mẫu B', kienHang: [{ loaiHangHoa: 'Hoa', khoiLuongKg: '1.00' }] };
 async function create() {
   const quote = await customer.call('/api/quotes', quoteInput);

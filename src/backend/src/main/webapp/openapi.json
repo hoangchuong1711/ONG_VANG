@@ -3,7 +3,7 @@
   "info": {
     "title": "Mini Ong Vàng API",
     "version": "0.5.0",
-    "description": "T06-T17 implemented on designV1; listCustomers remains planned. T18 currently aligns documentation only; shared sandbox setup and payment validation are deferred until deployment."
+    "description": "Backend operations on designV1 are implemented. T20 customer selection is available; shared VNPay Sandbox setup and live payment validation are deferred until deployment."
   },
   "servers": [
     {
@@ -656,7 +656,7 @@
         "summary": "Tìm khách để tổng đài tạo đơn",
         "operationId": "listCustomers",
         "description": "Chỉ tìm khách có sẵn; không có đăng ký hoặc CRUD khách ngoài phạm vi.",
-        "x-implementation-status": "planned",
+        "x-implementation-status": "implemented",
         "x-uc": [
           "UC-02"
         ],

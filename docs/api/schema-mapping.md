@@ -4,7 +4,7 @@ Schema nguồn: [designV1](../database/designV1.md). OpenAPI nguồn chạy th�
 
 | Bảng designV1 | Entity | API và quy tắc |
 | --- | --- | --- |
-| `tai_khoan`, `khach_hang` | `TaiKhoan`, `KhachHang` | Auth/Customer; tên và SĐT ở tài khoản, hạng `THUONG`/`VANG`/... cùng khoảng hiệu lực ở khách. Đăng ký tạo cả hai trong một transaction. |
+| `tai_khoan`, `khach_hang` | `TaiKhoan`, `KhachHang` | Auth/Customer; tên và SĐT ở tài khoản, hạng `THUONG`/`VANG`/... cùng khoảng hiệu lực ở khách. Đăng ký tạo cả hai trong một transaction. `GET /api/customers` cho tổng đài tìm khách có tài khoản hoạt động theo tên/SĐT và lấy `maKh`, hạng hiện hành để tạo báo giá/đơn. |
 | `tai_xe`, `phuong_tien` | `TaiXe`, `PhuongTien` | DriverPage; đủ tài khoản hoạt động, ONLINE, GPLX còn hạn và một xe active mới được đề xuất. |
 | `chinh_sach_thanh_vien`, `cau_hinh_cuoc`, `cau_hinh_phu_thu` | `ChinhSachThanhVien`, `BieuPhi`, `ChinhSachPhuThu` | Quote tính từ đúng một biểu phí khớp km/thời điểm, phụ thu áp dụng và mức giảm của khách. Chính sách chồng lấn bị phát hiện khi báo giá; đã có `PolicyPublicationService` nội bộ kiểm tra quyền, khóa phạm vi, chồng hiệu lực và ghi audit; chưa có endpoint công bố công khai. |
 | `bao_gia` | `BaoGia` | Quote lưu yêu cầu/kết quả JSON, mã biểu phí và hạn 300 giây. Tạo đơn tính lại và trả `QUOTE_CHANGED` nếu dữ liệu đã đổi. |

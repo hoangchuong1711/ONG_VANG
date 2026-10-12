@@ -1,6 +1,6 @@
 # Quy ước API v0.5.0
 
-Các quy ước API hiện tại được đối chiếu với [designV1](../database/designV1.md). Nghiệp vụ T06–T17 đã có implementation; chỉ `listCustomers` còn planned. T18 hiện đồng bộ tài liệu; cấu hình/kiểm tra thanh toán dùng chung được hoãn tới khi deploy theo [phạm vi cập nhật](../T18-sandbox-api.md).
+Các quy ước API hiện tại được đối chiếu với [designV1](../database/designV1.md). Nghiệp vụ T06–T17 và `listCustomers` của T20 đã có implementation. Cấu hình/kiểm tra VNPay Sandbox dùng chung được hoãn tới khi deploy theo [phạm vi T18](../T18-sandbox-api.md) và [biên bản T20](../../tests/T20-acceptance.md).
 
 ## HTTP, DTO, validation
 

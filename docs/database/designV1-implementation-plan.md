@@ -1,6 +1,6 @@
 # Kế hoạch chuyển dự án sang mô hình dữ liệu designV1
 
-Ngày lập: 10/10/2026. Cập nhật triển khai: 11/10/2026. Trạng thái: **đang triển khai; M1 đã chạy được trên database đích, còn rà tài liệu và độ phủ kiểm thử. M2 (T13–T20) chưa thực hiện**.
+Ngày lập: 10/10/2026. Cập nhật đối chiếu: 13/10/2026. Trạng thái hiện hành của M2/T20 xem [biên bản T20](../../tests/T20-acceptance.md); các ghi chú theo ngày bên dưới là lịch sử triển khai, không thay kết luận mới nhất.
 
 Nguồn thiết kế: [designV1.md](designV1.md). Database SQL Server riêng `mini_ong_vang_design_v1` đã được tạo và áp dụng Flyway V1; database cũ `mini_ong_vang` chưa bị xóa.
 
@@ -407,3 +407,5 @@ Nếu cần chia nhỏ hơn, chia theo luồng nghiệp vụ như bảng trên, 
 
 
 **Chốt kiểm thử T19 local (12/10/2026, 16:08 +07:00):** Retest đạt 73 Java tests (DesignV1 54), 348 HTTP checks và invariant trước/sau reset. DT04/DT05/DT07 đã bổ sung assertion và chạy đạt; xem ma trận Expected/Actual, bug/retest trong [báo cáo T19](../../tests/T19-validation.md). T19 sẵn sàng review; Done còn phụ thuộc PR review/CI/merge, không đồng nghĩa T20 nghiệm thu hoặc Sandbox thật đã chạy.
+
+**Đối chiếu T20 local (13/10/2026):** Nhánh `feat/t20-backend-acceptance` bổ sung `listCustomers` cho tổng đài; SQL Server designV1 chạy 74 Java tests, 357 HTTP checks và invariant trước/sau reset đều đạt. Xem [biên bản T20](../../tests/T20-acceptance.md). VNPay Sandbox thật được người dùng cho hoãn, Postman Main Flow liên tục và CI/review của nhánh T20 còn chờ; không đánh dấu gate M2/T20 Done theo tiêu chí gốc.

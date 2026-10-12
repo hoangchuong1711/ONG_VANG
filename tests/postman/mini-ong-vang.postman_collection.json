@@ -285,6 +285,71 @@
           "response": []
         },
         {
+          "name": "listCustomers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": false,
+                  "description": "Trang bắt đầu từ 0"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": false,
+                  "description": "Số bản ghi mỗi trang"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Tên hoặc số điện thoại; truy vấn có tham số; sort hoTen,maKh"
+                }
+              ]
+            },
+            "description": "Tìm khách để tổng đài tạo đơn\n\nChỉ tìm khách có sẵn; không có đăng ký hoặc CRUD khách ngoài phạm vi.\n\nStatus: implemented; UC: UC-02; roles: TONG_DAI"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
+                  "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
+                  "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
+                  "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
+                  "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
+                  "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "estimateRoute",
           "request": {
             "method": "POST",
@@ -1942,90 +2007,7 @@
     },
     {
       "name": "02 - Contract reference (planned)",
-      "item": [
-        {
-          "name": "Customers",
-          "item": [
-            {
-              "name": "listCustomers",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/customers?page=0&size=20",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "customers"
-                  ],
-                  "query": [
-                    {
-                      "key": "page",
-                      "value": "0",
-                      "disabled": false,
-                      "description": "Trang bắt đầu từ 0"
-                    },
-                    {
-                      "key": "size",
-                      "value": "20",
-                      "disabled": false,
-                      "description": "Số bản ghi mỗi trang"
-                    },
-                    {
-                      "key": "q",
-                      "value": "",
-                      "disabled": true,
-                      "description": "Tên hoặc số điện thoại; truy vấn có tham số; sort hoTen,maKh"
-                    }
-                  ]
-                },
-                "description": "Tìm khách để tổng đài tạo đơn\n\nChỉ tìm khách có sẵn; không có đăng ký hoặc CRUD khách ngoài phạm vi.\n\nStatus: planned; UC: UC-02; roles: TONG_DAI"
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
-                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                      "  const body = pm.response.json();",
-                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
-                      "  pm.test('Response has page', () => pm.expect(body).to.have.property('page'));",
-                      "  pm.test('Response has size', () => pm.expect(body).to.have.property('size'));",
-                      "  pm.test('Response has totalElements', () => pm.expect(body).to.have.property('totalElements'));",
-                      "  pm.test('Response has totalPages', () => pm.expect(body).to.have.property('totalPages'));",
-                      "  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });",
-                      "}"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            }
-          ]
-        }
-      ]
+      "item": []
     },
     {
       "name": "03 - Negative fixtures (planned)",

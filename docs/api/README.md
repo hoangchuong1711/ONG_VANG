@@ -5,7 +5,7 @@ Phiên bản hợp đồng: **0.5.0** theo [designV1](../database/designV1.md). 
 ## Trạng thái thực tế
 
 - `POST /api/auth/register` cho khách hàng tự đăng ký có trong OpenAPI, Swagger và Postman. Xem [quy ước register](conventions.md#đăng-ký-khách-hàng--bổ-sung-phạm-vi-t06).
-- Đã triển khai: `/api/health`, T06–T12, `cancelOrder` T13 ([hướng dẫn](../T13-order-cancellation.md)), thanh toán tiền mặt T14 ([hướng dẫn](../T14-payment.md)) VNPay Sandbox T15 ([hướng dẫn](../T15-vnpay.md)), lịch sử T16 ([hướng dẫn](../T16-order-history.md)) và báo cáo/Excel T17 ([hướng dẫn](../T17-revenue-reports.md)). Chỉ `listCustomers` còn planned. [T18](../T18-sandbox-api.md) ghi phạm vi cập nhật tài liệu hiện tại và phần thanh toán dùng chung hoãn tới khi deploy.
+- Đã triển khai: `/api/health`, T06–T12, `cancelOrder` T13 ([hướng dẫn](../T13-order-cancellation.md)), thanh toán tiền mặt T14 ([hướng dẫn](../T14-payment.md)), VNPay T15 ([hướng dẫn](../T15-vnpay.md)), lịch sử T16 ([hướng dẫn](../T16-order-history.md)), báo cáo/Excel T17 ([hướng dẫn](../T17-revenue-reports.md)) và `listCustomers` cho tổng đài ở T20. [Biên bản T20](../../tests/T20-acceptance.md) phân biệt phần đã kiểm tra với Sandbox thật được hoãn.
 - Schema nghiệp vụ do Flyway designV1 tạo; T14/T15 dùng các bảng thanh toán đã có và migration T15.
 - Swagger UI là công cụ tài liệu/test BE, không phải FE nghiệp vụ T21–T28.
 
