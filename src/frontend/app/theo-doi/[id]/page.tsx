@@ -43,15 +43,12 @@ export default function OrderTrackingPage() {
     showToast("Đã sao chép liên kết theo dõi hành trình!", "info");
   };
 
-  // Đếm ngược 300 giây (tính toán an toàn bên trong useEffect)
+  // Đếm ngược 300 giây (tính toán qua interval callback)
   useEffect(() => {
     if (order.status === "DA_HUY" || order.status === "HOAN_TAT") return;
 
-    setRemainingSeconds(getCancelRemainingSeconds(order.createdTimestamp));
-
     const interval = setInterval(() => {
-      const remaining = getCancelRemainingSeconds(order.createdTimestamp);
-      setRemainingSeconds(remaining);
+      setRemainingSeconds(getCancelRemainingSeconds(order.createdTimestamp));
     }, 1000);
 
     return () => clearInterval(interval);
