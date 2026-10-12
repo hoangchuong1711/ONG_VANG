@@ -6,6 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { OrderStatus } from "@/lib/types";
+import { SAMPLE_ORDERS } from "@/lib/sample-data";
 import { formatVND } from "@/lib/utils";
 
 import { useToast } from "@/components/ui/Toast";
