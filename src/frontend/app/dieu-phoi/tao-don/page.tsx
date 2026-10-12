@@ -98,29 +98,29 @@ export default function DispatcherCreateOrderPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#09090B] text-zinc-200">
+    <div className="min-h-screen flex flex-col bg-[#FAFAFA] text-zinc-800">
       <DispatcherNavbar />
 
       <main className="flex-1 max-w-[1120px] w-full mx-auto p-4 sm:p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-200">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] font-bold text-amber-400 uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+              <span className="font-mono text-[10px] font-bold text-amber-800 uppercase tracking-widest px-2 py-0.5 rounded bg-amber-100 border border-amber-300">
                 HOTLINE INTAKE (UC-02)
               </span>
-              <h1 className="text-lg sm:text-xl font-bold text-zinc-100 tracking-tight">
+              <h1 className="text-lg sm:text-xl font-bold text-zinc-900 tracking-tight">
                 Tiếp Nhận Cuộc Gọi Tạo Đơn Nhanh
               </h1>
             </div>
-            <p className="text-xs text-zinc-400 mt-1">
+            <p className="text-xs text-zinc-500 mt-1">
               Tra cứu hồ sơ khách hàng theo SĐT, tự động tính cước snapshot và đẩy vào hàng đợi tác chiến.
             </p>
           </div>
 
           <Link
             href="/dieu-phoi"
-            className="text-xs font-mono font-medium text-zinc-400 hover:text-amber-400 transition-colors"
+            className="text-xs font-mono font-medium text-zinc-500 hover:text-amber-700 transition-colors"
           >
             ← BÀN ĐIỀU PHỐI
           </Link>
@@ -128,13 +128,13 @@ export default function DispatcherCreateOrderPage() {
 
         <form onSubmit={handleCreateOrder} className="space-y-6">
           {/* STEP 1: KHÁCH HÀNG GỌI ĐẾN */}
-          <section className="bg-zinc-900/50 border border-zinc-800/80 rounded-xl p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300">
+          <section className="bg-white border border-zinc-200 rounded-xl p-5 space-y-4 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 pb-3">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-700">
                 1. Thông tin khách gọi đến (Người gửi)
               </span>
               {isVipMember && (
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
                   HỘI VIÊN VIP VÀNG (GIẢM 10.000Đ)
                 </span>
               )}
@@ -142,7 +142,7 @@ export default function DispatcherCreateOrderPage() {
 
             {/* Quick lookup by phone */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-zinc-300">
+              <label className="block text-xs font-medium text-zinc-700">
                 Số điện thoại khách gọi:
               </label>
               <div className="flex flex-wrap sm:flex-nowrap gap-2">
@@ -152,19 +152,19 @@ export default function DispatcherCreateOrderPage() {
                   value={callerPhone}
                   onChange={(e) => handleLookupCustomer(e.target.value)}
                   placeholder="Ví dụ: 0900000001"
-                  className="flex-1 h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 font-mono text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="flex-1 h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 font-mono text-xs focus:border-amber-500 focus:outline-hidden"
                 />
                 <button
                   type="button"
                   onClick={() => handleLookupCustomer("0900000001")}
-                  className="h-10 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-medium text-amber-400 border border-zinc-700 transition-colors"
+                  className="h-10 px-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-xs font-mono font-medium text-amber-800 border border-zinc-200 transition-colors"
                 >
                   Mẫu VIP (Thu Hà)
                 </button>
                 <button
                   type="button"
                   onClick={() => handleLookupCustomer("0900000002")}
-                  className="h-10 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-medium text-zinc-300 border border-zinc-700 transition-colors"
+                  className="h-10 px-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-xs font-mono font-medium text-zinc-700 border border-zinc-200 transition-colors"
                 >
                   Mẫu Thường
                 </button>
@@ -173,7 +173,7 @@ export default function DispatcherCreateOrderPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Họ tên người gửi:
                 </label>
                 <input
@@ -181,12 +181,12 @@ export default function DispatcherCreateOrderPage() {
                   required
                   value={senderName}
                   onChange={(e) => setSenderName(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-xs focus:border-amber-500 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Địa chỉ lấy hàng:
                 </label>
                 <input
@@ -194,18 +194,18 @@ export default function DispatcherCreateOrderPage() {
                   required
                   value={senderStreet}
                   onChange={(e) => setSenderStreet(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-xs focus:border-amber-500 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Quận huyện:
                 </label>
                 <select
                   value={senderDistrict}
                   onChange={(e) => setSenderDistrict(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-xs focus:border-amber-500 focus:outline-hidden"
                 >
                   {DISTRICTS.map((d) => (
                     <option key={d} value={d}>
@@ -218,14 +218,14 @@ export default function DispatcherCreateOrderPage() {
           </section>
 
           {/* STEP 2: ĐIỂM GIAO HÀNG (NGƯỜI NHẬN) */}
-          <section className="bg-zinc-900/50 border border-zinc-800/80 rounded-xl p-5 space-y-4">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300 block border-b border-zinc-800/80 pb-3">
+          <section className="bg-white border border-zinc-200 rounded-xl p-5 space-y-4 shadow-2xs">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-700 block border-b border-zinc-200 pb-3">
               2. Điểm giao hàng (Người nhận)
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Họ tên người nhận:
                 </label>
                 <input
@@ -233,12 +233,12 @@ export default function DispatcherCreateOrderPage() {
                   required
                   value={receiverName}
                   onChange={(e) => setReceiverName(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-xs focus:border-amber-500 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Số điện thoại người nhận:
                 </label>
                 <input
@@ -246,14 +246,14 @@ export default function DispatcherCreateOrderPage() {
                   required
                   value={receiverPhone}
                   onChange={(e) => setReceiverPhone(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 font-mono text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 font-mono text-xs focus:border-amber-500 focus:outline-hidden"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Địa chỉ chi tiết:
                 </label>
                 <input
@@ -261,18 +261,18 @@ export default function DispatcherCreateOrderPage() {
                   required
                   value={receiverStreet}
                   onChange={(e) => setReceiverStreet(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-xs focus:border-amber-500 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Quận huyện giao:
                 </label>
                 <select
                   value={receiverDistrict}
                   onChange={(e) => setReceiverDistrict(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-xs focus:border-amber-500 focus:outline-hidden"
                 >
                   {DISTRICTS.map((d) => (
                     <option key={d} value={d}>
@@ -284,33 +284,33 @@ export default function DispatcherCreateOrderPage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+              <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                 Ghi chú điều phối cho tài xế:
               </label>
               <input
                 type="text"
                 value={receiverNotes}
                 onChange={(e) => setReceiverNotes(e.target.value)}
-                className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
+                className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-xs focus:border-amber-500 focus:outline-hidden"
               />
             </div>
           </section>
 
           {/* STEP 3: KIỆN HÀNG & BÁO GIÁ CƯỚC TỨC THÌ */}
-          <section className="bg-zinc-900/50 border border-zinc-800/80 rounded-xl p-5 space-y-4">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300 block border-b border-zinc-800/80 pb-3">
+          <section className="bg-white border border-zinc-200 rounded-xl p-5 space-y-4 shadow-2xs">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-700 block border-b border-zinc-200 pb-3">
               3. Kiện hàng & Tính cước tức thì (UC-04 / UC-05)
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Phân loại bưu phẩm:
                 </label>
                 <select
                   value={packageType}
                   onChange={(e) => setPackageType(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-xs focus:border-amber-500 focus:outline-hidden"
                 >
                   {PACKAGE_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -321,7 +321,7 @@ export default function DispatcherCreateOrderPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Khối lượng (kg):
                 </label>
                 <input
@@ -331,18 +331,18 @@ export default function DispatcherCreateOrderPage() {
                   step={0.1}
                   value={weightKg}
                   onChange={(e) => setWeightKg(Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 font-mono text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 font-mono text-xs focus:border-amber-500 focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                   Phương thức thanh toán:
                 </label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value as "TIEN_MAT" | "VNPAY")}
-                  className="w-full h-10 px-3 rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100 text-xs focus:border-amber-400 focus:outline-hidden"
+                  className="w-full h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-xs focus:border-amber-500 focus:outline-hidden"
                 >
                   <option value="TIEN_MAT">Tiền mặt COD khi giao</option>
                   <option value="VNPAY">Cổng VNPay trực tuyến</option>
@@ -351,12 +351,12 @@ export default function DispatcherCreateOrderPage() {
             </div>
 
             {/* BẢNG TÍNH CƯỚC TELEMETRY */}
-            <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
-              <div className="space-y-1 text-zinc-400">
-                <div>Khoảng cách dự kiến: <span className="text-zinc-200 font-bold">{distanceKm} km</span></div>
-                <div>Cước cơ bản: <span className="text-zinc-200 font-bold">{formatVND(baseFee)}</span></div>
+            <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
+              <div className="space-y-1 text-zinc-600">
+                <div>Khoảng cách dự kiến: <span className="text-zinc-900 font-bold">{distanceKm} km</span></div>
+                <div>Cước cơ bản: <span className="text-zinc-900 font-bold">{formatVND(baseFee)}</span></div>
                 {vipDiscount > 0 && (
-                  <div className="text-emerald-400">Giảm hội viên VIP: <strong>-{formatVND(vipDiscount)}</strong></div>
+                  <div className="text-emerald-700">Giảm hội viên VIP: <strong>-{formatVND(vipDiscount)}</strong></div>
                 )}
               </div>
 
@@ -364,7 +364,7 @@ export default function DispatcherCreateOrderPage() {
                 <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">
                   Tổng cước thanh toán
                 </span>
-                <span className="text-2xl font-black text-amber-400">
+                <span className="text-2xl font-black text-amber-700">
                   {formatVND(totalFee)}
                 </span>
               </div>
@@ -374,7 +374,7 @@ export default function DispatcherCreateOrderPage() {
           {/* ACTIONS */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <Link href="/dieu-phoi">
-              <Button variant="outline" size="md" className="border-zinc-800 text-zinc-400 hover:text-zinc-200">
+              <Button variant="outline" size="md" className="border-zinc-300 text-zinc-700 hover:bg-zinc-100">
                 HỦY BỎ
               </Button>
             </Link>
@@ -382,7 +382,7 @@ export default function DispatcherCreateOrderPage() {
               variant="primary"
               size="lg"
               type="submit"
-              className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs h-11 px-6 tracking-wide"
+              className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs h-11 px-6 tracking-wide shadow-2xs"
             >
               TẠO ĐƠN & ĐẨY VÀO HÀNG ĐỢI ĐIỀU PHỐI ➔
             </Button>

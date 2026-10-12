@@ -26,7 +26,6 @@ export default function DispatcherLiveBoardPage() {
     (o) => o.status === "DA_GAN" || o.status === "DA_LAY_HANG" || o.status === "DANG_GIAO"
   );
   const onlineIdleDrivers = drivers.filter((d) => d.status === "ONLINE_IDLE");
-  const onlineBusyDrivers = drivers.filter((d) => d.status === "ONLINE_BUSY");
 
   // Mở modal gán tài xế
   const handleOpenAssignModal = (order: OrderItem) => {
@@ -151,22 +150,22 @@ export default function DispatcherLiveBoardPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#09090B] text-zinc-200">
+    <div className="min-h-screen flex flex-col bg-[#FAFAFA] text-zinc-800">
       <DispatcherNavbar
         pendingCount={pendingOrders.length}
         incidentCount={incidents.filter((i) => i.status === "CHO_XU_LY").length}
       />
 
-      {/* OPERATIONS TELEMETRY STRIP (ANTI-SLOP: UNIFIED CONTROL STRIP INSTEAD OF 3 EQUAL BOXES) */}
-      <section className="bg-zinc-950 border-b border-zinc-800/80 px-4 sm:px-6 py-2.5">
+      {/* OPERATIONS TELEMETRY STRIP (LIGHT THEME ANTI-SLOP) */}
+      <section className="bg-white border-b border-zinc-200 px-4 sm:px-6 py-2.5 shadow-2xs">
         <div className="max-w-[1680px] mx-auto flex flex-wrap items-center justify-between gap-4">
           {/* Asymmetric Telemetry Metrics */}
-          <div className="flex items-center gap-6 text-xs divide-x divide-zinc-800">
+          <div className="flex items-center gap-6 text-xs divide-x divide-zinc-200">
             <div className="flex items-baseline gap-2">
               <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
                 Hàng đợi chờ gán
               </span>
-              <span className="font-mono text-base font-black text-amber-400">
+              <span className="font-mono text-base font-black text-amber-600">
                 {pendingOrders.length}
               </span>
             </div>
@@ -175,131 +174,117 @@ export default function DispatcherLiveBoardPage() {
               <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
                 Đang giao
               </span>
-              <span className="font-mono text-base font-bold text-zinc-100">
+              <span className="font-mono text-base font-bold text-zinc-900">
                 {deliveringOrders.length}
               </span>
             </div>
 
             <div className="flex items-baseline gap-2 pl-6">
               <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-                Khả dụng đội xe
+                Tài xế rảnh
               </span>
-              <span className="font-mono text-base font-bold text-emerald-400">
-                {onlineIdleDrivers.length}/{drivers.length}
-              </span>
-              <span className="text-[11px] text-zinc-500">
-                ({onlineBusyDrivers.length} bận)
+              <span className="font-mono text-base font-bold text-emerald-600">
+                {onlineIdleDrivers.length}
+                <span className="text-xs text-zinc-400 font-normal">/{drivers.length}</span>
               </span>
             </div>
 
-            {incidents.length > 0 && (
-              <div className="flex items-baseline gap-2 pl-6">
-                <span className="text-rose-400 uppercase tracking-wider font-mono text-[10px] font-bold">
-                  Sự cố xử lý
-                </span>
-                <span className="font-mono text-base font-black text-rose-400">
-                  {incidents.length}
-                </span>
-              </div>
-            )}
+            <div className="flex items-baseline gap-2 pl-6">
+              <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
+                Sự cố can thiệp
+              </span>
+              <span className={`font-mono text-base font-bold ${incidents.length > 0 ? "text-rose-600" : "text-zinc-400"}`}>
+                {incidents.filter((i) => i.status === "CHO_XU_LY").length}
+              </span>
+            </div>
           </div>
 
-          {/* Precision Controls */}
+          {/* Quick Simulation Triggers */}
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleSimulateNewOrder}
-              className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-amber-400 font-mono text-xs font-bold transition-colors active:translate-y-[1px]"
+              className="px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-800 text-xs font-mono font-medium transition-colors"
             >
-              + Nhận đơn mô phỏng
+              + Giả lập đơn Hotline mới
             </button>
             <Link
               href="/dieu-phoi/tao-don"
-              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shadow-xs transition-colors active:translate-y-[1px]"
+              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-mono font-bold shadow-2xs transition-all active:scale-[0.98]"
             >
-              Tạo đơn hotline
+              + Tiếp Nhận Cuộc Gọi (UC-02)
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ASYMMETRIC 3-COLUMN MISSION CONTROL GRID (VISUAL DENSITY: 8, HAIRLINES INSTEAD OF CARDS) */}
+      {/* 3-COLUMN OPERATIONS COCKPIT */}
       <main className="flex-1 max-w-[1680px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* ========================================================================= */}
-        {/* CỘT 1: HÀNG ĐỢI ĐƠN CHỜ GÁN (3 COLS / 25%)                                */}
-        {/* ========================================================================= */}
-        <section className="lg:col-span-4 bg-zinc-900/60 border border-zinc-800/80 rounded-xl flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/90">
-            <div className="flex items-baseline gap-2">
-              <h2 className="font-bold text-xs uppercase tracking-wider text-zinc-200">
+        {/* ================= COLUMN 1: PENDING QUEUE (4 COLS) ================= */}
+        <section className="lg:col-span-4 flex flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-2xs">
+          <div className="p-3.5 border-b border-zinc-200 bg-zinc-50/80 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] font-bold text-zinc-900 uppercase tracking-wider">
                 Hàng Đợi Chờ Gán
-              </h2>
-              <span className="font-mono text-xs font-bold text-amber-400">
-                ({pendingOrders.length})
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                {pendingOrders.length}
               </span>
             </div>
-            <span className="font-mono text-[10px] text-zinc-500">Auto-Dispatcher</span>
+            <span className="text-[10px] font-mono text-zinc-500">UC-12 AUTO QUEUE</span>
           </div>
 
-          <div className="divide-y divide-zinc-800/60 overflow-y-auto max-h-[calc(100vh-220px)]">
+          <div className="flex-1 p-3 space-y-3 overflow-y-auto max-h-[calc(100vh-210px)]">
             {pendingOrders.length === 0 ? (
-              <div className="text-center py-16 text-zinc-500 text-xs font-mono">
-                Hàng đợi trống. Toàn bộ đơn đã được gán.
+              <div className="py-12 text-center text-xs text-zinc-400 font-mono">
+                Không có đơn hàng tồn đọng trong hàng đợi
               </div>
             ) : (
               pendingOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="p-3.5 hover:bg-zinc-850/60 transition-colors space-y-2.5 group"
+                  className="p-3.5 rounded-lg bg-white border border-zinc-200 hover:border-amber-400 transition-colors space-y-2.5 shadow-2xs"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-amber-400">
-                        {order.id}
+                    <span className="font-mono text-xs font-bold text-amber-600">{order.id}</span>
+                    <span className="text-[11px] font-mono text-zinc-400">{order.createdAt}</span>
+                  </div>
+
+                  <div className="text-xs space-y-1">
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-emerald-600 font-bold text-[10px] mt-0.5">LẤY:</span>
+                      <span className="text-zinc-800 line-clamp-1">
+                        {order.sender.street}, {order.sender.district}
                       </span>
-                      <span className="text-[11px] font-mono text-zinc-500">
-                        {order.createdAt}
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-amber-600 font-bold text-[10px] mt-0.5">GIAO:</span>
+                      <span className="text-zinc-800 line-clamp-1">
+                        {order.receiver.street}, {order.receiver.district}
                       </span>
                     </div>
-                    <span className="font-mono text-xs font-bold text-zinc-100">
-                      {formatVND(order.totalFee)}
-                    </span>
                   </div>
 
-                  {/* Clean 2-line Route Typography */}
-                  <div className="text-xs space-y-1 text-zinc-300">
-                    <div className="flex items-baseline gap-1.5 truncate">
-                      <span className="text-zinc-500 font-mono text-[10px] w-8 shrink-0">LẤY</span>
-                      <span className="truncate">{order.sender.street}, {order.sender.district}</span>
+                  <div className="flex items-center justify-between pt-2 border-t border-zinc-100 text-xs font-mono">
+                    <div className="text-zinc-500 text-[11px]">
+                      <span>{order.distanceKm}km</span> · <span>{order.packageWeightKg}kg</span>
                     </div>
-                    <div className="flex items-baseline gap-1.5 truncate">
-                      <span className="text-amber-500 font-mono text-[10px] w-8 shrink-0">GIAO</span>
-                      <span className="truncate text-zinc-100 font-medium">{order.receiver.street}, {order.receiver.district}</span>
-                    </div>
+                    <span className="font-bold text-zinc-900">{formatVND(order.totalFee)}</span>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1 text-[11px] font-mono text-zinc-400">
-                    <span>{order.packageType} · {order.distanceKm} km</span>
-                    <span className="text-zinc-400">
-                      {order.paymentMethod === "TIEN_MAT" ? "COD Tiền mặt" : "VNPay"}
-                    </span>
-                  </div>
-
-                  {/* Tactile Actions */}
                   <div className="pt-1 flex items-center gap-2">
                     <Button
                       variant="primary"
                       size="sm"
                       fullWidth
                       onClick={() => handleOpenAssignModal(order)}
-                      className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold h-8 text-xs tracking-tight shadow-2xs active:translate-y-[1px]"
+                      className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs shadow-2xs"
                     >
-                      Gán tài xế tối ưu ➔
+                      PHÂN CÔNG TÀI XẾ (UC-12)
                     </Button>
                     <Link
                       href={`/dieu-phoi/don-hang/${order.id}`}
-                      className="px-2.5 h-8 rounded-lg border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs font-medium flex items-center shrink-0 transition-colors"
-                      title="Chi tiết đơn"
+                      className="px-2.5 py-1.5 rounded-md border border-zinc-200 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 text-xs font-mono"
                     >
                       Chi tiết
                     </Link>
@@ -310,128 +295,94 @@ export default function DispatcherLiveBoardPage() {
           </div>
         </section>
 
-        {/* ========================================================================= */}
-        {/* CỘT 2: GIÁM SÁT THỰC THI & SỰ CỐ (5 COLS / 42%)                           */}
-        {/* ========================================================================= */}
-        <section className="lg:col-span-5 bg-zinc-900/60 border border-zinc-800/80 rounded-xl flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/90">
-            <div className="flex items-baseline gap-2">
-              <h2 className="font-bold text-xs uppercase tracking-wider text-zinc-200">
-                Giám Sát Vận Hành
-              </h2>
-              <span className="font-mono text-xs font-bold text-zinc-400">
-                ({deliveringOrders.length})
+        {/* ================= COLUMN 2: IN-FLIGHT OPS & INCIDENTS (5 COLS) ================= */}
+        <section className="lg:col-span-5 flex flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-2xs">
+          <div className="p-3.5 border-b border-zinc-200 bg-zinc-50/80 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] font-bold text-zinc-900 uppercase tracking-wider">
+                Đơn Hàng Đang Thực Hiện & Can Thiệp
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-100 text-zinc-700 border border-zinc-300">
+                {deliveringOrders.length}
               </span>
             </div>
-            {incidents.length > 0 && (
-              <span className="font-mono text-[10px] font-bold text-rose-300 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800/80">
-                {incidents.length} CẦN CAN THIỆP
-              </span>
-            )}
+            <span className="text-[10px] font-mono text-zinc-500">LIVE TRACKING</span>
           </div>
 
-          <div className="divide-y divide-zinc-800/60 overflow-y-auto max-h-[calc(100vh-220px)]">
-            {/* INCIDENTS GIVEN PRIORITY STRIP (CLEAN SEMANTIC BORDER, NO AI PING) */}
-            {incidents.map((inc) => (
-              <div
-                key={inc.id}
-                className="p-4 bg-rose-950/20 border-l-2 border-rose-500 space-y-2.5 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-black text-xs text-rose-400">
-                      {inc.orderId}
-                    </span>
-                    <span className="text-[10px] uppercase font-mono font-bold bg-rose-950 text-rose-300 px-1.5 py-0.5 rounded border border-rose-800">
-                      SỰ CỐ
-                    </span>
+          <div className="flex-1 p-3 space-y-3 overflow-y-auto max-h-[calc(100vh-210px)]">
+            {/* INCIDENT ALERTS (SEPARATE CONTAINER) */}
+            {incidents.filter((i) => i.status === "CHO_XU_LY").length > 0 && (
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono font-bold text-rose-800 uppercase">
+                  <span>Cảnh báo sự cố can thiệp ({incidents.length})</span>
+                  <span className="text-[10px] text-rose-600">UC-13 / UC-14</span>
+                </div>
+                {incidents.map((inc) => (
+                  <div key={inc.id} className="p-2.5 rounded bg-white border border-rose-200 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-rose-700">{inc.orderId}</span>
+                      <span className="text-[10px] font-mono text-zinc-400">{inc.reportedAt}</span>
+                    </div>
+                    <p className="text-zinc-700 text-xs font-sans">{inc.note}</p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleReassignIncidentOrder(inc.orderId)}
+                        className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono text-[11px] font-bold transition-colors"
+                      >
+                        Đổi tài xế khác (UC-13)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelOrder(inc.orderId, inc.note)}
+                        className="px-2 py-1 rounded bg-zinc-100 hover:bg-rose-100 text-rose-700 font-mono text-[11px] border border-zinc-200 transition-colors"
+                      >
+                        Hủy đơn (UC-14)
+                      </button>
+                    </div>
                   </div>
-                  <span className="font-mono text-[11px] text-zinc-400">{inc.reportedAt}</span>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-zinc-100">{inc.type}</div>
-                  <p className="text-[11px] text-zinc-400 italic leading-relaxed">{inc.note}</p>
-                </div>
-
-                <div className="text-[11px] text-zinc-400 flex items-center justify-between pt-1 border-t border-rose-950/60">
-                  <span>TX: <strong className="text-zinc-200">{inc.driverName}</strong> ({inc.driverPhone})</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleReassignIncidentOrder(inc.orderId)}
-                    className="h-8 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-bold text-xs transition-colors active:translate-y-[1px]"
-                  >
-                    Đổi tài xế khác
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCancelOrder(inc.orderId, inc.type)}
-                    className="h-8 px-2 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-200 font-bold text-xs transition-colors active:translate-y-[1px]"
-                  >
-                    Hủy đơn
-                  </button>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
 
-            {/* STANDARD IN-FLIGHT ORDERS */}
+            {/* LIVE DELIVERING ORDERS */}
             {deliveringOrders.map((order) => (
               <div
                 key={order.id}
-                className="p-3.5 hover:bg-zinc-850/60 transition-colors space-y-2.5"
+                className="p-3.5 rounded-lg bg-white border border-zinc-200 hover:border-zinc-300 transition-colors space-y-2 shadow-2xs"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-xs text-zinc-200">
-                      {order.id}
-                    </span>
+                    <span className="font-mono text-xs font-bold text-zinc-900">{order.id}</span>
                     <Badge status={order.status} />
                   </div>
-                  <span className="font-mono text-xs text-zinc-400">
-                    {formatVND(order.totalFee)}
-                  </span>
+                  <span className="text-[11px] font-mono text-zinc-400">{order.createdAt}</span>
                 </div>
 
-                <div className="text-xs space-y-1 text-zinc-300">
-                  <div className="flex items-baseline gap-1.5 truncate">
-                    <span className="text-zinc-500 font-mono text-[10px] w-8 shrink-0">TỪ</span>
-                    <span className="truncate">{order.sender.street}</span>
+                <div className="text-xs space-y-1 text-zinc-600">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Lộ trình:</span>
+                    <span className="font-medium text-zinc-800">
+                      {order.sender.district} → {order.receiver.district}
+                    </span>
                   </div>
-                  <div className="flex items-baseline gap-1.5 truncate">
-                    <span className="text-zinc-500 font-mono text-[10px] w-8 shrink-0">ĐẾN</span>
-                    <span className="truncate">{order.receiver.street}</span>
-                  </div>
-                </div>
-
-                {order.driver && (
-                  <div className="p-2 rounded-lg bg-zinc-950/60 border border-zinc-800/60 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="text-[10px] text-zinc-500 block">Tài xế:</span>
-                      <strong className="text-zinc-200">{order.driver.name}</strong>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-mono text-amber-400 text-[11px] block">
-                        {order.driver.vehiclePlate}
+                  {order.driver && (
+                    <div className="flex justify-between items-baseline font-mono text-[11px]">
+                      <span className="text-zinc-400">Tài xế phụ trách:</span>
+                      <span className="text-amber-800 font-bold">
+                        {order.driver.name} ({order.driver.vehiclePlate})
                       </span>
-                      <a
-                        href={`tel:${order.driver.phone}`}
-                        className="text-[11px] text-zinc-400 hover:text-zinc-200 font-mono"
-                      >
-                        {order.driver.phone}
-                      </a>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                <div className="pt-1 flex items-center justify-end">
+                <div className="flex items-center justify-between pt-2 border-t border-zinc-100 text-xs">
+                  <span className="font-mono text-zinc-900 font-bold">{formatVND(order.totalFee)}</span>
                   <Link
                     href={`/dieu-phoi/don-hang/${order.id}`}
-                    className="text-xs text-amber-400 hover:text-amber-300 font-semibold"
+                    className="font-mono text-[11px] text-amber-700 hover:underline font-bold"
                   >
-                    Xem chi tiết toàn trình ➔
+                    Mở bàn can thiệp →
                   </Link>
                 </div>
               </div>
@@ -439,28 +390,26 @@ export default function DispatcherLiveBoardPage() {
           </div>
         </section>
 
-        {/* ========================================================================= */}
-        {/* CỘT 3: ĐỘI XE TRỰC TUYẾN (3 COLS / 25%)                                    */}
-        {/* ========================================================================= */}
-        <section className="lg:col-span-3 bg-zinc-900/60 border border-zinc-800/80 rounded-xl flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/90">
-            <div className="flex items-baseline gap-2">
-              <h2 className="font-bold text-xs uppercase tracking-wider text-zinc-200">
-                Đội Xe
-              </h2>
-              <span className="font-mono text-xs font-bold text-emerald-400">
-                ({onlineIdleDrivers.length} rảnh)
+        {/* ================= COLUMN 3: FLEET ROSTER (3 COLS) ================= */}
+        <section className="lg:col-span-3 flex flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-2xs">
+          <div className="p-3.5 border-b border-zinc-200 bg-zinc-50/80 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] font-bold text-zinc-900 uppercase tracking-wider">
+                Đội Xe Trực Tuyến
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                {onlineIdleDrivers.length} rảnh
               </span>
             </div>
             <Link
               href="/dieu-phoi/doi-xe"
-              className="text-[11px] text-zinc-400 hover:text-zinc-200"
+              className="text-[10px] font-mono text-zinc-500 hover:text-amber-600"
             >
-              Tất cả ➔
+              TẤT CẢ →
             </Link>
           </div>
 
-          <div className="divide-y divide-zinc-800/60 overflow-y-auto max-h-[calc(100vh-220px)]">
+          <div className="flex-1 p-3 space-y-2.5 overflow-y-auto max-h-[calc(100vh-210px)]">
             {drivers.map((driver) => {
               const isIdle = driver.status === "ONLINE_IDLE";
               const isBusy = driver.status === "ONLINE_BUSY";
@@ -468,38 +417,29 @@ export default function DispatcherLiveBoardPage() {
               return (
                 <div
                   key={driver.id}
-                  className={`p-3 space-y-1.5 transition-colors ${
-                    isIdle
-                      ? "hover:bg-zinc-850/60"
-                      : "opacity-65 hover:opacity-90"
-                  }`}
+                  className="p-3 rounded-lg bg-white border border-zinc-200 hover:border-zinc-300 transition-colors space-y-1.5 shadow-2xs"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <strong className="text-xs text-zinc-200 block">{driver.name}</strong>
-                      <span className="font-mono text-[10px] text-zinc-500">{driver.id}</span>
+                      <span className="font-bold text-xs text-zinc-900 block">{driver.name}</span>
+                      <span className="font-mono text-[10px] text-zinc-500">{driver.vehiclePlate}</span>
                     </div>
-
                     <span
-                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
                         isIdle
-                          ? "bg-emerald-950/60 text-emerald-300 border-emerald-800/60"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : isBusy
-                          ? "bg-zinc-900 text-amber-400 border-zinc-800"
-                          : "bg-zinc-900 text-zinc-500 border-zinc-800"
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-zinc-100 text-zinc-500 border-zinc-200"
                       }`}
                     >
-                      {isIdle
-                        ? `Rảnh ${driver.idleSinceMinutes}m`
-                        : isBusy
-                        ? "Đang giao"
-                        : "Tạm nghỉ"}
+                      {isIdle ? `RẢNH ${driver.idleSinceMinutes}m` : isBusy ? "ĐANG GIAO" : "OFFLINE"}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500 pt-1 border-t border-zinc-100">
                     <span>{driver.currentDistrict}</span>
-                    <span className="text-zinc-300">{driver.vehiclePlate}</span>
+                    <span>COD: {formatVND(driver.codCashHolding)}</span>
                   </div>
                 </div>
               );
@@ -508,94 +448,106 @@ export default function DispatcherLiveBoardPage() {
         </section>
       </main>
 
-      {/* ========================================================================= */}
-      {/* MODAL PHÂN CÔNG TÀI XẾ THÔNG MINH (UC-12)                                 */}
-      {/* ========================================================================= */}
+      {/* MODAL PHÂN CÔNG TÀI XẾ THÔNG MINH (UC-12) */}
       {assigningOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-5 space-y-4 text-zinc-100">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white border border-zinc-200 rounded-xl shadow-2xl p-6 space-y-5 text-zinc-800">
+            <div className="flex items-start justify-between border-b border-zinc-200 pb-3">
               <div>
-                <h3 className="text-sm font-bold text-zinc-100">
-                  Phân công tài xế
-                </h3>
-                <span className="text-xs font-mono text-amber-400">
-                  {assigningOrder.id}
+                <span className="font-mono text-[10px] font-bold text-amber-700 uppercase tracking-widest block">
+                  ĐIỀU PHỐI TÀI XẾ TỨC THÌ (UC-12)
                 </span>
+                <h3 className="text-base font-bold text-zinc-900 mt-0.5">
+                  Phân công tài xế cho đơn {assigningOrder.id}
+                </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setAssigningOrder(null)}
-                className="text-zinc-500 hover:text-zinc-200 text-sm p-1"
+                className="text-zinc-400 hover:text-zinc-600 font-mono text-sm"
               >
                 ✕
               </button>
             </div>
 
-            {/* Order snapshot */}
-            <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800 text-xs space-y-1 font-mono">
-              <div className="text-zinc-400">
-                Lấy: <span className="text-zinc-200">{assigningOrder.sender.street} ({assigningOrder.sender.district})</span>
+            <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200 space-y-1.5 text-xs font-mono">
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Lấy hàng:</span>
+                <span className="text-zinc-800 font-sans font-medium">
+                  {assigningOrder.sender.street}, {assigningOrder.sender.district}
+                </span>
               </div>
-              <div className="text-zinc-400">
-                Giao: <span className="text-zinc-200">{assigningOrder.receiver.street} ({assigningOrder.receiver.district})</span>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Giao hàng:</span>
+                <span className="text-zinc-800 font-sans font-medium">
+                  {assigningOrder.receiver.street}, {assigningOrder.receiver.district}
+                </span>
               </div>
-              <div className="pt-1 text-amber-400 font-bold">
-                Cước: {formatVND(assigningOrder.totalFee)} ({assigningOrder.distanceKm} km)
+              <div className="flex justify-between pt-1 border-t border-zinc-200">
+                <span className="text-zinc-500">Cự ly & Cước:</span>
+                <span className="text-amber-700 font-bold">
+                  {assigningOrder.distanceKm} km · {formatVND(assigningOrder.totalFee)}
+                </span>
               </div>
             </div>
 
-            {/* Driver Recommendation List */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                Gợi ý tài xế trực tuyến phù hợp:
+              <label className="block text-xs font-mono font-bold text-zinc-700 uppercase">
+                Gợi ý tài xế tối ưu (Đang rảnh & gần vị trí lấy hàng):
               </label>
 
-              <div className="divide-y divide-zinc-800 max-h-56 overflow-y-auto border border-zinc-800 rounded-lg">
-                {drivers
-                  .filter((d) => d.status === "ONLINE_IDLE")
-                  .map((driver) => (
+              <div className="space-y-2 max-h-56 overflow-y-auto">
+                {drivers.map((d) => {
+                  const isSelected = selectedDriverId === d.id;
+                  const isIdle = d.status === "ONLINE_IDLE";
+
+                  return (
                     <label
-                      key={driver.id}
-                      className={`flex items-center justify-between p-3 cursor-pointer transition-colors ${
-                        selectedDriverId === driver.id
-                          ? "bg-amber-500/10 text-amber-300"
-                          : "hover:bg-zinc-850"
+                      key={d.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
+                        isSelected
+                          ? "border-amber-500 bg-amber-50/80"
+                          : "border-zinc-200 bg-white hover:border-zinc-300"
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <input
                           type="radio"
                           name="driverAssign"
-                          checked={selectedDriverId === driver.id}
-                          onChange={() => setSelectedDriverId(driver.id)}
-                          className="text-amber-500 focus:ring-amber-400"
+                          checked={isSelected}
+                          onChange={() => setSelectedDriverId(d.id)}
+                          className="text-amber-500 focus:ring-0"
                         />
                         <div>
-                          <div className="text-xs font-bold flex items-center gap-2">
-                            <span>{driver.name}</span>
-                            <span className="text-zinc-500 font-mono text-[10px]">★ {driver.rating}</span>
-                          </div>
-                          <div className="text-[11px] font-mono text-zinc-400">
-                            {driver.vehiclePlate} · {driver.currentDistrict}
+                          <div className="font-bold text-zinc-900">{d.name}</div>
+                          <div className="font-mono text-[11px] text-zinc-500">
+                            {d.vehiclePlate} · {d.currentDistrict}
                           </div>
                         </div>
                       </div>
 
-                      <span className="font-mono text-[10px] text-emerald-400">
-                        Rảnh {driver.idleSinceMinutes}m
-                      </span>
+                      <div className="text-right font-mono text-[11px]">
+                        <span
+                          className={`font-bold block ${
+                            isIdle ? "text-emerald-700" : "text-amber-700"
+                          }`}
+                        >
+                          {isIdle ? `Rảnh ${d.idleSinceMinutes}m` : "Đang giao"}
+                        </span>
+                        <span className="text-zinc-400 text-[10px]">Đánh giá: ★{d.rating}</span>
+                      </div>
                     </label>
-                  ))}
+                  );
+                })}
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-200">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setAssigningOrder(null)}
-                className="border-zinc-800 text-zinc-400 hover:bg-zinc-800"
+                className="border-zinc-200 text-zinc-700 hover:bg-zinc-100"
               >
                 Hủy bỏ
               </Button>
@@ -603,9 +555,9 @@ export default function DispatcherLiveBoardPage() {
                 variant="primary"
                 size="sm"
                 onClick={handleConfirmAssignment}
-                className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold active:translate-y-[1px]"
+                className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs shadow-2xs"
               >
-                Xác nhận gán ➔
+                XÁC NHẬN PHÂN CÔNG (UC-12)
               </Button>
             </div>
           </div>
