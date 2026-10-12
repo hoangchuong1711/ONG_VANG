@@ -42,7 +42,7 @@ export default function DispatcherReportsPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-200">
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-1.5">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-1.5 whitespace-nowrap">
               ĐỐI SOÁT VẬN HÀNH (UC-15 / UC-08)
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
@@ -53,18 +53,18 @@ export default function DispatcherReportsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportExcel}
-              className="text-xs font-bold"
+              className="text-xs font-bold whitespace-nowrap"
             >
               Xuất báo cáo Excel (UC-15)
             </Button>
             <Link
               href="/dieu-phoi"
-              className="text-xs sm:text-sm font-semibold text-stone-500 hover:text-amber-800 transition-colors"
+              className="text-xs sm:text-sm font-semibold text-stone-500 hover:text-amber-800 transition-colors whitespace-nowrap shrink-0"
             >
               ← Bàn điều phối
             </Link>
@@ -165,12 +165,12 @@ export default function DispatcherReportsPage() {
             <table className="w-full text-left text-xs sm:text-sm">
               <thead className="bg-stone-50 text-stone-600 font-bold uppercase text-xs tracking-wider border-b border-stone-200">
                 <tr>
-                  <th className="p-4 pl-6">Mã & Tài xế</th>
-                  <th className="p-4">Biển số</th>
-                  <th className="p-4">Khu vực</th>
-                  <th className="p-4">COD tạm giữ</th>
-                  <th className="p-4">Cảnh báo hạn mức</th>
-                  <th className="p-4 pr-6 text-right">Thao tác thu quỹ</th>
+                  <th className="p-4 pl-6 whitespace-nowrap">Mã & Tài xế</th>
+                  <th className="p-4 whitespace-nowrap">Biển số</th>
+                  <th className="p-4 whitespace-nowrap">Khu vực</th>
+                  <th className="p-4 whitespace-nowrap">COD tạm giữ</th>
+                  <th className="p-4 whitespace-nowrap">Cảnh báo hạn mức</th>
+                  <th className="p-4 pr-6 text-right whitespace-nowrap">Thao tác thu quỹ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">

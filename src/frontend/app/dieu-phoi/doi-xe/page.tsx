@@ -139,14 +139,14 @@ export default function DispatcherFleetPage() {
             <table className="w-full text-left text-xs sm:text-sm">
               <thead className="bg-stone-50 text-stone-600 font-bold uppercase text-xs tracking-wider border-b border-stone-200">
                 <tr>
-                  <th className="p-4 pl-6">Tài xế & Mã</th>
-                  <th className="p-4">Phương tiện</th>
-                  <th className="p-4">Khu vực tác chiến</th>
-                  <th className="p-4">Trạng thái</th>
-                  <th className="p-4">Cuốc hoàn tất</th>
-                  <th className="p-4">Đánh giá</th>
-                  <th className="p-4">COD tạm giữ</th>
-                  <th className="p-4 pr-6 text-right">Thao tác</th>
+                  <th className="p-4 pl-6 whitespace-nowrap">Tài xế & Mã</th>
+                  <th className="p-4 whitespace-nowrap">Phương tiện</th>
+                  <th className="p-4 whitespace-nowrap">Khu vực tác chiến</th>
+                  <th className="p-4 whitespace-nowrap">Trạng thái</th>
+                  <th className="p-4 whitespace-nowrap">Cuốc hoàn tất</th>
+                  <th className="p-4 whitespace-nowrap">Đánh giá</th>
+                  <th className="p-4 whitespace-nowrap">COD tạm giữ</th>
+                  <th className="p-4 pr-6 text-right whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">

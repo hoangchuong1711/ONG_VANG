@@ -157,60 +157,48 @@ export default function DispatcherLiveBoardPage() {
       />
 
       {/* OPERATIONS TELEMETRY STRIP */}
-      <section className="bg-white border-b border-stone-200 px-4 sm:px-6 py-3 shadow-2xs">
-        <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
+      <section className="bg-white border-b border-stone-200 px-4 sm:px-6 py-2.5 shadow-2xs">
+        <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           {/* Telemetry Metrics */}
-          <div className="flex items-center gap-6 text-sm divide-x divide-stone-200">
-            <div className="flex items-baseline gap-2">
-              <span className="text-stone-500 font-semibold text-xs">
-                Hàng đợi chờ gán:
-              </span>
-              <span className="text-lg font-extrabold text-amber-600">
-                {pendingOrders.length}
-              </span>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 whitespace-nowrap">
+              <span className="text-stone-500 font-semibold text-xs">Hàng đợi chờ gán:</span>
+              <span className="text-base font-extrabold text-amber-600">{pendingOrders.length}</span>
             </div>
 
-            <div className="flex items-baseline gap-2 pl-6">
-              <span className="text-stone-500 font-semibold text-xs">
-                Đang giao hàng:
-              </span>
-              <span className="text-lg font-extrabold text-stone-900">
-                {deliveringOrders.length}
-              </span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 whitespace-nowrap">
+              <span className="text-stone-500 font-semibold text-xs">Đang giao hàng:</span>
+              <span className="text-base font-extrabold text-stone-900">{deliveringOrders.length}</span>
             </div>
 
-            <div className="flex items-baseline gap-2 pl-6">
-              <span className="text-stone-500 font-semibold text-xs">
-                Tài xế sẵn sàng:
-              </span>
-              <span className="text-lg font-extrabold text-emerald-600">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 whitespace-nowrap">
+              <span className="text-stone-500 font-semibold text-xs">Tài xế sẵn sàng:</span>
+              <span className="text-base font-extrabold text-emerald-600">
                 {onlineIdleDrivers.length}
                 <span className="text-xs text-stone-400 font-normal">/{drivers.length}</span>
               </span>
             </div>
 
-            <div className="flex items-baseline gap-2 pl-6">
-              <span className="text-stone-500 font-semibold text-xs">
-                Sự cố cần can thiệp:
-              </span>
-              <span className={`text-lg font-extrabold ${incidents.length > 0 ? "text-rose-600" : "text-stone-400"}`}>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 whitespace-nowrap">
+              <span className="text-stone-500 font-semibold text-xs">Sự cố can thiệp:</span>
+              <span className={`text-base font-extrabold ${incidents.length > 0 ? "text-rose-600" : "text-stone-400"}`}>
                 {incidents.filter((i) => i.status === "CHO_XU_LY").length}
               </span>
             </div>
           </div>
 
           {/* Quick Simulation Triggers */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handleSimulateNewOrder}
-              className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-800 text-xs font-semibold transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-800 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
             >
               + Giả lập đơn Hotline
             </button>
             <Link
               href="/dieu-phoi/tao-don"
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-900 text-xs font-bold shadow-sm transition-all active:scale-[0.98]"
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-900 text-xs font-bold shadow-xs transition-all active:scale-[0.98] whitespace-nowrap"
             >
               + Tiếp Nhận Cuộc Gọi (UC-02)
             </Link>
@@ -222,16 +210,16 @@ export default function DispatcherLiveBoardPage() {
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* ================= COLUMN 1: PENDING QUEUE (4 COLS) ================= */}
         <section className="lg:col-span-4 flex flex-col bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
-          <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-stone-900 tracking-tight">
+          <div className="p-3.5 sm:p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-sm font-extrabold text-stone-900 tracking-tight whitespace-nowrap">
                 Hàng Đợi Chờ Gán
               </span>
               <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
                 {pendingOrders.length}
               </span>
             </div>
-            <span className="text-xs font-semibold text-stone-400">UC-12 Hàng đợi</span>
+            <span className="text-xs font-semibold text-stone-400 whitespace-nowrap">UC-12 Hàng đợi</span>
           </div>
 
           <div className="flex-1 p-3.5 space-y-3 overflow-y-auto max-h-[calc(100vh-220px)]">
@@ -297,16 +285,16 @@ export default function DispatcherLiveBoardPage() {
 
         {/* ================= COLUMN 2: IN-FLIGHT OPS & INCIDENTS (5 COLS) ================= */}
         <section className="lg:col-span-5 flex flex-col bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
-          <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-stone-900 tracking-tight">
+          <div className="p-3.5 sm:p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-sm font-extrabold text-stone-900 tracking-tight whitespace-nowrap">
                 Đơn Đang Thực Hiện & Sự Cố
               </span>
               <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-stone-100 text-stone-800 border border-stone-300">
                 {deliveringOrders.length}
               </span>
             </div>
-            <span className="text-xs font-semibold text-stone-400">Theo dõi trực tiếp</span>
+            <span className="text-xs font-semibold text-stone-400 whitespace-nowrap">Theo dõi trực tiếp</span>
           </div>
 
           <div className="flex-1 p-3.5 space-y-3 overflow-y-auto max-h-[calc(100vh-220px)]">
@@ -395,9 +383,9 @@ export default function DispatcherLiveBoardPage() {
 
         {/* ================= COLUMN 3: FLEET ROSTER (3 COLS) ================= */}
         <section className="lg:col-span-3 flex flex-col bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
-          <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-stone-900 tracking-tight">
+          <div className="p-3.5 sm:p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-sm font-extrabold text-stone-900 tracking-tight whitespace-nowrap">
                 Đội Xe Trực Tuyến
               </span>
               <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
@@ -406,7 +394,7 @@ export default function DispatcherLiveBoardPage() {
             </div>
             <Link
               href="/dieu-phoi/doi-xe"
-              className="text-xs font-semibold text-stone-500 hover:text-amber-600"
+              className="text-xs font-semibold text-stone-500 hover:text-amber-600 whitespace-nowrap"
             >
               Tất cả →
             </Link>

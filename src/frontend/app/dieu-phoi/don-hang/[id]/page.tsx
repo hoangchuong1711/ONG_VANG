@@ -76,26 +76,26 @@ export default function DispatcherOrderDetailPage() {
 
       <main className="flex-1 max-w-[1240px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Top Header & Breadcrumb */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-200">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-stone-200">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <Link
               href="/dieu-phoi"
-              className="text-xs sm:text-sm font-semibold text-stone-500 hover:text-amber-800 transition-colors"
+              className="text-xs sm:text-sm font-semibold text-stone-500 hover:text-amber-800 transition-colors whitespace-nowrap"
             >
               ← Bàn điều phối
             </Link>
             <span className="text-stone-300">/</span>
-            <span className="text-sm sm:text-base font-extrabold text-stone-900">{order.id}</span>
+            <span className="text-sm sm:text-base font-extrabold text-stone-900 whitespace-nowrap">{order.id}</span>
             <Badge status={order.status} />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {order.status !== "DA_HUY" && (
               <Button
                 variant="danger"
                 size="sm"
                 onClick={() => setIsCancelModalOpen(true)}
-                className="text-xs font-bold"
+                className="text-xs font-bold whitespace-nowrap"
               >
                 Hủy đơn khẩn cấp (UC-14)
               </Button>

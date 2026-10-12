@@ -104,8 +104,8 @@ export default function DispatcherCreateOrderPage() {
       <main className="flex-1 max-w-[1100px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-200">
-          <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-1.5">
+          <div className="shrink-0">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-1.5 whitespace-nowrap">
               HOTLINE TIẾP NHẬN (UC-02)
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
@@ -118,7 +118,7 @@ export default function DispatcherCreateOrderPage() {
 
           <Link
             href="/dieu-phoi"
-            className="text-xs sm:text-sm font-semibold text-stone-500 hover:text-amber-800 transition-colors"
+            className="text-xs sm:text-sm font-semibold text-stone-500 hover:text-amber-800 transition-colors whitespace-nowrap shrink-0"
           >
             ← Bàn điều phối
           </Link>
