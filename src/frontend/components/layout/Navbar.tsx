@@ -98,6 +98,16 @@ export function Navbar() {
             <span>Tạo đơn mới</span>
           </Link>
 
+          {/* Driver Portal Switcher */}
+          <Link
+            href="/tai-xe"
+            className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700 font-semibold text-xs transition-colors"
+            title="Chuyển sang Cổng Tài xế"
+          >
+            <span>🏍️</span>
+            <span>Cổng Tài xế</span>
+          </Link>
+
           {/* User Profile Pill */}
           <Link
             href="/tai-khoan"
@@ -151,6 +161,14 @@ export function Navbar() {
             );
           })}
           {/* Additional mobile links */}
+          <Link
+            href="/tai-xe"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold text-amber-900 bg-amber-100/70 hover:bg-amber-100 border border-amber-200"
+          >
+            <span>🏍️ Chuyển sang Cổng Tài xế</span>
+          </Link>
+
           <Link
             href="/tai-khoan"
             onClick={() => setIsMobileMenuOpen(false)}
