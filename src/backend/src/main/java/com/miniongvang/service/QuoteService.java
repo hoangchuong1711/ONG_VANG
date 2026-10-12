@@ -1,9 +1,16 @@
 package com.miniongvang.service;
+import com.miniongvang.security.ActorContext;
+import com.miniongvang.dto.quote.FareDtos.Fare;
+import com.miniongvang.dto.quote.QuoteDtos.MembershipView;
+import com.miniongvang.dto.quote.QuoteDtos.Parcel;
+import com.miniongvang.dto.quote.QuoteDtos.Quote;
+import com.miniongvang.dto.quote.QuoteDtos.CreateQuote;
+import com.miniongvang.dto.route.RouteDtos.Route;
 
-import com.miniongvang.DAO.BaoGiaDAO;
-import com.miniongvang.DAO.KhachHangDAO;
-import com.miniongvang.DAO.BieuPhiDAO;
-import com.miniongvang.DAO.ChinhSachPhuThuDAO;
+import com.miniongvang.dao.BaoGiaDAO;
+import com.miniongvang.dao.KhachHangDAO;
+import com.miniongvang.dao.BieuPhiDAO;
+import com.miniongvang.dao.ChinhSachPhuThuDAO;
 import com.miniongvang.entity.BaoGia;
 import com.miniongvang.entity.BieuPhi;
 import com.miniongvang.entity.ChinhSachPhuThu;
@@ -42,7 +49,7 @@ public final class QuoteService {
         this.membership = new MembershipPolicyService(clock);
     }
 
-    public Quote create(AuthService.User actor, String requestedCustomerId, String origin,
+    public Quote create(ActorContext actor, String requestedCustomerId, String origin,
                         String destination, List<Parcel> parcels) {
         if (actor == null) throw new SecurityException("Authentication required");
         String customerId;
@@ -57,12 +64,12 @@ public final class QuoteService {
         } else throw new SecurityException("Role cannot quote");
         List<Parcel> normalizedParcels = normalizeParcels(parcels);
         // Network route lookup must finish before a database transaction begins.
-        RouteService.Route route = routes.estimate(origin, destination);
+        Route route = routes.estimate(origin, destination);
         Instant now = clock.instant();
         return transactions.run(em -> {
             EvaluationV1 evaluated = evaluateV1(em, customerId, route, now);
             BieuPhi tariff = evaluated.tariff();
-            FareCalculator.Fare fare = evaluated.fare();
+            Fare fare = evaluated.fare();
             MembershipView tier = evaluated.tier();
             Instant expiry = now.plusSeconds(300);
             Quote result = new Quote(UUID.randomUUID().toString(), expiry.toString(), route, fare, tier);
@@ -76,23 +83,28 @@ public final class QuoteService {
         });
     }
 
+    public Quote create(ActorContext actor, CreateQuote request) {
+        return create(actor, request.maKh(), request.diemLayHang(),
+                request.diemGiaoHang(), request.kienHang());
+    }
+
     EvaluationV1 evaluateV1(jakarta.persistence.EntityManager em, String customerId,
-                            RouteService.Route route, Instant now) {
+                            Route route, Instant now) {
         BigDecimal km = new BigDecimal(route.quangDuongKm());
         var customer = new KhachHangDAO(em).findWithAccount(customerId);
         if (customer == null) throw new NoSuchElementException("Customer not found");
         var matchingTariffs = new BieuPhiDAO(em).findApplicable(now, km);
-        if (matchingTariffs.size() != 1) throw new FareCalculator.FareConfigurationException();
+        if (matchingTariffs.size() != 1) throw new com.miniongvang.service.FareCalculator.FareConfigurationException();
         BieuPhi tariff = matchingTariffs.getFirst();
         List<ChinhSachPhuThu> extras = new ChinhSachPhuThuDAO(em).findApplicable(now);
         java.util.HashSet<String> types = new java.util.HashSet<>();
         for (ChinhSachPhuThu item : extras)
             if (!types.add(item.getMaLoaiPhuThu()))
-                throw new FareCalculator.FareConfigurationException();
-        FareCalculator.Fare before = calculator.calculateV1(km, tariff, extras, BigDecimal.ZERO);
+                throw new com.miniongvang.service.FareCalculator.FareConfigurationException();
+        Fare before = calculator.calculateV1(km, tariff, extras, BigDecimal.ZERO);
         BigDecimal subtotal = new BigDecimal(before.cuocGoc()).add(new BigDecimal(before.tienPhuThu()));
         MembershipPolicyService.Decision decision = membership.evaluate(em, customer, subtotal, now);
-        FareCalculator.Fare fare = calculator.calculateV1(km, tariff, extras, decision.discount());
+        Fare fare = calculator.calculateV1(km, tariff, extras, decision.discount());
         ChinhSachThanhVien policy = decision.policy();
         MembershipView tier = customer.getMaHang() == MembershipTier.THUONG ? null
                 : new MembershipView(customer.getMaHang().name(), customer.getMaHang().name(),
@@ -103,7 +115,7 @@ public final class QuoteService {
         return new EvaluationV1(tariff, fare, tier, extras, policy);
     }
 
-    record EvaluationV1(BieuPhi tariff, FareCalculator.Fare fare, MembershipView tier,
+    record EvaluationV1(BieuPhi tariff, Fare fare, MembershipView tier,
                         List<ChinhSachPhuThu> extras, ChinhSachThanhVien discountPolicy) {}
 
     static List<Parcel> normalizeParcels(List<Parcel> parcels) {
@@ -122,11 +134,5 @@ public final class QuoteService {
         return List.copyOf(normalized);
     }
 
-    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-    public record Parcel(String loaiHangHoa, String ghiChuBaoQuan, String khoiLuongKg) {}
-    public record MembershipView(String maHang, String tenHang, String phanTramGiamGia,
-                                 String ngayHetHan, boolean conHieuLuc) {}
-    public record Quote(String maBaoGia, String hetHanLuc, RouteService.Route loTrinh,
-                        FareCalculator.Fare cuoc, MembershipView hangThanhVien) {}
-    public record FrozenRequest(String maKh, RouteService.Route loTrinh, List<Parcel> kienHang) {}
+    public record FrozenRequest(String maKh, Route loTrinh, List<Parcel> kienHang) {}
 }

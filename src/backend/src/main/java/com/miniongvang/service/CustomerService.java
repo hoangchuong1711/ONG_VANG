@@ -1,6 +1,10 @@
 package com.miniongvang.service;
+import com.miniongvang.security.ActorContext;
+import com.miniongvang.dto.customer.CustomerDtos.Customer;
+import com.miniongvang.dto.customer.CustomerDtos.CustomerPage;
+import com.miniongvang.dto.quote.QuoteDtos.MembershipView;
 
-import com.miniongvang.DAO.CustomerDAO;
+import com.miniongvang.dao.CustomerDAO;
 import com.miniongvang.entity.KhachHang;
 import com.miniongvang.entity.enums.AccountRole;
 import com.miniongvang.entity.enums.AccountStatus;
@@ -22,7 +26,7 @@ public final class CustomerService {
         this.clock = clock;
     }
 
-    public CustomerPage search(AuthService.User actor, int page, int size, String query) {
+    public CustomerPage search(ActorContext actor, int page, int size, String query) {
         if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE)
             throw new IllegalArgumentException("Invalid page");
         String normalized = query == null ? null : query.strip().replaceAll("\\s+", " ");
@@ -47,11 +51,11 @@ public final class CustomerService {
     private static Customer view(KhachHang customer, MembershipPolicyService membership,
                                  jakarta.persistence.EntityManager em, Instant now) {
         var account = customer.getTaiKhoan();
-        QuoteService.MembershipView tier = null;
+        MembershipView tier = null;
         if (customer.getMaHang() != com.miniongvang.entity.enums.MembershipTier.THUONG) {
             var decision = membership.evaluate(em, customer, java.math.BigDecimal.ZERO, now);
             var policy = decision.policy();
-            tier = new QuoteService.MembershipView(customer.getMaHang().name(), customer.getMaHang().name(),
+            tier = new MembershipView(customer.getMaHang().name(), customer.getMaHang().name(),
                     policy == null ? "0.00" : policy.getTyLeGiam().setScale(2).toPlainString(),
                     customer.getThanhVienDen() == null ? null
                             : customer.getThanhVienDen().minusMillis(1).atZone(VIETNAM).toLocalDate().toString(),
@@ -61,8 +65,4 @@ public final class CustomerService {
                 account.getEmail(), customer.getDiaChiMacDinh(), tier);
     }
 
-    public record Customer(String maKh, String hoTen, String soDienThoai, String email,
-                           String diaChiMacDinh, QuoteService.MembershipView hangThanhVien) {}
-    public record CustomerPage(List<Customer> items, int page, int size,
-                               long totalElements, long totalPages) {}
 }

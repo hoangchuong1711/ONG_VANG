@@ -7,7 +7,7 @@
     "prepare": "node copy-swagger.mjs",
     "generate": "node generate-postman.mjs",
     "smoke": "node smoke.mjs",
-    "check": "node validate.mjs && node generate-postman.mjs --check && node --test swagger-config.test.mjs",
+    "check": "node validate.mjs && node generate-postman.mjs --check && node check-backend-boundaries.mjs && node --test swagger-config.test.mjs",
     "smoke:orders": "node order-smoke.mjs",
     "smoke:dispatch": "node dispatch-smoke.mjs",
     "smoke:progress": "node progress-smoke.mjs",

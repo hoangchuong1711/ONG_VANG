@@ -1,7 +1,9 @@
 package com.miniongvang.service;
+import com.miniongvang.security.ActorContext;
+import com.miniongvang.dto.payment.PaymentDtos.Payment;
 
-import com.miniongvang.DAO.DonHangDAO;
-import com.miniongvang.DAO.LanThanhToanDAO;
+import com.miniongvang.dao.DonHangDAO;
+import com.miniongvang.dao.LanThanhToanDAO;
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
 import com.miniongvang.integration.VnpayGateway;
@@ -153,7 +155,7 @@ public final class VnpayPaymentService {
         return PaymentEventResult.DA_AP_DUNG;
     }
 
-    public PaymentService.Payment reconcile(AuthService.User actor,String paymentId) {
+    public Payment reconcile(ActorContext actor,String paymentId) {
         if (paymentId==null || paymentId.isBlank() || paymentId.length()>36)
             throw new IllegalArgumentException("Invalid payment ID");
         // Read and call the gateway without holding an order/database lock.
@@ -190,7 +192,7 @@ public final class VnpayPaymentService {
         return transactions.run(em -> PaymentService.view(em,em.find(LanThanhToan.class,paymentId)));
     }
 
-    private record ReconcileTarget(PaymentService.Payment payment,String reference,Instant created) {}
+    private record ReconcileTarget(Payment payment,String reference,Instant created) {}
 
     private void markUnknown(String paymentId) {
         transactions.run(em -> {

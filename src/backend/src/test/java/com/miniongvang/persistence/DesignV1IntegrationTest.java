@@ -1,4 +1,9 @@
 package com.miniongvang.persistence;
+import com.miniongvang.security.ActorContext;
+import com.miniongvang.dto.order.OrderDtos.CreateOrder;
+import com.miniongvang.dto.payment.PaymentDtos.Payment;
+import com.miniongvang.dto.quote.QuoteDtos.Parcel;
+import com.miniongvang.dto.report.ReportDtos.Report;
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.entity.CuocDonHang;
 import com.miniongvang.entity.ChinhSachThanhVien;
@@ -67,29 +72,29 @@ class DesignV1IntegrationTest {
     private static PaymentService payments;
     private static String url;
 
-    private static AuthService.User customer(int n) {
-        return new AuthService.User("TK-DEMO-KH-" + n, "Customer", AccountRole.KHACH_HANG,
+    private static ActorContext customer(int n) {
+        return new ActorContext("TK-DEMO-KH-" + n, "Customer", AccountRole.KHACH_HANG,
                 "KH-DEMO-" + n, null);
     }
-    private static AuthService.User dispatcher() {
-        return new AuthService.User("TK-DEMO-NV", "Dispatcher", AccountRole.TONG_DAI,
+    private static ActorContext dispatcher() {
+        return new ActorContext("TK-DEMO-NV", "Dispatcher", AccountRole.TONG_DAI,
                 null, null);
     }
-    private static AuthService.User driver() {
-        return new AuthService.User("TK-DEMO-TX-1", "Driver", AccountRole.TAI_XE,
+    private static ActorContext driver() {
+        return new ActorContext("TK-DEMO-TX-1", "Driver", AccountRole.TAI_XE,
                 null, "TX-DEMO-1");
     }
-    private static AuthService.User admin() {
-        return new AuthService.User("TK-DEMO-ADMIN", "Administrator", AccountRole.CHU_DOI_XE, null, null);
+    private static ActorContext admin() {
+        return new ActorContext("TK-DEMO-ADMIN", "Administrator", AccountRole.CHU_DOI_XE, null, null);
     }
-    private static List<QuoteService.Parcel> parcels() {
-        return List.of(new QuoteService.Parcel("Tài liệu", null, "1.00"));
+    private static List<Parcel> parcels() {
+        return List.of(new Parcel("Tài liệu", null, "1.00"));
     }
     private static String newOrder() {
         var parcel = parcels();
         var quote = quotes.create(customer(1), null, "Quận 1", "Quận 3", parcel);
         return orders.create(customer(1), UUID.randomUUID().toString(),
-                new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
+                new CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
                         "0901234567", null, parcel)).maDon();
     }
 
@@ -124,7 +129,7 @@ class DesignV1IntegrationTest {
         var firstQuotes = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC));
         var firstOrders = new OrderService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC));
         var quote = firstQuotes.create(customer(1), null, "Quận 1", "Quận 3", parcels());
-        var request = new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels());
+        var request = new CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels());
         String key = UUID.randomUUID().toString();
         var original = firstOrders.create(customer(1), key, request);
         Instant expiry = start.plusSeconds(86400);
@@ -135,7 +140,7 @@ class DesignV1IntegrationTest {
                 () -> expiredOrders.create(customer(1), key, request)).getMessage());
         var freshQuote = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(expiry, ZoneOffset.UTC))
                 .create(customer(1), null, "Quận 1", "Quận 3", parcels());
-        var fresh = expiredOrders.create(customer(1), key, new OrderService.CreateOrder(freshQuote.maBaoGia(), null,
+        var fresh = expiredOrders.create(customer(1), key, new CreateOrder(freshQuote.maBaoGia(), null,
                 "Quận 1", "Quận 3", "0901234567", null, parcels()));
         assertNotEquals(original.maDon(), fresh.maDon());
         assertEquals(original.maDon(), dispatch.order(customer(1), original.maDon()).maDon());
@@ -172,7 +177,7 @@ class DesignV1IntegrationTest {
         assertEquals(oldEvents, dispatch.events(customer(1), old, 0, 20).items().size());
         assertEquals("DA_GAN", dispatch.order(customer(1), current).trangThai());
         tx.run(em -> {
-            var active = new com.miniongvang.DAO.DispatchDAO(em).activeOrder(current);
+            var active = new com.miniongvang.dao.DispatchDAO(em).activeOrder(current);
             assertNotNull(active); assertNull(active.getKetThucLuc()); assertNull(active.getKetQuaKetThuc());
             assertNull(em.find(com.miniongvang.entity.TaiXe.class, "TX-DEMO-1").getRanhTu());
             return null;
@@ -306,7 +311,7 @@ class DesignV1IntegrationTest {
         var quote = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC))
                 .create(customer(1), null, "Quận 1", "Quận 3", parcels());
         var original = new OrderService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC))
-                .create(customer(1), UUID.randomUUID().toString(), new OrderService.CreateOrder(quote.maBaoGia(), null,
+                .create(customer(1), UUID.randomUUID().toString(), new CreateOrder(quote.maBaoGia(), null,
                         "Quận 1", "Quận 3", "0901234567", null, parcels()));
         var before = dispatch.detail(customer(1), original.maDon());
         String successor = publishFareSuccessor(start, boundary);
@@ -365,11 +370,11 @@ class DesignV1IntegrationTest {
         var route = new RouteService(new FakeRouteProvider(), 30_000);
         var quote = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC))
                 .create(customer(1), null, "Quận 1", "Quận 3", parcels());
-        var original = new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels());
+        var original = new CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels());
         String[] tables = {"don_hang", "cuoc_don_hang", "chi_tiet_kien_hang", "phu_thu_don_hang", "nhat_ky_don_hang", "yeu_cau_tao_don"};
         long[] before = tableCounts(tables);
-        var changedParcels = new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null,
-                List.of(new QuoteService.Parcel("Tài liệu", null, "2.00")));
+        var changedParcels = new CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null,
+                List.of(new Parcel("Tài liệu", null, "2.00")));
         var atStart = new OrderService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC));
         assertEquals("QUOTE_CHANGED", assertThrows(OrderService.Conflict.class,
                 () -> atStart.create(customer(1), UUID.randomUUID().toString(), changedParcels)).getMessage());
@@ -382,7 +387,7 @@ class DesignV1IntegrationTest {
         // A fresh quote permits a deliberate retry; stale quote is never repriced silently.
         var fresh = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(boundary, ZoneOffset.UTC))
                 .create(customer(1), null, "Quận 1", "Quận 3", parcels());
-        var accepted = atBoundary.create(customer(1), UUID.randomUUID().toString(), new OrderService.CreateOrder(
+        var accepted = atBoundary.create(customer(1), UUID.randomUUID().toString(), new CreateOrder(
                 fresh.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels()));
         assertEquals(fresh.cuoc(), accepted.cuoc());
         assertEquals(1, tableCounts(new String[]{"don_hang"})[0]);
@@ -454,13 +459,13 @@ class DesignV1IntegrationTest {
         assertNotNull(memberQuote.hangThanhVien());
         assertTrue(memberQuote.hangThanhVien().ngayHetHan().matches("\\d{4}-\\d{2}-\\d{2}"));
         String key = UUID.randomUUID().toString();
-        var request = new OrderService.CreateOrder(memberQuote.maBaoGia(), null,
+        var request = new CreateOrder(memberQuote.maBaoGia(), null,
                 "Quận 1", "Quận 3", "0901234567", null, parcel);
         var created = orders.create(customer(2), key, request);
         assertEquals("TK-DEMO-KH-2", created.maTkTao());
         assertEquals(created, orders.create(customer(2), key, request));
         assertEquals("IDEMPOTENCY_CONFLICT", assertThrows(OrderService.Conflict.class,
-                () -> orders.create(customer(2), key, new OrderService.CreateOrder(memberQuote.maBaoGia(), null,
+                () -> orders.create(customer(2), key, new CreateOrder(memberQuote.maBaoGia(), null,
                         "Quận 1", "Quận 3", "0909999999", null, parcel))).getMessage());
         tx.run(em -> {
             DonHang order = em.find(DonHang.class, created.maDon());
@@ -510,7 +515,7 @@ class DesignV1IntegrationTest {
         var route = new RouteService(new FakeRouteProvider(), 30_000);
         var quote = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC))
                 .create(customer(1), null, "Quận 1", "Quận 3", parcels());
-        var request = new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
+        var request = new CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
                 "0901234567", null, parcels());
         var justBefore = new OrderService(db.entityManagerFactory(), route,
                 Clock.fixed(start.plusMillis(299_999), ZoneOffset.UTC));
@@ -526,7 +531,7 @@ class DesignV1IntegrationTest {
         var route = new RouteService(new FakeRouteProvider(), 30_000);
         var quote = new QuoteService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC))
                 .create(customer(1), null, "Quận 1", "Quận 3", parcels());
-        var request = new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
+        var request = new CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
                 "0901234567", null, parcels());
         String key = UUID.randomUUID().toString();
         var created = new OrderService(db.entityManagerFactory(), route, Clock.fixed(start, ZoneOffset.UTC))
@@ -540,7 +545,7 @@ class DesignV1IntegrationTest {
 
     @Test void failedIdempotencyWriteRollsBackWholeOrderAggregate() throws Exception {
         var quote = quotes.create(customer(1), null, "Quận 1", "Quận 3", parcels());
-        var request = new OrderService.CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
+        var request = new CreateOrder(quote.maBaoGia(), null, "Quận 1", "Quận 3",
                 "0901234567", null, parcels());
         String[] tables = {"don_hang", "cuoc_don_hang", "chi_tiet_kien_hang",
                 "phu_thu_don_hang", "nhat_ky_don_hang", "yeu_cau_tao_don"};
@@ -902,7 +907,7 @@ class DesignV1IntegrationTest {
                 () -> payments.createCash(customer(1), id, "another-key")).getMessage());
         assertThrows(SecurityException.class, () -> payments.confirmCash(customer(1), payment.maGiaoDich(),
                 new BigDecimal(payment.soTien())));
-        var wrongDriver = new AuthService.User("TK-DEMO-TX-2", "Other", AccountRole.TAI_XE, null, "TX-DEMO-2");
+        var wrongDriver = new ActorContext("TK-DEMO-TX-2", "Other", AccountRole.TAI_XE, null, "TX-DEMO-2");
         assertThrows(SecurityException.class, () -> payments.confirmCash(wrongDriver, payment.maGiaoDich(),
                 new BigDecimal(payment.soTien())));
         assertFalse(payments.confirmCash(driver(), payment.maGiaoDich(), new BigDecimal(payment.soTien())).canDoiSoat());
@@ -929,7 +934,7 @@ class DesignV1IntegrationTest {
     @Test void freeOrderDoesNotCreatePayment() {
         String id = completedOrder();
         tx.run(em -> {
-            var details = new com.miniongvang.DAO.DonHangDAO(em).findDetailsV1(id);
+            var details = new com.miniongvang.dao.DonHangDAO(em).findDetailsV1(id);
             BigDecimal extras = details.surcharges().stream()
                     .map(p -> p.getChinhSachPhuThu().getSoTien()).reduce(BigDecimal.ZERO, BigDecimal::add);
             details.fare().setTienGiamGia(details.fare().getCuocGoc().add(extras));
@@ -1060,10 +1065,10 @@ class DesignV1IntegrationTest {
                 URI.create("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"),
                 URI.create("http://127.0.0.1:1/query"), HttpClient.newHttpClient());
     }
-    private static Map<String,String> signedIpn(PaymentService.Payment payment,String amount,String status,String transaction) {
+    private static Map<String,String> signedIpn(Payment payment,String amount,String status,String transaction) {
         return signedIpn(payment,amount,status,transaction,VnpayGateway.orderInfo(payment.maDon()));
     }
-    private static Map<String,String> signedIpn(PaymentService.Payment payment,String amount,String status,
+    private static Map<String,String> signedIpn(Payment payment,String amount,String status,
                                                 String transaction,String orderInfo) {
         Map<String,String> message=new TreeMap<>();
         String reference=vnpayGateway().parseQuery(URI.create(payment.paymentUrl()).getRawQuery()).get("vnp_TxnRef");
@@ -1195,7 +1200,7 @@ class DesignV1IntegrationTest {
     }
 
     private static com.miniongvang.service.ReportService reports() { return new com.miniongvang.service.ReportService(db.entityManagerFactory()); }
-    private static com.miniongvang.service.ReportService.Report report(String from,String to,com.miniongvang.service.ReportService.Group group) {
+    private static Report report(String from,String to,com.miniongvang.dto.report.ReportDtos.Group group) {
         return reports().revenue(admin(),java.time.LocalDate.parse(from),java.time.LocalDate.parse(to),group);
     }
     private static void t17OrderTime(String id,String completed) {
@@ -1208,26 +1213,26 @@ class DesignV1IntegrationTest {
     }
     @Test void t17ReportsRequireActiveAdministratorAndValidDates() {
         var from=java.time.LocalDate.of(2026,10,1); var to=from.plusDays(1);
-        assertThrows(SecurityException.class,()->reports().revenue(customer(1),from,to,com.miniongvang.service.ReportService.Group.NGAY));
-        assertThrows(SecurityException.class,()->reports().revenue(dispatcher(),from,to,com.miniongvang.service.ReportService.Group.NGAY));
-        assertThrows(SecurityException.class,()->reports().revenue(driver(),from,to,com.miniongvang.service.ReportService.Group.NGAY));
-        assertThrows(SecurityException.class,()->reports().revenue(null,from,to,com.miniongvang.service.ReportService.Group.NGAY));
-        assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),to,from,com.miniongvang.service.ReportService.Group.NGAY));
-        assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),from,from,com.miniongvang.service.ReportService.Group.NGAY));
-        assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),null,to,com.miniongvang.service.ReportService.Group.NGAY));
+        assertThrows(SecurityException.class,()->reports().revenue(customer(1),from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
+        assertThrows(SecurityException.class,()->reports().revenue(dispatcher(),from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
+        assertThrows(SecurityException.class,()->reports().revenue(driver(),from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
+        assertThrows(SecurityException.class,()->reports().revenue(null,from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
+        assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),to,from,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
+        assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),from,from,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
+        assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),null,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
         tx.run(em->{em.find(com.miniongvang.entity.TaiKhoan.class,admin().maNguoiDung()).setTrangThai(com.miniongvang.entity.enums.AccountStatus.KHOA);return null;});
-        assertThrows(SecurityException.class,()->reports().revenue(admin(),from,to,com.miniongvang.service.ReportService.Group.NGAY));
+        assertThrows(SecurityException.class,()->reports().revenue(admin(),from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
     }
     @Test void t17EmptyPeriodIsZeroAndGroupingClipsCalendarBoundaries() {
-        var day=report("2026-10-01","2026-10-03",com.miniongvang.service.ReportService.Group.NGAY);
+        var day=report("2026-10-01","2026-10-03",com.miniongvang.dto.report.ReportDtos.Group.NGAY);
         assertEquals(2,day.items().size());assertEquals("2026-09-30T17:00:00Z",day.items().getFirst().batDau());
         assertEquals("0.00",day.tong().giaTriDonHoanTat());assertEquals("0.00",day.tong().tienThucThu());
         assertEquals("0.00",day.tong().tienThuChuaPhanBo());assertEquals("0.00",day.tong().cuocConPhaiThuCuoiKy());
         assertEquals(0,day.tong().soDonHoanTat());assertEquals(0,day.tong().soDonHuy());
-        var week=report("2026-10-01","2026-10-13",com.miniongvang.service.ReportService.Group.TUAN);
+        var week=report("2026-10-01","2026-10-13",com.miniongvang.dto.report.ReportDtos.Group.TUAN);
         assertEquals(3,week.items().size());assertEquals("2026-10-04T17:00:00Z",week.items().getFirst().ketThuc());
         assertEquals("2026-10-12T17:00:00Z",week.items().getLast().ketThuc());
-        var month=report("2026-09-29","2026-11-02",com.miniongvang.service.ReportService.Group.THANG);
+        var month=report("2026-09-29","2026-11-02",com.miniongvang.dto.report.ReportDtos.Group.THANG);
         assertEquals(3,month.items().size());assertEquals("2026-09-30T17:00:00Z",month.items().getFirst().ketThuc());
     }
     @Test void t17LaterReceiptDoesNotEraseEarlierReceivable() {
@@ -1235,24 +1240,24 @@ class DesignV1IntegrationTest {
         var payment=payments.createCash(customer(1),id,"t17-later");
         payments.confirmCash(driver(),payment.maGiaoDich(),new BigDecimal(fare));
         t17OrderTime(id,"2026-10-05T03:00:00Z");t17PaymentTime(payment.maGiaoDich(),"2026-10-07T03:00:00Z");
-        var early=report("2026-10-05","2026-10-06",com.miniongvang.service.ReportService.Group.NGAY);
+        var early=report("2026-10-05","2026-10-06",com.miniongvang.dto.report.ReportDtos.Group.NGAY);
         assertEquals(fare,early.tong().giaTriDonHoanTat());assertEquals("0.00",early.tong().tienThucThu());
         assertEquals(fare,early.tong().cuocConPhaiThuCuoiKy());
-        var beforeReceipt=report("2026-10-06","2026-10-07",com.miniongvang.service.ReportService.Group.NGAY);
+        var beforeReceipt=report("2026-10-06","2026-10-07",com.miniongvang.dto.report.ReportDtos.Group.NGAY);
         assertEquals("0.00",beforeReceipt.tong().giaTriDonHoanTat());assertEquals(fare,beforeReceipt.tong().cuocConPhaiThuCuoiKy());
-        var late=report("2026-10-07","2026-10-08",com.miniongvang.service.ReportService.Group.NGAY);
+        var late=report("2026-10-07","2026-10-08",com.miniongvang.dto.report.ReportDtos.Group.NGAY);
         assertEquals("0.00",late.tong().giaTriDonHoanTat());assertEquals(fare,late.tong().tienThucThu());
         assertEquals("0.00",late.tong().tienThuChuaPhanBo());assertEquals("0.00",late.tong().cuocConPhaiThuCuoiKy());
-        var whole=report("2026-10-05","2026-10-08",com.miniongvang.service.ReportService.Group.NGAY);
+        var whole=report("2026-10-05","2026-10-08",com.miniongvang.dto.report.ReportDtos.Group.NGAY);
         assertEquals("0.00",whole.tong().cuocConPhaiThuCuoiKy());
         assertEquals(fare,whole.items().getFirst().chiTieu().cuocConPhaiThuCuoiKy());
     }
     @Test void t17UnallocatedReceiptAndManyChildrenDoNotMultiplyFare() {
         tx.run(em->{var p=new ChinhSachPhuThu();p.setId("PHU-T17-2");p.setMaLoaiPhuThu("BAO_QUAN");p.setTenPhuThu("Bảo quản");
             p.setSoTien(new BigDecimal("7000.00"));p.setHieuLucTu(Instant.now().minusSeconds(60));p.setTrangThai(PolicyStatus.CONG_BO);em.persist(p);return null;});
-        var parcels=List.of(new QuoteService.Parcel("Hoa",null,"1.00"),new QuoteService.Parcel("Tài liệu",null,"2.00"));
+        var parcels=List.of(new Parcel("Hoa",null,"1.00"),new Parcel("Tài liệu",null,"2.00"));
         var q=quotes.create(customer(1),null,"Quận 1","Quận 3",parcels);
-        String id=orders.create(customer(1),UUID.randomUUID().toString(),new OrderService.CreateOrder(q.maBaoGia(),null,"Quận 1","Quận 3","0901234567",null,parcels)).maDon();
+        String id=orders.create(customer(1),UUID.randomUUID().toString(),new CreateOrder(q.maBaoGia(),null,"Quận 1","Quận 3","0901234567",null,parcels)).maDon();
         dispatch.assign(dispatcher(),id,"TX-DEMO-1");dispatch.transition(driver(),id,OrderStatus.DA_LAY_HANG);
         dispatch.transition(driver(),id,OrderStatus.DANG_GIAO);dispatch.transition(driver(),id,OrderStatus.HOAN_TAT);
         var partial=payments.createCash(customer(1),id,"t17-partial");payments.confirmCash(driver(),partial.maGiaoDich(),new BigDecimal("5000.00"));
@@ -1261,7 +1266,7 @@ class DesignV1IntegrationTest {
         tx.run(em->{ for(int i=0;i<3;i++){var e=new com.miniongvang.entity.SuKienThanhToan();e.setId(UUID.randomUUID().toString());
             e.setLanThanhToan(em.find(com.miniongvang.entity.LanThanhToan.class,full.maGiaoDich()));e.setNguon(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN);
             e.setKhoaSuKien(UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""));e.setNhanLuc(Instant.now());e.setChuKyHopLe(true);e.setKetQuaXuLy(PaymentEventResult.DA_AP_DUNG);e.setNoiDungJson("{}");em.persist(e);}return null;});
-        var result=report("2026-10-05","2026-10-06",com.miniongvang.service.ReportService.Group.NGAY).tong();
+        var result=report("2026-10-05","2026-10-06",com.miniongvang.dto.report.ReportDtos.Group.NGAY).tong();
         assertEquals(full.soTien(),result.giaTriDonHoanTat());assertEquals(1,result.soDonHoanTat());
         assertEquals(new BigDecimal(full.soTien()).add(new BigDecimal("5000.00")).toPlainString(),result.tienThucThu());
         assertEquals("5000.00",result.tienThuChuaPhanBo());assertEquals("0.00",result.cuocConPhaiThuCuoiKy());
@@ -1269,15 +1274,15 @@ class DesignV1IntegrationTest {
     @Test void t17EndBoundaryExcludesCompletionAndReceiptExactlyAtEnd() {
         String id=completedOrder();var p=payments.createCash(customer(1),id,"t17-boundary");payments.confirmCash(driver(),p.maGiaoDich(),new BigDecimal(p.soTien()));
         t17OrderTime(id,"2026-10-05T17:00:00Z");t17PaymentTime(p.maGiaoDich(),"2026-10-05T17:00:00Z");
-        var before=report("2026-10-05","2026-10-06",com.miniongvang.service.ReportService.Group.NGAY).tong();
+        var before=report("2026-10-05","2026-10-06",com.miniongvang.dto.report.ReportDtos.Group.NGAY).tong();
         assertEquals(0,before.soDonHoanTat());assertEquals("0.00",before.tienThucThu());assertEquals("0.00",before.cuocConPhaiThuCuoiKy());
-        var after=report("2026-10-06","2026-10-07",com.miniongvang.service.ReportService.Group.NGAY).tong();
+        var after=report("2026-10-06","2026-10-07",com.miniongvang.dto.report.ReportDtos.Group.NGAY).tong();
         assertEquals(1,after.soDonHoanTat());assertEquals(p.soTien(),after.tienThucThu());
     }
     @Test void t17CancelledAndPendingOrdersDoNotCreateRevenueOrDebt() {
         String id=newOrder();dispatch.cancel(customer(1),id,"Hủy kiểm thử");newOrder();
         tx.run(em->{var d=em.find(DonHang.class,id);d.setThoiGianTao(Instant.parse("2026-10-05T02:00:00Z"));d.setThoiGianHuy(Instant.parse("2026-10-05T03:00:00Z"));return null;});
-        var result=report("2026-10-05","2026-10-06",com.miniongvang.service.ReportService.Group.NGAY).tong();
+        var result=report("2026-10-05","2026-10-06",com.miniongvang.dto.report.ReportDtos.Group.NGAY).tong();
         assertEquals(1,result.soDonHuy());assertEquals(0,result.soDonHoanTat());assertEquals("0.00",result.giaTriDonHoanTat());
         assertEquals("0.00",result.cuocConPhaiThuCuoiKy());
     } 
@@ -1302,7 +1307,7 @@ class DesignV1IntegrationTest {
         dispatch.assign(dispatcher(), id, "TX-DEMO-1");
         dispatch.reject(driver(), id, "Không thể nhận đơn");
         dispatch.assign(dispatcher(), id, "TX-DEMO-2");
-        var second = new AuthService.User("TK-DEMO-TX-2", "Driver", AccountRole.TAI_XE, null, "TX-DEMO-2");
+        var second = new ActorContext("TK-DEMO-TX-2", "Driver", AccountRole.TAI_XE, null, "TX-DEMO-2");
         dispatch.transition(second, id, OrderStatus.DA_LAY_HANG);
         dispatch.transition(second, id, OrderStatus.DANG_GIAO);
         dispatch.transition(second, id, OrderStatus.HOAN_TAT);
@@ -1345,9 +1350,9 @@ class DesignV1IntegrationTest {
             extra.setHieuLucTu(Instant.now().minusSeconds(60)); extra.setTrangThai(PolicyStatus.CONG_BO);
             em.persist(extra); return null;
         });
-        var parcels = List.of(new QuoteService.Parcel("Hoa", null, "1.00"), new QuoteService.Parcel("Tài liệu", null, "2.00"));
+        var parcels = List.of(new Parcel("Hoa", null, "1.00"), new Parcel("Tài liệu", null, "2.00"));
         var quote = quotes.create(customer(1), null, "Quận 1", "Quận 3", parcels);
-        String id = orders.create(customer(1), UUID.randomUUID().toString(), new OrderService.CreateOrder(
+        String id = orders.create(customer(1), UUID.randomUUID().toString(), new CreateOrder(
                 quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels)).maDon();
         String other = newOrder();
         dispatch.assign(dispatcher(), id, "TX-DEMO-1");
@@ -1394,7 +1399,7 @@ class DesignV1IntegrationTest {
         var parcel = parcels();
         var quote = quotes.create(dispatcher(), "KH-DEMO-2", "Quận 1", "Quận 3", parcel);
         var order = orders.create(dispatcher(), UUID.randomUUID().toString(),
-                new OrderService.CreateOrder(quote.maBaoGia(), "KH-DEMO-2", "Quận 1", "Quận 3", "0901234567", null, parcel));
+                new CreateOrder(quote.maBaoGia(), "KH-DEMO-2", "Quận 1", "Quận 3", "0901234567", null, parcel));
         var detail = dispatch.detail(customer(2),order.maDon());
         assertEquals("TK-DEMO-NV",detail.maTkTao());
         assertNotNull(detail.phienBanChinhSach().giamGia());

@@ -1,4 +1,8 @@
 package com.miniongvang.controller;
+import com.miniongvang.dto.auth.AuthDtos.User;
+import com.miniongvang.dto.quote.QuoteDtos.Parcel;
+import com.miniongvang.dto.quote.QuoteDtos.CreateQuote;
+import com.miniongvang.web.JsonRequests;
 
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
@@ -18,26 +22,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.UUID;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 @WebServlet("/api/quotes")
 public final class QuoteServlet extends HttpServlet {
-    private static final ObjectMapper JSON = new ObjectMapper();
     private static final Set<String> FIELDS = Set.of("maKh", "diemLayHang", "diemGiaoHang", "kienHang");
     private static final Set<String> PARCEL_FIELDS = Set.of("loaiHangHoa", "ghiChuBaoQuan", "khoiLuongKg");
 
     @Override protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setHeader("Cache-Control", "no-store");
-        if (req.getContentType() == null || !req.getContentType().toLowerCase(java.util.Locale.ROOT).startsWith("application/json")) {
-            error(resp, 400, "JSON_INVALID"); return;
-        }
         JsonNode body;
-        try {
-            body = JSON.readTree(req.getInputStream());
-            if (body == null || !body.isObject()) { error(resp, 400, "JSON_INVALID"); return; }
-        } catch (Exception invalid) { error(resp, 400, "JSON_INVALID"); return; }
+        try { body = JsonRequests.object(req); }
+        catch (JsonRequests.InvalidJson invalid) { error(resp, 400, "JSON_INVALID"); return; }
         if (!fields(body, FIELDS) || !textIfPresent(body, "maKh") || !textIfPresent(body, "diemLayHang")
                 || !textIfPresent(body, "diemGiaoHang")) {
             error(resp, 400, "VALIDATION_ERROR"); return;
@@ -48,14 +44,14 @@ public final class QuoteServlet extends HttpServlet {
         }
         JsonNode packages = body.path("kienHang");
         if (!packages.isArray() || packages.isEmpty()) { error(resp, 400, "VALIDATION_ERROR"); return; }
-        List<QuoteService.Parcel> parcels = new ArrayList<>();
+        List<Parcel> parcels = new ArrayList<>();
         for (JsonNode item : packages) {
             if (!item.isObject() || !fields(item, PARCEL_FIELDS)
                     || !textIfPresent(item, "loaiHangHoa") || !textIfPresent(item, "ghiChuBaoQuan")
                     || !textIfPresent(item, "khoiLuongKg")) {
                 error(resp, 400, "VALIDATION_ERROR"); return;
             }
-            parcels.add(new QuoteService.Parcel(value(item, "loaiHangHoa"), value(item, "ghiChuBaoQuan"),
+            parcels.add(new Parcel(value(item, "loaiHangHoa"), value(item, "ghiChuBaoQuan"),
                     value(item, "khoiLuongKg")));
         }
         try {
@@ -63,10 +59,10 @@ public final class QuoteServlet extends HttpServlet {
             RouteService routes = (RouteService) getServletContext().getAttribute(RouteConfiguration.ATTRIBUTE);
             HttpSession session = req.getSession(false);
             String id = session == null ? null : (String) session.getAttribute("auth.userId");
-            AuthService.User actor = id == null ? null : new AuthService(persistence.entityManagerFactory()).current(id);
+            com.miniongvang.security.ActorContext actor = id == null ? null : new AuthService(persistence.entityManagerFactory()).currentActor(id);
             QuoteService service = new QuoteService(persistence.entityManagerFactory(), routes);
-            send(resp, 200, service.create(actor, maKh == null ? null : maKh.strip(), value(body, "diemLayHang"),
-                    value(body, "diemGiaoHang"), parcels));
+            send(resp, 200, service.create(actor, new CreateQuote(maKh == null ? null : maKh.strip(),
+                    value(body, "diemLayHang"), value(body, "diemGiaoHang"), parcels)));
         } catch (IllegalArgumentException invalid) { error(resp, 400, "VALIDATION_ERROR"); }
         catch (SecurityException forbidden) { error(resp, 403, "FORBIDDEN"); }
         catch (NoSuchElementException missing) { error(resp, 404, "RESOURCE_NOT_FOUND"); }
@@ -77,7 +73,7 @@ public final class QuoteServlet extends HttpServlet {
                 case ROUTE_PROVIDER_TIMEOUT -> 504;
             };
             error(resp, status, failure.kind().name());
-        } catch (FareCalculator.FareConfigurationException missing) { error(resp, 503, "FARE_CONFIG_MISSING"); }
+        } catch (com.miniongvang.service.FareCalculator.FareConfigurationException missing) { error(resp, 503, "FARE_CONFIG_MISSING"); }
         catch (RuntimeException failure) {
             getServletContext().log("Quote failed", failure);
             if (!resp.isCommitted()) error(resp, 500, "INTERNAL_ERROR");
@@ -85,24 +81,18 @@ public final class QuoteServlet extends HttpServlet {
     }
 
     private static boolean fields(JsonNode object, Set<String> allowed) {
-        for (String name : object.propertyNames()) if (!allowed.contains(name)) return false;
-        return true;
+        return JsonRequests.allowed(object, allowed);
     }
     private static boolean textIfPresent(JsonNode object, String name) {
-        JsonNode value = object.get(name);
-        return value == null || value.isTextual();
+        return JsonRequests.textIfPresent(object, name);
     }
     private static String value(JsonNode object, String name) {
-        JsonNode value = object.get(name);
-        return value == null ? null : value.textValue();
+        return JsonRequests.text(object, name);
     }
     private static void send(HttpServletResponse resp, int status, Object body) throws IOException {
-        resp.setStatus(status); resp.setContentType("application/json;charset=UTF-8");
-        JSON.writeValue(resp.getOutputStream(), body);
+        com.miniongvang.web.WebResponses.json(resp, status, body);
     }
     private static void error(HttpServletResponse resp, int status, String code) throws IOException {
-        send(resp, status, new ApiError(code, "Không thể thực hiện yêu cầu: " + code,
-                new Object[0], UUID.randomUUID().toString()));
+        com.miniongvang.web.WebResponses.error(resp, status, code);
     }
-    private record ApiError(String code, String message, Object[] fieldErrors, String traceId) {}
 }

@@ -1,4 +1,4 @@
-package com.miniongvang.DAO;
+package com.miniongvang.dao;
 
 import com.miniongvang.entity.LanThanhToan;
 import com.miniongvang.entity.XacNhanThanhToanDonHang;

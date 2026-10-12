@@ -1,6 +1,12 @@
 package com.miniongvang.service;
+import com.miniongvang.security.ActorContext;
+import com.miniongvang.dto.order.OrderDtos.CreateOrder;
+import com.miniongvang.dto.order.OrderDtos.Order;
+import com.miniongvang.dto.order.OrderDtos.PaymentSummary;
+import com.miniongvang.dto.quote.QuoteDtos.Quote;
+import com.miniongvang.dto.route.RouteDtos.Route;
 
-import com.miniongvang.DAO.*;
+import com.miniongvang.dao.*;
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
 import jakarta.persistence.EntityManagerFactory;
@@ -30,7 +36,7 @@ public final class OrderService {
         quotes = new QuoteService(factory, routes, clock);
     }
 
-    public Order create(AuthService.User actor, String key, CreateOrder input) {
+    public Order create(ActorContext actor, String key, CreateOrder input) {
         if (actor == null || actor.maNguoiDung() == null) throw new SecurityException("Authentication required");
         String customerId;
         if (actor.vaiTro() == AccountRole.KHACH_HANG) {
@@ -48,7 +54,7 @@ public final class OrderService {
         // Replay does not depend on quote expiry, current prices or provider availability.
         Order replay = transactions.run(em -> replay(new YeuCauTaoDonDAO(em).find(requestId), requestJson));
         if (replay != null) return replay;
-        RouteService.Route route = routes.estimate(request.diemLayHang(), request.diemGiaoHang());
+        Route route = routes.estimate(request.diemLayHang(), request.diemGiaoHang());
         return transactions.run(em -> {
             var requests = new YeuCauTaoDonDAO(em);
             TaiKhoan account = requests.lockActor(actor.maNguoiDung());
@@ -69,7 +75,7 @@ public final class OrderService {
             var frozen = JSON.readValue(quote.getYeuCauJson(), QuoteService.FrozenRequest.class);
             if (!customerId.equals(frozen.maKh()) || !route.equals(frozen.loTrinh())
                     || !request.kienHang().equals(frozen.kienHang())) throw new Conflict("QUOTE_CHANGED");
-            var old = JSON.readValue(quote.getKetQuaJson(), QuoteService.Quote.class);
+            var old = JSON.readValue(quote.getKetQuaJson(), Quote.class);
             var evaluated = quotes.evaluateV1(em, customerId, route, now);
             if (!quote.getMaBieuPhi().equals(evaluated.tariff().getId())
                     || !old.cuoc().equals(evaluated.fare()) || !Objects.equals(old.hangThanhVien(), evaluated.tier()))
@@ -148,17 +154,7 @@ public final class OrderService {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); }
         catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
-    public record CreateOrder(String maBaoGia, String maKh, String diemLayHang, String diemGiaoHang,
-                              String sdtNguoiNhan, String ghiChuGiaoHang, List<QuoteService.Parcel> kienHang) {}
-    public record PaymentSummary(String trangThai, String soTienConPhaiThu, boolean canDoiSoat) {
-        public PaymentSummary(String trangThai, String soTienConPhaiThu) {
-            this(trangThai, soTienConPhaiThu, false);
-        }
-    }
-    public record Order(String maDon, String thoiGianTao, String diemLayHang, String diemGiaoHang, String sdtNguoiNhan,
-                        String quangDuongKm, String ghiChuGiaoHang, String trangThai, String maKh, String maTx, String maTkTao,
-                        FareCalculator.Fare cuoc, List<QuoteService.Parcel> kienHang, PaymentSummary thanhToan,
-                        String hoanTatLuc, String huyLuc) {}
+
     public static final class Conflict extends RuntimeException {
         public Conflict(String code) { super(code); }
     }

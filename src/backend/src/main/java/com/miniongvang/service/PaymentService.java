@@ -1,8 +1,11 @@
 package com.miniongvang.service;
+import com.miniongvang.security.ActorContext;
+import com.miniongvang.dto.payment.PaymentDtos.Payment;
+import com.miniongvang.dto.payment.PaymentDtos.PaymentPage;
 
-import com.miniongvang.DAO.DispatchDAO;
-import com.miniongvang.DAO.DonHangDAO;
-import com.miniongvang.DAO.LanThanhToanDAO;
+import com.miniongvang.dao.DispatchDAO;
+import com.miniongvang.dao.DonHangDAO;
+import com.miniongvang.dao.LanThanhToanDAO;
 import com.miniongvang.integration.VnpayGateway;
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
@@ -30,7 +33,7 @@ public final class PaymentService {
         this.clock = clock;
     }
 
-    public Payment createCash(AuthService.User actor, String orderId, String key) {
+    public Payment createCash(ActorContext actor, String orderId, String key) {
         id(orderId);
         if (key == null || key.isBlank() || key.length() > 100 || !key.equals(key.strip()))
             throw new IllegalArgumentException("Invalid Idempotency-Key");
@@ -67,7 +70,7 @@ public final class PaymentService {
         });
     }
 
-    public Payment createOnline(AuthService.User actor, String orderId, String key, String clientIp, VnpayGateway gateway) {
+    public Payment createOnline(ActorContext actor, String orderId, String key, String clientIp, VnpayGateway gateway) {
         id(orderId);
         if (key == null || key.isBlank() || key.length() > 100 || !key.equals(key.strip()) || gateway == null)
             throw new IllegalArgumentException("Invalid online request");
@@ -104,7 +107,7 @@ public final class PaymentService {
         });
     }
 
-    public CashResult confirmCash(AuthService.User actor, String paymentId, BigDecimal received) {
+    public CashResult confirmCash(ActorContext actor, String paymentId, BigDecimal received) {
         id(paymentId);
         if (received == null || received.signum() <= 0 || received.scale() > 2
                 || received.stripTrailingZeros().scale() > 0
@@ -151,7 +154,7 @@ public final class PaymentService {
         });
     }
 
-    public Payment get(AuthService.User actor, String paymentId) {
+    public Payment get(ActorContext actor, String paymentId) {
         id(paymentId);
         return transactions.run(em -> {
             account(em, actor, AccountRole.KHACH_HANG, AccountRole.TAI_XE, AccountRole.TONG_DAI);
@@ -162,7 +165,7 @@ public final class PaymentService {
         });
     }
 
-    public PaymentPage list(AuthService.User actor, String orderId, int page, int size) {
+    public PaymentPage list(ActorContext actor, String orderId, int page, int size) {
         id(orderId);
         if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE)
             throw new IllegalArgumentException("Invalid pagination");
@@ -196,7 +199,7 @@ public final class PaymentService {
                 payment.getTrangThai() == PaymentStatus.THANH_CONG && !confirmed);
     }
 
-    private static boolean visible(EntityManager em, AuthService.User actor, DonHang order) {
+    private static boolean visible(EntityManager em, ActorContext actor, DonHang order) {
         return switch (actor.vaiTro()) {
             case TONG_DAI -> true;
             case KHACH_HANG -> order.getKhachHang().getId().equals(actor.maKh());
@@ -205,7 +208,7 @@ public final class PaymentService {
         };
     }
 
-    static TaiKhoan account(EntityManager em, AuthService.User actor, AccountRole... roles) {
+    static TaiKhoan account(EntityManager em, ActorContext actor, AccountRole... roles) {
         if (actor == null) throw new SecurityException("Missing actor");
         boolean allowed = false;
         for (AccountRole role : roles) if (role == actor.vaiTro()) allowed = true;
@@ -238,11 +241,6 @@ public final class PaymentService {
             throw new IllegalArgumentException("Invalid id");
     }
 
-    public record Payment(String maGiaoDich, String maDon, String soTien, PaymentMethod phuongThuc,
-                          PaymentStatus trangThai, String maGiaoDichDoiTac, String taoLuc,
-                          String thoiGianThanhToan, String paymentUrl, boolean daXacNhanDu,
-                          String soTienThucNhan, boolean canDoiSoat) {}
-    public record PaymentPage(List<Payment> items, int page, int size, long totalElements, long totalPages) {}
     public record CashResult(Payment payment, boolean canDoiSoat) {}
     public static final class Conflict extends RuntimeException { public Conflict(String code) { super(code); } }
     public static final class NotRequired extends RuntimeException {}

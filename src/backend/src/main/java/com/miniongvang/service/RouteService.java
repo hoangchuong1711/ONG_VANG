@@ -1,4 +1,6 @@
 package com.miniongvang.service;
+import com.miniongvang.dto.route.RouteDtos.Route;
+import com.miniongvang.dto.route.RouteDtos.EstimateRequest;
 
 import com.miniongvang.integration.RouteFailure;
 import com.miniongvang.integration.RouteProvider;
@@ -31,12 +33,14 @@ public final class RouteService {
         return new Route(data.origin(), data.destination(), km, data.durationSeconds(), true, data.source());
     }
 
+    public Route estimate(EstimateRequest request) {
+        return estimate(request.diemLayHang(), request.diemGiaoHang());
+    }
+
     private static String normalize(String raw) {
         if (raw == null) return null;
         String value = raw.strip().replaceAll("\\s+", " ");
         return value.isEmpty() || value.length() > 255 ? null : value;
     }
 
-    public record Route(String diemLayHang, String diemGiaoHang, String quangDuongKm,
-                        long thoiGianDuKienGiay, boolean trongPhamVi, String nguon) {}
 }

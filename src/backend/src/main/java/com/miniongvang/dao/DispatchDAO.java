@@ -1,4 +1,4 @@
-package com.miniongvang.DAO;
+package com.miniongvang.dao;
 
 import com.miniongvang.entity.DonHang;
 import com.miniongvang.entity.PhanCongDonHang;
@@ -42,6 +42,13 @@ public final class DispatchDAO {
                 .setParameter("id", order).setFirstResult(Math.multiplyExact(page, size))
                 .setMaxResults(size).getResultList();
         return new Events(items, total);
+    }
+
+    public int nextEventSequence(String order) {
+        Integer last = em.createQuery(
+                "select max(e.thuTu) from SuKienDonHang e where e.donHang.id=:id", Integer.class)
+                .setParameter("id", order).getSingleResult();
+        return last == null ? 1 : Math.addExact(last, 1);
     }
     public record Events(List<SuKienDonHang> items, long total) {}
 

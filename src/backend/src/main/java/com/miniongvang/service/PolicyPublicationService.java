@@ -1,4 +1,5 @@
 package com.miniongvang.service;
+import com.miniongvang.security.ActorContext;
 
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
@@ -26,14 +27,14 @@ public final class PolicyPublicationService {
         this.clock = clock;
     }
 
-    public void publishMembership(AuthService.User actor, String id) { change(actor, Kind.MEMBERSHIP, id, null); }
-    public void publishFare(AuthService.User actor, String id) { change(actor, Kind.FARE, id, null); }
-    public void publishSurcharge(AuthService.User actor, String id) { change(actor, Kind.SURCHARGE, id, null); }
-    public void closeMembership(AuthService.User actor, String id, Instant end) { change(actor, Kind.MEMBERSHIP, id, end); }
-    public void closeFare(AuthService.User actor, String id, Instant end) { change(actor, Kind.FARE, id, end); }
-    public void closeSurcharge(AuthService.User actor, String id, Instant end) { change(actor, Kind.SURCHARGE, id, end); }
+    public void publishMembership(ActorContext actor, String id) { change(actor, Kind.MEMBERSHIP, id, null); }
+    public void publishFare(ActorContext actor, String id) { change(actor, Kind.FARE, id, null); }
+    public void publishSurcharge(ActorContext actor, String id) { change(actor, Kind.SURCHARGE, id, null); }
+    public void closeMembership(ActorContext actor, String id, Instant end) { change(actor, Kind.MEMBERSHIP, id, end); }
+    public void closeFare(ActorContext actor, String id, Instant end) { change(actor, Kind.FARE, id, end); }
+    public void closeSurcharge(ActorContext actor, String id, Instant end) { change(actor, Kind.SURCHARGE, id, end); }
 
-    private void change(AuthService.User actor, Kind kind, String id, Instant end) {
+    private void change(ActorContext actor, Kind kind, String id, Instant end) {
         if (id == null || id.isBlank()) throw new IllegalArgumentException("Policy id required");
         Instant now = clock.instant().truncatedTo(ChronoUnit.MILLIS);
         transactions.run(em -> {
@@ -68,7 +69,7 @@ public final class PolicyPublicationService {
         });
     }
 
-    private static TaiKhoan admin(EntityManager em, AuthService.User actor) {
+    private static TaiKhoan admin(EntityManager em, ActorContext actor) {
         if (actor == null || actor.maNguoiDung() == null || actor.vaiTro() != AccountRole.CHU_DOI_XE)
             throw new SecurityException("Administrator required");
         TaiKhoan account = em.find(TaiKhoan.class, actor.maNguoiDung());

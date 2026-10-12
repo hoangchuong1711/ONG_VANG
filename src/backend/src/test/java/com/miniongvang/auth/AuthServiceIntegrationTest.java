@@ -1,4 +1,5 @@
 package com.miniongvang.auth;
+import com.miniongvang.dto.auth.AuthDtos.User;
 
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.service.AuthService;
@@ -34,15 +35,14 @@ class AuthServiceIntegrationTest {
 
     @Test void registersCustomerAndAuthenticatesByBothPhoneFormats() throws Exception {
         String phone = freshPhone();
-        AuthService.User user = auth.register("Khách thử", "+84" + phone.substring(1), "secret123", null, null);
+        User user = auth.register("Khách thử", "+84" + phone.substring(1), "secret123", null, null);
         try {
             assertEquals("KHACH_HANG", user.vaiTro().name());
             assertNotNull(user.maKh());
             assertEquals(user, auth.current(user.maNguoiDung()));
-            assertEquals(user.maNguoiDung(), auth.authenticate(phone, "secret123").getId());
-            assertEquals(user.maNguoiDung(), auth.authenticate("+84" + phone.substring(1), "secret123").getId());
-            assertNull(auth.authenticate(phone, "wrong"));
-            auth.recordLogin(user.maNguoiDung());
+            assertEquals(user.maNguoiDung(), auth.login(phone, "secret123").user().maNguoiDung());
+            assertEquals(user.maNguoiDung(), auth.login("+84" + phone.substring(1), "secret123").user().maNguoiDung());
+            assertEquals(AuthService.LoginStatus.INVALID_CREDENTIALS, auth.login(phone, "wrong").status());
             try (var c = DriverManager.getConnection(url, dbUser, dbPassword);
                  var p = c.prepareStatement("select t.username, t.mat_khau_hash, t.so_dien_thoai, t.lan_dang_nhap_cuoi from tai_khoan t join khach_hang k on k.ma_tk=t.ma_tk where t.ma_tk=?")) {
                 p.setString(1, user.maNguoiDung());
@@ -57,7 +57,7 @@ class AuthServiceIntegrationTest {
 
     @Test void duplicateNormalizedPhoneDoesNotCreateSecondProfile() throws Exception {
         String phone = freshPhone();
-        AuthService.User user = auth.register("Khách thử", phone, "secret123", null, null);
+        User user = auth.register("Khách thử", phone, "secret123", null, null);
         try {
             assertThrows(AuthService.AccountExistsException.class,
                     () -> auth.register("Khách khác", "+84" + phone.substring(1), "secret456", null, null));
@@ -67,14 +67,14 @@ class AuthServiceIntegrationTest {
 
     @Test void lockedAccountCannotResolveCurrentUser() throws Exception {
         String phone = freshPhone();
-        AuthService.User user = auth.register("Khách thử", phone, "secret123", null, null);
+        User user = auth.register("Khách thử", phone, "secret123", null, null);
         try {
             try (var c = DriverManager.getConnection(url, dbUser, dbPassword);
                  var p = c.prepareStatement("update tai_khoan set trang_thai='KHOA' where ma_tk=?")) {
                 p.setString(1, user.maNguoiDung()); assertEquals(1, p.executeUpdate());
             }
             assertNull(auth.current(user.maNguoiDung()));
-            assertNotNull(auth.authenticate(phone, "secret123"));
+            assertEquals(AuthService.LoginStatus.ACCOUNT_LOCKED, auth.login(phone, "secret123").status());
         } finally { cleanup(user.maNguoiDung()); }
     }
 
@@ -90,7 +90,7 @@ class AuthServiceIntegrationTest {
         try (var executor = Executors.newFixedThreadPool(2)) {
             var first = executor.submit(() -> attempt(phone));
             var second = executor.submit(() -> attempt(phone));
-            AuthService.User a = first.get(), b = second.get();
+            User a = first.get(), b = second.get();
             try {
                 assertTrue((a == null) != (b == null));
                 assertEquals(1, count(phone));
@@ -98,7 +98,7 @@ class AuthServiceIntegrationTest {
         }
     }
 
-    private static AuthService.User attempt(String phone) {
+    private static User attempt(String phone) {
         try { return auth.register("Khách thử", phone, "secret123", null, null); }
         catch (AuthService.AccountExistsException duplicate) { return null; }
     }

@@ -1,6 +1,10 @@
 package com.miniongvang.service;
+import com.miniongvang.dto.auth.AuthDtos.User;
+import com.miniongvang.dto.auth.AuthDtos.RegisterRequest;
+import com.miniongvang.dto.auth.AuthDtos.LoginRequest;
+import com.miniongvang.security.ActorContext;
 
-import com.miniongvang.DAO.TaiKhoanDAO;
+import com.miniongvang.dao.TaiKhoanDAO;
 import com.miniongvang.entity.KhachHang;
 import com.miniongvang.entity.TaiKhoan;
 import com.miniongvang.entity.enums.AccountRole;
@@ -18,14 +22,16 @@ public final class AuthService {
 
     public AuthService(EntityManagerFactory factory) { this.factory = factory; }
 
-    public record User(String maNguoiDung, String hoTen, AccountRole vaiTro,
-                       String maKh, String maTx) {}
-
     public static String normalizePhone(String input) {
         if (input == null) return null;
         String value = input.trim();
         if (value.matches("\\+84[0-9]{9}")) value = "0" + value.substring(3);
         return PHONE.matcher(value).matches() ? value : null;
+    }
+
+    public User register(RegisterRequest request) {
+        return register(request.hoTen(), request.soDienThoai(), request.password(),
+                request.email(), request.diaChiMacDinh());
     }
 
     public User register(String name, String phone, String password, String email, String address) {
@@ -60,41 +66,48 @@ public final class AuthService {
         }
     }
 
-    public TaiKhoan authenticate(String username, String password) {
+    public LoginResult login(String username, String password) {
         String phone = normalizePhone(username);
         String login = phone == null ? username.trim() : phone;
-        try (EntityManager em = factory.createEntityManager()) {
+        return new TransactionRunner(factory).run(em -> {
             TaiKhoan account = new TaiKhoanDAO(em).findByUsername(login).orElse(null);
-            if (account == null || !PasswordHasher.verify(password, account.getMatKhauHash())) return null;
-            return account;
-        }
+            if (account == null || !PasswordHasher.verify(password, account.getMatKhauHash()))
+                return new LoginResult(LoginStatus.INVALID_CREDENTIALS, null);
+            if (account.getTrangThai() != AccountStatus.HOAT_DONG)
+                return new LoginResult(LoginStatus.ACCOUNT_LOCKED, null);
+            account.setLanDangNhapCuoi(Instant.now());
+            return new LoginResult(LoginStatus.SUCCESS, user(em, account));
+        });
     }
 
-    public void recordLogin(String id) {
-        new TransactionRunner(factory).run(em -> {
-            TaiKhoan account = em.find(TaiKhoan.class, id);
-            if (account == null || account.getTrangThai() != AccountStatus.HOAT_DONG)
-                throw new IllegalStateException("Account became unavailable during login");
-            account.setLanDangNhapCuoi(Instant.now());
-            return null;
-        });
+    public LoginResult login(LoginRequest request) {
+        return login(request.username(), request.password());
     }
 
     public User current(String id) {
         try (EntityManager em = factory.createEntityManager()) {
-            TaiKhoan account = em.find(TaiKhoan.class, id);
+            TaiKhoan account = new TaiKhoanDAO(em).find(id);
             if (account == null || account.getTrangThai() != AccountStatus.HOAT_DONG) return null;
-            String maKh = null, maTx = null;
-            switch (account.getVaiTro()) {
-                case KHACH_HANG -> maKh = em.createQuery("select k.id from KhachHang k where k.taiKhoan.id = :id", String.class)
-                        .setParameter("id", id).getResultStream().findFirst().orElse(null);
-                case TAI_XE -> maTx = em.createQuery("select t.id from TaiXe t where t.taiKhoan.id = :id", String.class)
-                        .setParameter("id", id).getResultStream().findFirst().orElse(null);
-                default -> { }
-            }
-            return new User(id, account.getHoTen(), account.getVaiTro(), maKh, maTx);
+            return user(em, account);
         }
     }
+
+    public ActorContext currentActor(String id) {
+        User current = current(id);
+        return current == null ? null : new ActorContext(current.maNguoiDung(), current.hoTen(),
+                current.vaiTro(), current.maKh(), current.maTx());
+    }
+
+    private static User user(EntityManager em, TaiKhoan account) {
+        String id = account.getId();
+        TaiKhoanDAO accounts = new TaiKhoanDAO(em);
+        String maKh = account.getVaiTro() == AccountRole.KHACH_HANG ? accounts.customerProfileId(id) : null;
+        String maTx = account.getVaiTro() == AccountRole.TAI_XE ? accounts.driverProfileId(id) : null;
+        return new User(id, account.getHoTen(), account.getVaiTro(), maKh, maTx);
+    }
+
+    public enum LoginStatus { SUCCESS, INVALID_CREDENTIALS, ACCOUNT_LOCKED }
+    public record LoginResult(LoginStatus status, User user) {}
 
     private static boolean isUniqueViolation(Throwable error) {
         for (Throwable cause = error; cause != null; cause = cause.getCause()) {

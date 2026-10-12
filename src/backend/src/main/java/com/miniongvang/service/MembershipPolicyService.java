@@ -1,6 +1,6 @@
 package com.miniongvang.service;
 
-import com.miniongvang.DAO.ChinhSachThanhVienDAO;
+import com.miniongvang.dao.ChinhSachThanhVienDAO;
 import com.miniongvang.entity.ChinhSachThanhVien;
 import com.miniongvang.entity.KhachHang;
 import com.miniongvang.entity.enums.MembershipTier;
@@ -38,7 +38,7 @@ public final class MembershipPolicyService {
                 && (customer.getThanhVienDen() == null || at.isBefore(customer.getThanhVienDen()));
         if (!active) return new Decision(null, BigDecimal.ZERO.setScale(2), false);
         var matching = new ChinhSachThanhVienDAO(em).findApplicable(tier, at);
-        if (matching.size() > 1) throw new FareCalculator.FareConfigurationException();
+        if (matching.size() > 1) throw new com.miniongvang.service.FareCalculator.FareConfigurationException();
         if (matching.isEmpty()) return new Decision(null, BigDecimal.ZERO.setScale(2), false);
         ChinhSachThanhVien policy = matching.getFirst();
         BigDecimal discount = subtotal.multiply(policy.getTyLeGiam())

@@ -1,4 +1,6 @@
 package com.miniongvang.service;
+import com.miniongvang.dto.quote.FareDtos.Fare;
+import com.miniongvang.dto.quote.FareDtos.Surcharge;
 
 import com.miniongvang.entity.BieuPhi;
 import com.miniongvang.entity.ChinhSachPhuThu;
@@ -45,8 +47,5 @@ public final class FareCalculator {
         if (amount.compareTo(MAX_MONEY) > 0) throw new FareConfigurationException();
     }
 
-    public record Surcharge(String maPhuThu, String tenPhuThu, String soTienTinh) {}
-    public record Fare(String cuocGoc, String tienPhuThu, String tienGiamGia,
-                       String tongCuoc, String donViTien, List<Surcharge> phuThu) {}
     public static final class FareConfigurationException extends RuntimeException {}
 }

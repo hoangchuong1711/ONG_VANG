@@ -8,12 +8,9 @@ import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.UUID;
-import tools.jackson.databind.ObjectMapper;
 
 @WebServlet(urlPatterns={"/api/reports/revenue","/api/reports/revenue/export"})
 public final class ReportServlet extends HttpServlet {
-    private static final ObjectMapper JSON=new ObjectMapper();
     @Override protected void doGet(HttpServletRequest req,HttpServletResponse resp) throws IOException {
         resp.setHeader("Cache-Control","no-store");
         boolean export=req.getServletPath().endsWith("/export");
@@ -21,11 +18,11 @@ public final class ReportServlet extends HttpServlet {
             var persistence=(PersistenceContext)getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
             var session=req.getSession(false);
             String id=session==null?null:(String)session.getAttribute("auth.userId");
-            var actor=id==null?null:new AuthService(persistence.entityManagerFactory()).current(id);
+            var actor=id==null?null:new AuthService(persistence.entityManagerFactory()).currentActor(id);
             LocalDate from=date(req,"tuNgay"),to=date(req,"denNgay");
             String group=parameter(req,"nhomTheo",false);
             var report=new ReportService(persistence.entityManagerFactory()).revenue(actor,from,to,
-                    group==null?ReportService.Group.NGAY:ReportService.Group.valueOf(group));
+                    group==null?com.miniongvang.dto.report.ReportDtos.Group.NGAY:com.miniongvang.dto.report.ReportDtos.Group.valueOf(group));
             if(export) {
                 byte[] bytes;
                 try { bytes=new RevenueExcelExporter().export(report); }
@@ -35,7 +32,7 @@ public final class ReportServlet extends HttpServlet {
                 resp.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                 resp.setHeader("Content-Disposition","attachment; filename=\"revenue-"+from+"-"+to+".xlsx\"");
                 resp.setContentLength(bytes.length);resp.getOutputStream().write(bytes);
-            } else { resp.setContentType("application/json;charset=UTF-8");JSON.writeValue(resp.getOutputStream(),report); }
+            } else { com.miniongvang.web.WebResponses.json(resp, 200, report); }
         } catch(ReportService.DateRangeInvalid invalid) { error(resp,400,"DATE_RANGE_INVALID"); }
         catch(IllegalArgumentException invalid) { error(resp,400,"VALIDATION_ERROR"); }
         catch(SecurityException forbidden) { error(resp,403,"FORBIDDEN"); }
@@ -53,8 +50,6 @@ public final class ReportServlet extends HttpServlet {
         return values[0];
     }
     private static void error(HttpServletResponse resp,int status,String code) throws IOException {
-        resp.setStatus(status);resp.setContentType("application/json;charset=UTF-8");
-        JSON.writeValue(resp.getOutputStream(),new Error(code,"Không thể thực hiện yêu cầu: "+code,new Object[0],UUID.randomUUID().toString()));
+        com.miniongvang.web.WebResponses.error(resp, status, code);
     }
-    private record Error(String code,String message,Object[] fieldErrors,String traceId) {}
 }
