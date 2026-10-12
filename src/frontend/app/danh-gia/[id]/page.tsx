@@ -104,7 +104,7 @@ export default function DriverRatingPage() {
                   </h3>
                   <div className="flex items-center gap-2 text-xs text-stone-500 flex-wrap">
                     <span className="bg-stone-100 px-2 py-0.5 rounded text-stone-700 font-mono font-semibold">
-                      {order.driver?.plate || "59-K1 889.23"}
+                      {order.driver?.vehiclePlate || "59-K1 889.23"}
                     </span>
                     <span>·</span>
                     <span className="text-amber-600 font-bold">★ 4.9 (420+ chuyến)</span>
