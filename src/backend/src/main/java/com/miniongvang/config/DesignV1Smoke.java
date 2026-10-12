@@ -7,7 +7,6 @@ import com.miniongvang.entity.enums.AccountRole;
 import com.miniongvang.entity.enums.IncidentType;
 import com.miniongvang.entity.enums.OrderStatus;
 import com.miniongvang.integration.FakeRouteProvider;
-import com.miniongvang.service.AuthService;
 import com.miniongvang.service.DispatchService;
 import com.miniongvang.service.OrderService;
 import com.miniongvang.service.QuoteService;

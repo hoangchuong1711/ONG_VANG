@@ -1,5 +1,4 @@
 package com.miniongvang.controller;
-import com.miniongvang.dto.auth.AuthDtos.User;
 import com.miniongvang.dto.quote.QuoteDtos.Parcel;
 import com.miniongvang.dto.quote.QuoteDtos.CreateQuote;
 import com.miniongvang.web.JsonRequests;

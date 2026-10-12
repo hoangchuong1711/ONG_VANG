@@ -81,11 +81,11 @@ public final class DispatchEndpoint {
             }
             send(resp,responseStatus,result);
         } catch (JsonRequests.InvalidJson invalid) { error(resp,400,"JSON_INVALID"); }
-        catch (DispatchService.DateRangeInvalid invalid) { error(resp,400,"DATE_RANGE_INVALID"); }
+        catch (DispatchErrors.DateRangeInvalid invalid) { error(resp,400,"DATE_RANGE_INVALID"); }
         catch (IllegalArgumentException invalid) { error(resp,400,"VALIDATION_ERROR"); }
         catch (SecurityException forbidden) { error(resp,403,"FORBIDDEN"); }
         catch (NoSuchElementException missing) { error(resp,404,"RESOURCE_NOT_FOUND"); }
-        catch (DispatchService.Conflict conflict) { error(resp,409,conflict.getMessage()); }
+        catch (DispatchErrors.Conflict conflict) { error(resp,409,conflict.getMessage()); }
         catch (RuntimeException failure) {
             req.getServletContext().log("Dispatch request failed",failure);
             if (!resp.isCommitted()) error(resp,500,"INTERNAL_ERROR");
@@ -109,7 +109,7 @@ public final class DispatchEndpoint {
     private static LocalDate date(HttpServletRequest req,String name) {
         String value=parameter(req,name);
         try { return value==null?null:LocalDate.parse(value); }
-        catch (java.time.format.DateTimeParseException invalid) { throw new DispatchService.DateRangeInvalid(); }
+        catch (java.time.format.DateTimeParseException invalid) { throw new DispatchErrors.DateRangeInvalid(); }
     }
     private static <T extends Enum<T>> T enumeration(HttpServletRequest req,String name,Class<T> type) {
         String value=parameter(req,name); return value==null?null:Enum.valueOf(type,value);

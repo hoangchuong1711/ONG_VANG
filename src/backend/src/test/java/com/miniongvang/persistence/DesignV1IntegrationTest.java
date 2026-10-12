@@ -1,4 +1,5 @@
 package com.miniongvang.persistence;
+import com.miniongvang.service.DispatchErrors;
 import com.miniongvang.security.ActorContext;
 import com.miniongvang.dto.order.OrderDtos.CreateOrder;
 import com.miniongvang.dto.payment.PaymentDtos.Payment;
@@ -158,7 +159,7 @@ class DesignV1IntegrationTest {
             tx.run(em -> { em.createNativeQuery(change).executeUpdate(); return null; });
             assertTrue(dispatch.suggestions(dispatcher(), id, 0, 20).items().stream()
                     .noneMatch(d -> d.maTx().equals("TX-DEMO-1")), change);
-            assertEquals("DRIVER_UNAVAILABLE", assertThrows(DispatchService.Conflict.class,
+            assertEquals("DRIVER_UNAVAILABLE", assertThrows(DispatchErrors.Conflict.class,
                     () -> dispatch.assign(dispatcher(), id, "TX-DEMO-1"), change).getMessage());
             assertEquals("CHO_GAN", dispatch.order(customer(1), id).trangThai());
             assertEquals(1, dispatch.events(customer(1), id, 0, 20).items().size());
@@ -192,10 +193,10 @@ class DesignV1IntegrationTest {
         try {
             var cancel = pool.submit(() -> { ready.countDown(); start.await();
                 try { return dispatch.cancel(customer(1), id, "Race cancellation").trangThai(); }
-                catch (DispatchService.Conflict e) { return e.getMessage(); } });
+                catch (DispatchErrors.Conflict e) { return e.getMessage(); } });
             var pickup = pool.submit(() -> { ready.countDown(); start.await();
                 try { return dispatch.transition(driver(), id, OrderStatus.DA_LAY_HANG).trangThai(); }
-                catch (DispatchService.Conflict e) { return e.getMessage(); }
+                catch (DispatchErrors.Conflict e) { return e.getMessage(); }
                 catch (NoSuchElementException e) { return "RESOURCE_NOT_FOUND"; } });
             assertTrue(ready.await(10, TimeUnit.SECONDS)); start.countDown();
             String a = cancel.get(20, TimeUnit.SECONDS), b = pickup.get(20, TimeUnit.SECONDS);
@@ -620,7 +621,7 @@ class DesignV1IntegrationTest {
         assertEquals(OrderStatus.DA_HUY, events.get(1).trangThaiSau());
         assertEquals("TK-DEMO-KH-1", events.get(1).maTkThucHien());
         assertEquals("Đổi kế hoạch", events.get(1).ghiChu());
-        assertEquals("ORDER_STATE_CONFLICT", assertThrows(DispatchService.Conflict.class,
+        assertEquals("ORDER_STATE_CONFLICT", assertThrows(DispatchErrors.Conflict.class,
                 () -> dispatch.cancel(customer(1), id, "again")).getMessage());
         assertEquals(2, dispatch.events(customer(1), id, 0, 20).items().size());
     }
@@ -659,13 +660,13 @@ class DesignV1IntegrationTest {
             Instant lateCreated = tx.run(em -> em.find(DonHang.class, lateId).getThoiGianTao());
             var late = new DispatchService(db.entityManagerFactory(),
                     Clock.fixed(lateCreated.plusSeconds(seconds), ZoneOffset.UTC));
-            assertEquals("CANCELLATION_WINDOW_EXPIRED", assertThrows(DispatchService.Conflict.class,
+            assertEquals("CANCELLATION_WINDOW_EXPIRED", assertThrows(DispatchErrors.Conflict.class,
                     () -> late.cancel(customer(1), lateId, "too late")).getMessage());
         }
         String inProgress = newOrder();
         dispatch.assign(dispatcher(), inProgress, "TX-DEMO-1");
         dispatch.transition(driver(), inProgress, OrderStatus.DA_LAY_HANG);
-        assertEquals("ORDER_STATE_CONFLICT", assertThrows(DispatchService.Conflict.class,
+        assertEquals("ORDER_STATE_CONFLICT", assertThrows(DispatchErrors.Conflict.class,
                 () -> dispatch.cancel(customer(1), inProgress, "too late in lifecycle")).getMessage());
     }
 
@@ -674,7 +675,7 @@ class DesignV1IntegrationTest {
         try (var executor = Executors.newFixedThreadPool(2)) {
             var assign = executor.submit(() -> {
                 try { dispatch.assign(dispatcher(), id, "TX-DEMO-1"); return true; }
-                catch (DispatchService.Conflict conflict) {
+                catch (DispatchErrors.Conflict conflict) {
                     assertEquals("ORDER_STATE_CONFLICT", conflict.getMessage()); return false;
                 }
             });
@@ -722,7 +723,7 @@ class DesignV1IntegrationTest {
         String id = newOrder();
         dispatch.assign(dispatcher(), id, "TX-DEMO-1");
         assertEquals(OrderStatus.CHO_GAN.name(), dispatch.reject(driver(), id, "Xe hỏng").trangThai());
-        assertEquals("DRIVER_UNAVAILABLE", assertThrows(DispatchService.Conflict.class,
+        assertEquals("DRIVER_UNAVAILABLE", assertThrows(DispatchErrors.Conflict.class,
                 () -> dispatch.assign(dispatcher(), id, "TX-DEMO-1")).getMessage());
         assertEquals("TX-DEMO-2", dispatch.assign(dispatcher(), id, "TX-DEMO-2").maTx());
     }
@@ -760,7 +761,7 @@ class DesignV1IntegrationTest {
             assertEquals(1, statement.executeUpdate(change));
             var future = executor.submit(() -> {
                 try { dispatch.assign(dispatcher(), id, "TX-DEMO-1"); return "ASSIGNED"; }
-                catch (DispatchService.Conflict conflict) { return conflict.getMessage(); }
+                catch (DispatchErrors.Conflict conflict) { return conflict.getMessage(); }
             });
             assertThrows(java.util.concurrent.TimeoutException.class, () -> future.get(250, TimeUnit.MILLISECONDS));
             connection.commit();
@@ -878,7 +879,7 @@ class DesignV1IntegrationTest {
     }
     private static boolean assignOrConflict(String id, String driver) {
         try { dispatch.assign(dispatcher(), id, driver); return true; }
-        catch (DispatchService.Conflict conflict) { return false; }
+        catch (DispatchErrors.Conflict conflict) { return false; }
     }
 
     private static String completedOrder() {
@@ -1370,8 +1371,8 @@ class DesignV1IntegrationTest {
         assertTrue(dispatch.orders(customer(1), 10000, 20, null, null, null).items().isEmpty());
         var empty = dispatch.orders(customer(1), 0, 20, java.time.LocalDate.of(2099,1,1), java.time.LocalDate.of(2099,1,2), null);
         assertEquals(0, empty.totalElements()); assertEquals("0.00", empty.summary().tongCuoc());
-        assertThrows(DispatchService.DateRangeInvalid.class, () -> dispatch.orders(customer(1),0,20,java.time.LocalDate.of(2026,1,2),java.time.LocalDate.of(2026,1,1),null));
-        assertThrows(DispatchService.DateRangeInvalid.class, () -> dispatch.orders(customer(1),0,20,java.time.LocalDate.of(2026,1,1),java.time.LocalDate.of(2026,1,1),null));
+        assertThrows(DispatchErrors.DateRangeInvalid.class, () -> dispatch.orders(customer(1),0,20,java.time.LocalDate.of(2026,1,2),java.time.LocalDate.of(2026,1,1),null));
+        assertThrows(DispatchErrors.DateRangeInvalid.class, () -> dispatch.orders(customer(1),0,20,java.time.LocalDate.of(2026,1,1),java.time.LocalDate.of(2026,1,1),null));
         assertThrows(IllegalArgumentException.class, () -> dispatch.orders(customer(1),-1,20,null,null,null));
         assertThrows(IllegalArgumentException.class, () -> dispatch.orders(customer(1),0,101,null,null,null));
         assertFalse(dispatch.orders(customer(2),0,100,null,null,null).items().stream().anyMatch(o -> o.maDon().equals(id) || o.maDon().equals(other)));

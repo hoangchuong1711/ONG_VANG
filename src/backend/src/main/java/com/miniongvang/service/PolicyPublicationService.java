@@ -1,18 +1,17 @@
 package com.miniongvang.service;
 import com.miniongvang.security.ActorContext;
+import com.miniongvang.dao.PolicyPublicationDAO;
 
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.LockModeType;
-import java.sql.CallableStatement;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.UUID;
-import org.hibernate.Session;
 import tools.jackson.databind.ObjectMapper;
 
 /** Controlled internal publication path; every scope is serialized even when no published row exists. */
@@ -80,39 +79,14 @@ public final class PolicyPublicationService {
     }
 
     private static void lockScope(EntityManager em, String scope) {
-        em.unwrap(Session.class).doWork(connection -> {
-            try (CallableStatement call = connection.prepareCall("{? = call sp_getapplock(?, ?, ?, ?)}")) {
-                call.registerOutParameter(1, java.sql.Types.INTEGER);
-                call.setString(2, "designV1:policy:" + scope);
-                call.setString(3, "Exclusive");
-                call.setString(4, "Transaction");
-                call.setInt(5, 10_000);
-                call.execute();
-                if (call.getInt(1) < 0) throw new java.sql.SQLException("Policy publication lock unavailable");
-            }
-        });
+        new PolicyPublicationDAO(em).lockScope(scope);
     }
 
     private static boolean overlaps(EntityManager em, Kind kind, Object policy, String id,
                                     Instant start, Instant end) {
-        String sql = "SELECT COUNT(*) FROM dbo.[" + kind.table + "] WITH (UPDLOCK, HOLDLOCK) "
-                + "WHERE [trang_thai]=N'CONG_BO' AND [" + kind.idColumn + "]<>:id "
-                + kind.scopeClause + " AND ([hieu_luc_den] IS NULL OR [hieu_luc_den]>:start)";
-        if (end != null) sql += " AND [hieu_luc_tu]<:end";
-        if (kind == Kind.FARE) {
-            BieuPhi fare = (BieuPhi) policy;
-            if (fare.getKmToiDa() != null) sql += " AND [km_toi_thieu]<=:maxKm";
-            if (fare.getKmToiThieu() != null) sql += " AND ([km_toi_da] IS NULL OR [km_toi_da]>=:minKm)";
-        }
-        var query = em.createNativeQuery(sql).setParameter("id", id).setParameter("start", start);
-        if (end != null) query.setParameter("end", end);
-        if (kind != Kind.FARE) query.setParameter("scope", kind.scope(policy));
-        if (kind == Kind.FARE) {
-            BieuPhi fare = (BieuPhi) policy;
-            if (fare.getKmToiDa() != null) query.setParameter("maxKm", fare.getKmToiDa());
-            query.setParameter("minKm", fare.getKmToiThieu());
-        }
-        return ((Number) query.getSingleResult()).longValue() != 0;
+        BieuPhi fare = kind == Kind.FARE ? (BieuPhi) policy : null;
+        return new PolicyPublicationDAO(em).overlaps(kind.table, kind.scope(policy), id, start, end,
+                fare == null ? null : fare.getKmToiThieu(), fare == null ? null : fare.getKmToiDa());
     }
 
     private static String snapshot(Kind kind, Object policy) {
@@ -138,7 +112,7 @@ public final class PolicyPublicationService {
                               Instant now, String before, String after) {
         NhatKyKiemToan log = new NhatKyKiemToan();
         log.setId(UUID.randomUUID().toString()); log.setTaiKhoanThucHien(actor);
-        log.setNguon(AuditSource.NGUOI_DUNG); log.setLoaiDoiTuong(kind.table);
+        log.setNguon(AuditSource.NGUOI_DUNG); log.setLoaiDoiTuong(kind.table.tableName());
         log.setMaDoiTuong(id); log.setHanhDong(action); log.setThoiGian(now);
         log.setTruocJson(before); log.setSauJson(after);
         em.persist(log);
@@ -150,13 +124,13 @@ public final class PolicyPublicationService {
     private record SurchargeSnapshot(String type, String name, String amount, String start, String end, PolicyStatus status) {}
 
     private enum Kind {
-        MEMBERSHIP(ChinhSachThanhVien.class, "chinh_sach_thanh_vien", "ma_chinh_sach", "AND [ma_hang]=:scope"),
-        FARE(BieuPhi.class, "cau_hinh_cuoc", "ma_bieu_phi", ""),
-        SURCHARGE(ChinhSachPhuThu.class, "cau_hinh_phu_thu", "ma_phu_thu", "AND [ma_loai_phu_thu]=:scope");
+        MEMBERSHIP(ChinhSachThanhVien.class, PolicyPublicationDAO.Table.MEMBERSHIP),
+        FARE(BieuPhi.class, PolicyPublicationDAO.Table.FARE),
+        SURCHARGE(ChinhSachPhuThu.class, PolicyPublicationDAO.Table.SURCHARGE);
         final Class<?> entity;
-        final String table, idColumn, scopeClause;
-        Kind(Class<?> entity, String table, String idColumn, String scopeClause) {
-            this.entity = entity; this.table = table; this.idColumn = idColumn; this.scopeClause = scopeClause;
+        final PolicyPublicationDAO.Table table;
+        Kind(Class<?> entity, PolicyPublicationDAO.Table table) {
+            this.entity = entity; this.table = table;
         }
         String scope(Object p) {
             return switch (this) {

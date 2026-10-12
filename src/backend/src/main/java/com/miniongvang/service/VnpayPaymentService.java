@@ -211,8 +211,7 @@ public final class VnpayPaymentService {
     }
 
     private static SuKienThanhToan findEvent(EntityManager em,PaymentEventSource source,String hash) {
-        return em.createQuery("from SuKienThanhToan e where e.nguon=:source and e.khoaSuKien=:hash",SuKienThanhToan.class)
-                .setParameter("source",source).setParameter("hash",hash).getResultStream().findFirst().orElse(null);
+        return new LanThanhToanDAO(em).findEvent(source, hash);
     }
     private void event(EntityManager em,PaymentEventSource source,String hash,LanThanhToan payment,
                        boolean valid,PaymentEventResult result,Map<String,String> message) {

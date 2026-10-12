@@ -33,6 +33,12 @@ for (const file of await javaFiles(root)) {
   }
   if (relative === 'security/ActorContext.java' && /com\.miniongvang\.dto\./.test(source))
     violations.push(`${relative}: ngữ cảnh nghiệp vụ phụ thuộc DTO công khai`);
+  if (relative.startsWith('service/') && /\.(?:createQuery|createNativeQuery|prepareCall)\s*\(/.test(source))
+    violations.push(`${relative}: database query belongs in dao`);
+  if (relative.startsWith('dao/') && /com\.miniongvang\.(?:service|controller|web|dto)\./.test(source))
+    violations.push(`${relative}: dao depends on an upper layer`);
+  if (relative === 'service/DispatchQueryService.java' && /\bDispatchService\b/.test(source))
+    violations.push(`${relative}: query service depends on command facade`);
   if (/com\.miniongvang\.DAO\.|^package com\.miniongvang\.DAO;/m.test(source))
     violations.push(`${relative}: package DAO cũ`);
 }

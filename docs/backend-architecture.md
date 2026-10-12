@@ -16,6 +16,8 @@
 
 ## Quy tắc thêm API
 
+Phần đọc và ghi Dispatch dùng chung `DispatchAccess` để xác thực hồ sơ trong giao dịch và `DispatchErrors` để biểu diễn lỗi; `DispatchQueryService` không phụ thuộc ngược vào `DispatchService`. SQL/JPQL và khóa SQL Server của công bố chính sách nằm trong DAO. Service vẫn quản lý trạng thái Entity, khóa JPA và ranh giới giao dịch; đây là kiến trúc phân tầng với JPA, không phải mô hình domain độc lập persistence.
+
 1. Khai báo schema request/response và mã lỗi trong OpenAPI.
 2. Tạo hoặc cập nhật DTO ở nhóm nghiệp vụ tương ứng. Không trả Entity ra JSON.
 3. Parse JSON qua `JsonRequests`, kiểm tra giá trị ở biên HTTP, chuyển DTO vào service.

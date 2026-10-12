@@ -1,6 +1,8 @@
 package com.miniongvang.dao;
 
 import com.miniongvang.entity.LanThanhToan;
+import com.miniongvang.entity.SuKienThanhToan;
+import com.miniongvang.entity.enums.PaymentEventSource;
 import com.miniongvang.entity.XacNhanThanhToanDonHang;
 import com.miniongvang.entity.enums.PaymentStatus;
 import jakarta.persistence.EntityManager;
@@ -8,6 +10,12 @@ import java.util.List;
 
 public final class LanThanhToanDAO extends BaseDAO<LanThanhToan> {
     public LanThanhToanDAO(EntityManager em) { super(em, LanThanhToan.class); }
+
+    public SuKienThanhToan findEvent(PaymentEventSource source, String hash) {
+        return em.createQuery("from SuKienThanhToan e where e.nguon=:source and e.khoaSuKien=:hash", SuKienThanhToan.class)
+                .setParameter("source", source).setParameter("hash", hash)
+                .getResultStream().findFirst().orElse(null);
+    }
 
     public List<LanThanhToan> findAttempts(String orderId) {
         return em.createQuery("""

@@ -1,6 +1,5 @@
 package com.miniongvang.dto.route;
 
-import java.util.List;
 import com.miniongvang.entity.enums.*;
 
 /** JSON contract types for route endpoints. */

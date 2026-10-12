@@ -8,6 +8,8 @@ import com.miniongvang.dto.order.OrderDtos.Order;
 import com.miniongvang.dto.order.OrderHistoryDtos.Detail;
 
 import static com.miniongvang.service.DispatchQueryService.*;
+import static com.miniongvang.service.DispatchAccess.actor;
+import com.miniongvang.service.DispatchErrors.Conflict;
 import com.miniongvang.dao.*;
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
@@ -218,21 +220,6 @@ public final class DispatchService {
             throw new SecurityException("Account unavailable");
     }
 
-    static TaiKhoan actor(EntityManager em,ActorContext actor,AccountRole... roles) {
-        if (actor==null || actor.maNguoiDung()==null || !Arrays.asList(roles).contains(actor.vaiTro()))
-            throw new SecurityException("Role not allowed");
-        TaiKhoan account=em.find(TaiKhoan.class,actor.maNguoiDung());
-        if (account==null || account.getTrangThai()!=AccountStatus.HOAT_DONG || account.getVaiTro()!=actor.vaiTro())
-            throw new SecurityException("Account unavailable");
-        String bound=switch(actor.vaiTro()) {
-            case TONG_DAI -> account.getId();
-            case TAI_XE -> { var p=actor.maTx()==null?null:em.find(TaiXe.class,actor.maTx()); yield p==null?null:p.getTaiKhoan().getId(); }
-            case KHACH_HANG -> { var p=actor.maKh()==null?null:em.find(KhachHang.class,actor.maKh()); yield p==null?null:p.getTaiKhoan().getId(); }
-            default -> null;
-        };
-        if (!account.getId().equals(bound)) throw new SecurityException("Profile mismatch");
-        return account;
-    }
     private static int nextSequence(EntityManager em, String orderId) {
         return new DispatchDAO(em).nextEventSequence(orderId);
     }
@@ -257,6 +244,4 @@ public final class DispatchService {
         return event;
     }
 
-    public static final class Conflict extends RuntimeException { public Conflict(String code) { super(code); } }
-    public static final class DateRangeInvalid extends IllegalArgumentException {}
 }

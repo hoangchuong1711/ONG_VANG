@@ -29,9 +29,9 @@ public final class DispatchQueryService {
 
     public OrderPage orders(ActorContext actor, int page, int size, LocalDate from, LocalDate to, OrderStatus status) {
         page(page,size);
-        if (from != null && to != null && !from.isBefore(to)) throw new DispatchService.DateRangeInvalid();
+        if (from != null && to != null && !from.isBefore(to)) throw new DispatchErrors.DateRangeInvalid();
         return transactions.run(em -> {
-            DispatchService.actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
+            DispatchAccess.actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
             String profile = actor.vaiTro()==AccountRole.TAI_XE ? actor.maTx() : actor.maKh();
             var result = new DispatchDAO(em).orders(actor.vaiTro(),profile,status,
                     from==null?null:from.atStartOfDay(VIETNAM).toInstant(),
@@ -44,7 +44,7 @@ public final class DispatchQueryService {
     public Order order(ActorContext actor,String id) {
         id(id);
         return transactions.run(em -> {
-            DispatchService.actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
+            DispatchAccess.actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
             DonHang order=new DonHangDAO(em).find(id);
             if (order==null || !visible(em,actor,order)) throw new NoSuchElementException("Order not found");
             return view(em,id);
@@ -54,7 +54,7 @@ public final class DispatchQueryService {
     public Detail detail(ActorContext actor, String id) {
         id(id);
         return transactions.run(em -> {
-            DispatchService.actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
+            DispatchAccess.actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
             DonHang order = new DonHangDAO(em).find(id);
             if (order == null || !visible(em,actor,order)) throw new NoSuchElementException("Order not found");
             return OrderHistoryService.read(em, view(em,id));
@@ -64,7 +64,7 @@ public final class DispatchQueryService {
     public DriverPage drivers(ActorContext actor,int page,int size,DriverStatus status,Boolean busy) {
         page(page,size);
         return transactions.run(em -> {
-            DispatchService.actor(em,actor,AccountRole.TONG_DAI);
+            DispatchAccess.actor(em,actor,AccountRole.TONG_DAI);
             return driverPage(em,new DispatchDAO(em).drivers(status,busy,null,
                     LocalDate.ofInstant(clock.instant(),VIETNAM),page,size),page,size);
         });
@@ -73,10 +73,10 @@ public final class DispatchQueryService {
     public DriverPage suggestions(ActorContext actor,String id,int page,int size) {
         id(id); page(page,size);
         return transactions.run(em -> {
-            DispatchService.actor(em,actor,AccountRole.TONG_DAI);
+            DispatchAccess.actor(em,actor,AccountRole.TONG_DAI);
             DonHang order=new DonHangDAO(em).find(id);
             if (order==null) throw new NoSuchElementException("Order not found");
-            if (order.getTrangThai()!=OrderStatus.CHO_GAN) throw new DispatchService.Conflict("ORDER_STATE_CONFLICT");
+            if (order.getTrangThai()!=OrderStatus.CHO_GAN) throw new DispatchErrors.Conflict("ORDER_STATE_CONFLICT");
             return driverPage(em,new DispatchDAO(em).drivers(DriverStatus.ONLINE,false,id,
                     LocalDate.ofInstant(clock.instant(),VIETNAM),page,size),page,size);
         });
@@ -85,7 +85,7 @@ public final class DispatchQueryService {
     public EventPage events(ActorContext actor,String orderId,int page,int size) {
         id(orderId); page(page,size);
         return transactions.run(em -> {
-            DispatchService.actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
+            DispatchAccess.actor(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
             DonHang order=new DonHangDAO(em).find(orderId);
             if (order==null || !visible(em,actor,order)) throw new NoSuchElementException("Order not found");
             var result=new DispatchDAO(em).events(orderId,page,size);
