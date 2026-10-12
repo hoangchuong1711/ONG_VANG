@@ -213,13 +213,20 @@ class DesignV1IntegrationTest {
         if (!java.nio.file.Files.exists(scriptPath)) scriptPath = java.nio.file.Path.of("../../scripts/check-design-v1-invariants.sql");
         String sql = java.nio.file.Files.readString(scriptPath);
         try (var connection = db.dataSource().getConnection(); var statement = connection.createStatement()) {
-            statement.execute(sql);
+            try { statement.execute(sql); }
+            finally { statement.execute("SET NOCOUNT OFF"); }
         }
         tx.run(em -> { em.createNativeQuery("UPDATE dbo.thanh_toan SET so_tien_thuc_nhan=so_tien_thuc_nhan+1 WHERE ma_giao_dich=:id")
                 .setParameter("id", payment.maGiaoDich()).executeUpdate(); return null; });
         try (var connection = db.dataSource().getConnection(); var statement = connection.createStatement()) {
-            var error = assertThrows(java.sql.SQLException.class, () -> statement.execute(sql));
-            assertEquals(51010, error.getErrorCode());
+            try {
+                var error = assertThrows(java.sql.SQLException.class, () -> statement.execute(sql));
+                assertEquals(51010, error.getErrorCode());
+            } finally {
+                // Hikari returns this physical connection to Hibernate; restore
+                // JDBC row counts even when the reconciliation batch throws.
+                statement.execute("SET NOCOUNT OFF");
+            }
         } finally {
             tx.run(em -> { em.createNativeQuery("UPDATE dbo.thanh_toan SET so_tien_thuc_nhan=:amount WHERE ma_giao_dich=:id")
                     .setParameter("amount", new BigDecimal(payment.soTien())).setParameter("id", payment.maGiaoDich())

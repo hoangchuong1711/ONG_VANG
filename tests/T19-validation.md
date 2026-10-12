@@ -150,3 +150,8 @@ Chạy theo đúng thứ tự CI trên máy có Docker truy cập được MCR. 
 7. Ghi số test/check thực tế, giờ chạy, commit, phiên bản designV1, Actual, PASS/FAIL, bug và retest. Dọn riêng Compose test bằng `docker compose -f docker-compose.ci.yml down --volumes --remove-orphans`.
 
 Cho tới khi bước 2–6 chạy xong, T19 vẫn **In Progress/Blocked**, không phải Done. Tài liệu này không tái sử dụng số liệu kiểm thử schema PostgreSQL cũ hoặc các kết quả M1 lịch sử làm bằng chứng designV1 cho T19.
+
+
+## Retest V4 — lỗi fixture và bản sửa
+
+Log người dùng ngày 12/10/2026, 15:42:50 (+07:00): 70 tests, 0 failures, **11 errors**, 0 skipped; BUILD FAILURE. Các errors xảy ra ở resetFixture/seed với Hibernate `Unexpected row count: -1; expected: 1`. Ghi `T19-BUG-02`: test invariant chạy batch có SET NOCOUNT ON nhưng không khôi phục session khi trả connection về Hikari pool. Kết nối bị tái sử dụng khiến Hibernate không nhận row count của INSERT. Đã thêm finally SET NOCOUNT OFF cho cả nhánh thành công và lỗi 51010 của test; giữ nguyên assertion rollback/constraint. Bản sửa biên dịch được; kết quả runtime 70 test vẫn PENDING cho tới khi chạy lại clean verify trên SQL Server.
