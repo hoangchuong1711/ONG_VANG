@@ -898,4 +898,131 @@ class DesignV1IntegrationTest {
                     .executeUpdate(); return null;
         }));
     }
+
+    @Test void t16DetailKeepsPolicyVersionsAndProtectsOwnership() {
+        String id = newOrder();
+        var detail = dispatch.detail(customer(1), id);
+        assertEquals(dispatch.order(customer(1), id).cuoc(), detail.cuoc());
+        assertEquals("CUOC-DEMO-1", detail.phienBanChinhSach().bieuPhi().maBieuPhi());
+        assertNull(detail.phienBanChinhSach().giamGia());
+        assertNull(detail.xacNhanThanhToan());
+        assertTrue(detail.phanCong().isEmpty());
+        assertEquals(1, detail.nhatKy().getFirst().thuTu());
+        assertThrows(NoSuchElementException.class, () -> dispatch.detail(customer(2), id));
+        assertThrows(NoSuchElementException.class, () -> dispatch.events(customer(2), id, 0, 20));
+        assertThrows(SecurityException.class, () -> dispatch.detail(admin(), id));
+        assertThrows(SecurityException.class, () -> dispatch.detail(null, id));
+        assertEquals(id, dispatch.detail(dispatcher(), id).maDon());
+    }
+
+    @Test void t16DetailIncludesRejectedAssignmentsAndConfirmedPayment() {
+        String id = newOrder();
+        dispatch.assign(dispatcher(), id, "TX-DEMO-1");
+        dispatch.reject(driver(), id, "Không thể nhận đơn");
+        dispatch.assign(dispatcher(), id, "TX-DEMO-2");
+        var second = new AuthService.User("TK-DEMO-TX-2", "Driver", AccountRole.TAI_XE, null, "TX-DEMO-2");
+        dispatch.transition(second, id, OrderStatus.DA_LAY_HANG);
+        dispatch.transition(second, id, OrderStatus.DANG_GIAO);
+        dispatch.transition(second, id, OrderStatus.HOAN_TAT);
+        var payment = payments.createCash(customer(1), id, "t16-payment");
+        payments.confirmCash(second, payment.maGiaoDich(), new BigDecimal(payment.soTien()));
+        var detail = dispatch.detail(customer(1), id);
+        assertEquals(2, detail.phanCong().size());
+        assertTrue(detail.phanCong().stream().anyMatch(a -> "TU_CHOI".equals(a.ketQuaKetThuc()) && "Không thể nhận đơn".equals(a.lyDo())));
+        assertTrue(detail.phanCong().stream().anyMatch(a -> "HOAN_TAT".equals(a.ketQuaKetThuc())));
+        assertEquals(payment.maGiaoDich(), detail.xacNhanThanhToan().maGiaoDich());
+        assertEquals(payment.soTien(), detail.xacNhanThanhToan().soTienThucNhan());
+        assertEquals("TK-DEMO-TX-2", detail.xacNhanThanhToan().maTkXacNhan());
+        assertEquals("0.00", detail.thanhToan().soTienConPhaiThu());
+        var summary = dispatch.orders(customer(1), 0, 100, null, null, OrderStatus.HOAN_TAT);
+        assertEquals(1, summary.totalElements());
+        assertEquals(payment.soTien(), summary.summary().tongCuoc());
+        assertThrows(NoSuchElementException.class, () -> dispatch.detail(driver(), id));
+    }
+
+    @Test void t16EventsUseSequenceWhenTimestampsTie() {
+        String id = newOrder();
+        Instant same = tx.run(em -> em.find(DonHang.class, id).getThoiGianTao());
+        var frozen = new DispatchService(db.entityManagerFactory(), Clock.fixed(same, ZoneOffset.UTC));
+        frozen.assign(dispatcher(), id, "TX-DEMO-1");
+        frozen.reject(driver(), id, "Lý do từ chối");
+        var detail = dispatch.detail(customer(1), id);
+        assertEquals(3, detail.nhatKy().size());
+        for (int i = 0; i < 3; i++) {
+            assertEquals(i + 1, detail.nhatKy().get(i).thuTu());
+            assertEquals(same.toString(), detail.nhatKy().get(i).thoiGian());
+        }
+        assertEquals(2, dispatch.events(customer(1), id, 1, 1).items().getFirst().thuTu());
+    }
+
+    @Test void t16HistoryFiltersPagesAndSummarizesWithoutChildMultiplication() {
+        tx.run(em -> {
+            var extra = new ChinhSachPhuThu();
+            extra.setId("PHU-T16-2"); extra.setMaLoaiPhuThu("BAO_QUAN");
+            extra.setTenPhuThu("Phụ thu kiểm thử T16"); extra.setSoTien(new BigDecimal("7000.00"));
+            extra.setHieuLucTu(Instant.now().minusSeconds(60)); extra.setTrangThai(PolicyStatus.CONG_BO);
+            em.persist(extra); return null;
+        });
+        var parcels = List.of(new QuoteService.Parcel("Hoa", null, "1.00"), new QuoteService.Parcel("Tài liệu", null, "2.00"));
+        var quote = quotes.create(customer(1), null, "Quận 1", "Quận 3", parcels);
+        String id = orders.create(customer(1), UUID.randomUUID().toString(), new OrderService.CreateOrder(
+                quote.maBaoGia(), null, "Quận 1", "Quận 3", "0901234567", null, parcels)).maDon();
+        String other = newOrder();
+        dispatch.assign(dispatcher(), id, "TX-DEMO-1");
+        dispatch.reject(driver(), id, "Từ chối");
+        var page = dispatch.orders(customer(1), 0, 1, null, null, null);
+        var all = dispatch.orders(customer(1), 0, 100, null, null, null);
+        assertEquals(all.totalElements(), page.summary().tongSoDon());
+        assertEquals(all.summary(), page.summary());
+        BigDecimal sum = all.items().stream().map(o -> new BigDecimal(o.cuoc().tongCuoc())).reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertEquals(0, sum.compareTo(new BigDecimal(page.summary().tongCuoc())));
+        assertEquals(2, dispatch.detail(customer(1), id).kienHang().size());
+        assertEquals(2, dispatch.detail(customer(1), id).phienBanChinhSach().phuThu().size());
+        var status = dispatch.orders(customer(1), 0, 100, null, null, OrderStatus.CHO_GAN);
+        assertTrue(status.items().stream().allMatch(o -> o.trangThai().equals("CHO_GAN")));
+        assertTrue(dispatch.orders(customer(1), 10000, 20, null, null, null).items().isEmpty());
+        var empty = dispatch.orders(customer(1), 0, 20, java.time.LocalDate.of(2099,1,1), java.time.LocalDate.of(2099,1,2), null);
+        assertEquals(0, empty.totalElements()); assertEquals("0.00", empty.summary().tongCuoc());
+        assertThrows(DispatchService.DateRangeInvalid.class, () -> dispatch.orders(customer(1),0,20,java.time.LocalDate.of(2026,1,2),java.time.LocalDate.of(2026,1,1),null));
+        assertThrows(DispatchService.DateRangeInvalid.class, () -> dispatch.orders(customer(1),0,20,java.time.LocalDate.of(2026,1,1),java.time.LocalDate.of(2026,1,1),null));
+        assertThrows(IllegalArgumentException.class, () -> dispatch.orders(customer(1),-1,20,null,null,null));
+        assertThrows(IllegalArgumentException.class, () -> dispatch.orders(customer(1),0,101,null,null,null));
+        assertFalse(dispatch.orders(customer(2),0,100,null,null,null).items().stream().anyMatch(o -> o.maDon().equals(id) || o.maDon().equals(other)));
+    }
+
+    @Test void t16DatesUseVietnamDayBoundariesAndTotalsCoverAllPages() {
+        String first = newOrder(), second = newOrder(), excluded = newOrder();
+        tx.run(em -> {
+            em.find(DonHang.class, first).setThoiGianTao(Instant.parse("2026-10-10T17:00:00Z"));
+            em.find(DonHang.class, second).setThoiGianTao(Instant.parse("2026-10-11T16:59:59Z"));
+            em.find(DonHang.class, excluded).setThoiGianTao(Instant.parse("2026-10-11T17:00:00Z"));
+            return null;
+        });
+        var from = java.time.LocalDate.of(2026,10,11);
+        var to = from.plusDays(1);
+        var page = dispatch.orders(customer(1),0,1,from,to,null);
+        assertEquals(2, page.totalElements()); assertEquals(second,page.items().getFirst().maDon());
+        assertEquals(first,dispatch.orders(customer(1),1,1,from,to,null).items().getFirst().maDon());
+        assertEquals(0, new BigDecimal(page.summary().tongCuoc()).compareTo(
+                new BigDecimal(dispatch.order(customer(1),first).cuoc().tongCuoc())
+                        .add(new BigDecimal(dispatch.order(customer(1),second).cuoc().tongCuoc()))));
+    }
+
+    @Test void t16DispatcherCreatedOrderBelongsToCustomerAndUsesSavedDiscount() {
+        var parcel = parcels();
+        var quote = quotes.create(dispatcher(), "KH-DEMO-2", "Quận 1", "Quận 3", parcel);
+        var order = orders.create(dispatcher(), UUID.randomUUID().toString(),
+                new OrderService.CreateOrder(quote.maBaoGia(), "KH-DEMO-2", "Quận 1", "Quận 3", "0901234567", null, parcel));
+        var detail = dispatch.detail(customer(2),order.maDon());
+        assertEquals("TK-DEMO-NV",detail.maTkTao());
+        assertNotNull(detail.phienBanChinhSach().giamGia());
+        String saved = tx.run(em -> em.find(CuocDonHang.class,order.maDon()).getChinhSachGiam().getId());
+        assertEquals(saved,detail.phienBanChinhSach().giamGia().maChinhSach());
+        var cutoff = Instant.now().plusSeconds(60).truncatedTo(ChronoUnit.MILLIS);
+        new PolicyPublicationService(db.entityManagerFactory()).closeFare(admin(),"CUOC-DEMO-1",cutoff);
+        assertEquals(detail.cuoc(),dispatch.detail(customer(2),order.maDon()).cuoc());
+        assertEquals("CUOC-DEMO-1",dispatch.detail(customer(2),order.maDon()).phienBanChinhSach().bieuPhi().maBieuPhi());
+        assertThrows(NoSuchElementException.class,()->dispatch.detail(customer(1),order.maDon()));
+        assertTrue(dispatch.orders(customer(2),0,100,null,null,null).items().stream().anyMatch(o->o.maDon().equals(order.maDon())));
+    }
 }

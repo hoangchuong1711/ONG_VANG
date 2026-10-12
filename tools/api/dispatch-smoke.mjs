@@ -12,7 +12,7 @@ assert.equal(health.databaseName, 'mini_ong_vang_test', 'Dispatch smoke writes f
 assert(process.env.DEMO_PASSWORD, 'Seed isolated DB with DEMO_PASSWORD before dispatch smoke');
 const spec = JSON.parse(readFileSync(new URL('../../src/backend/src/main/webapp/openapi.json', import.meta.url), 'utf8'));
 const ajv = new Ajv2020({ strict: false }); addFormats(ajv);
-const schemas = Object.fromEntries(['Order', 'OrderPage', 'DriverPage', 'Error'].map(name => [name,
+const schemas = Object.fromEntries(['Order', 'OrderDetail', 'OrderPage', 'DriverPage', 'Error'].map(name => [name,
   ajv.compile({ $ref: '#/components/schemas/' + name, components: spec.components })]));
 let checks = 0;
 class Client {
@@ -86,15 +86,15 @@ const free = await dispatcher.call('/api/drivers?trangThaiHoatDong=ONLINE&dangBa
 assert.equal(free.totalElements, 2);
 assert(free.items.every(d => !('cccd' in d) && !d.dangBanChuyen));
 await dispatcher.call('/api/orders?size=1', undefined, 200, 'OrderPage');
-await customer.call(path, undefined, 200, 'Order');
+await customer.call(path, undefined, 200, 'OrderDetail');
 await driver1.call(path, undefined, 404, 'Error', 'RESOURCE_NOT_FOUND');
 await dispatcher.headWithBody(path + '/assignments', { maTx: 'TX-DEMO-1' });
-assert.equal((await customer.call(path, undefined, 200, 'Order')).trangThai, 'CHO_GAN');
+assert.equal((await customer.call(path, undefined, 200, 'OrderDetail')).trangThai, 'CHO_GAN');
 const assignments = await Promise.all(Array.from({ length: 8 }, () => dispatcher.raw(path + '/assignments', { maTx: 'TX-DEMO-1' })));
 assert.equal(assignments.filter(r => r.status === 200).length, 1);
 assert.equal(assignments.filter(r => r.status === 409 && r.body.code === 'ORDER_STATE_CONFLICT').length, 7);
 assignments.forEach(r => { assert(schemas[r.status === 200 ? 'Order' : 'Error'](r.body)); checks++; });
-const assigned = await driver1.call(path, undefined, 200, 'Order');
+const assigned = await driver1.call(path, undefined, 200, 'OrderDetail');
 assert.equal(assigned.maTx, 'TX-DEMO-1'); assert.equal(assigned.trangThai, 'DA_GAN'); assert.deepEqual(assigned.cuoc, order.cuoc);
 const driverPage = await driver1.call('/api/orders?trangThai=DA_GAN', undefined, 200, 'OrderPage');
 assert.deepEqual(driverPage.items.map(o => o.maDon), [order.maDon]);
@@ -105,7 +105,7 @@ await driver1.call(path + '/reject', { lyDo: 'Xe hỏng' }, 403, 'Error', 'CSRF_
 await driver1.call(path + '/reject', { lyDo: '  ' }, 400, 'Error', 'VALIDATION_ERROR');
 await driver1.call(path + '/reject', { lyDo: 'x'.repeat(501) }, 400, 'Error', 'VALIDATION_ERROR');
 await driver1.headWithBody(path + '/reject', { lyDo: 'HEAD must never reject' });
-assert.equal((await driver1.call(path, undefined, 200, 'Order')).trangThai, 'DA_GAN');
+assert.equal((await driver1.call(path, undefined, 200, 'OrderDetail')).trangThai, 'DA_GAN');
 const rejected = await driver1.call(path + '/reject', { lyDo: 'Xe hỏng' }, 200, 'Order');
 assert.equal(rejected.trangThai, 'CHO_GAN'); assert.equal(rejected.maTx, null);
 await driver1.call(path, undefined, 404, 'Error', 'RESOURCE_NOT_FOUND');

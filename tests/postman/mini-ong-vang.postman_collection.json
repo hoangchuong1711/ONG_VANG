@@ -600,7 +600,7 @@
               ],
               "query": []
             },
-            "description": "Chi tiết đơn và trạng thái thanh toán\n\nKhách sở hữu, tổng đài hoặc tài xế hiện được giao/có lịch sử phân công không bị từ chối. Sai chủ đơn trả 404 để tránh lộ tài nguyên. Trả cước snapshot và trạng thái thanh toán từ dữ liệu đã lưu.\n\nStatus: implemented; UC: UC-19, UC-13, UC-08; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+            "description": "Chi tiết đơn và trạng thái thanh toán\n\nKhách sở hữu, tổng đài hoặc tài xế hiện được giao/có lịch sử phân công không bị từ chối. Sai chủ đơn trả 404 để tránh lộ tài nguyên. Trả cước snapshot và trạng thái thanh toán từ dữ liệu đã lưu. T16: chi tiết bổ sung phiên bản chính sách đã chốt, toàn bộ phân công, giao dịch được xác nhận và nhật ký theo thuTu. Giữ quyền truy cập hiện hành; đơn người khác trả 404.\n\nStatus: implemented; UC: UC-19, UC-13, UC-08; roles: KHACH_HANG, TONG_DAI, TAI_XE"
           },
           "event": [
             {
@@ -628,6 +628,10 @@
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
                   "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
                   "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                  "  pm.test('Response has phienBanChinhSach', () => pm.expect(body).to.have.property('phienBanChinhSach'));",
+                  "  pm.test('Response has phanCong', () => pm.expect(body).to.have.property('phanCong'));",
+                  "  pm.test('Response has xacNhanThanhToan', () => pm.expect(body).to.have.property('xacNhanThanhToan'));",
+                  "  pm.test('Response has nhatKy', () => pm.expect(body).to.have.property('nhatKy'));",
                   "}"
                 ]
               }
@@ -2290,7 +2294,7 @@
               ],
               "query": []
             },
-            "description": "Chi tiết đơn và trạng thái thanh toán\n\nKhách sở hữu, tổng đài hoặc tài xế hiện được giao/có lịch sử phân công không bị từ chối. Sai chủ đơn trả 404 để tránh lộ tài nguyên. Trả cước snapshot và trạng thái thanh toán từ dữ liệu đã lưu.\n\nStatus: implemented; UC: UC-19, UC-13, UC-08; roles: KHACH_HANG, TONG_DAI, TAI_XE"
+            "description": "Chi tiết đơn và trạng thái thanh toán\n\nKhách sở hữu, tổng đài hoặc tài xế hiện được giao/có lịch sử phân công không bị từ chối. Sai chủ đơn trả 404 để tránh lộ tài nguyên. Trả cước snapshot và trạng thái thanh toán từ dữ liệu đã lưu. T16: chi tiết bổ sung phiên bản chính sách đã chốt, toàn bộ phân công, giao dịch được xác nhận và nhật ký theo thuTu. Giữ quyền truy cập hiện hành; đơn người khác trả 404.\n\nStatus: implemented; UC: UC-19, UC-13, UC-08; roles: KHACH_HANG, TONG_DAI, TAI_XE"
           },
           "event": [
             {
