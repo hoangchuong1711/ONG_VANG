@@ -1,164 +1,110 @@
-# T19 — Hồi quy tích hợp backend trên designV1
+# T19 — Báo cáo hồi quy backend trên SQL Server designV1
 
-## Kết quả thực thi trên Windows — 12/10/2026
+Ngày kiểm thử: 12/10/2026 (Asia/Bangkok, UTC+07:00). Người chạy local: Le Nguyen Thanh Hien, Windows 11/Git Bash. Nhánh `feat/t19-backend-integration`; HEAD cho lượt HTTP được người dùng xác nhận: `f3b94f12aacc6c9c0a7912bf841a6de9ecbbdd48`. Retest Java 73 test chạy sau bản test bổ sung và sửa assertion DT04 được cung cấp tại `a75fea9`; log cuối không kèm git rev-parse HEAD riêng. Kết quả dưới đây được đối chiếu từ log terminal người dùng cung cấp, không phải chạy SQL Server trong cloud.
 
-Người chạy: Le Nguyen Thanh Hien; nhánh `feat/t19-backend-integration`. Bằng chứng là ba log terminal người dùng cung cấp trong phiên làm việc, ghi thời gian Maven 15:17 và reset/seed 15:23 ngày 12/10/2026 (+07:00). Lượt retest 15:31 ngày 12/10/2026 cung cấp `git rev-parse HEAD`: `d00db8c07c456c43b15ed3b8f4b5c6dcb2d14cee`. DB là SQL Server 16.0 (`mini_ong_vang_test`, cổng 15433), migration designV1; không dùng kết quả PostgreSQL cũ.
+SQL Server 2022 (JDBC báo 16.0), database test riêng `mini_ong_vang_test`, cổng 15433; backend test cổng 18081. Flyway validate 4 migration designV1 V1–V4, JPA validate trong startup. Không sử dụng kết quả PostgreSQL hoặc schema cũ làm bằng chứng.
+
+## Kết luận và giới hạn
+
+**Các suite đã chạy đạt: 73 Java tests và 348 HTTP checks nghiệp vụ**, contract check và invariant mới trước/sau reset đạt. Các nhánh DT04/DT05/DT07 thiếu trước đó đã được bổ sung và retest đạt lúc 16:08:21 (+07:00). Ma trận DT01–DT27 dưới đây ghi Expected, Actual và nguồn test. Phần thực hiện/kiểm thử T19 sẵn sàng review; trạng thái Done theo CONTRIBUTING vẫn cần reviewer khác approve, CI PR đạt và merge vào develop.
+
+VNPay dùng gateway/callback có chữ ký giả lập trong integration test, không gọi Sandbox thật. Không có test UI chức năng. Kết quả PASS trong ma trận áp dụng các tình huống/assertion được nêu và không chứng minh các luồng ngoài phạm vi hoặc Sandbox thật.
+
+Dòng kết quả và SHA-256 của các log gốc: [T19-evidence.md](T19-evidence.md).
+
+## Expected / Actual của lần thực thi cuối
 
 | Bước | Expected | Actual | Kết quả |
 | --- | --- | --- | --- |
-| SQL Server test + initializer | DB test cô lập sẵn sàng | Docker DB healthy, initializer hoàn tất; JDBC/Flyway kết nối SQL Server 16.0, databaseName=mini_ong_vang_test | PASS |
-| Maven clean verify | Test DB thực sự chạy; không failure/error/skip | 63 tests: Auth 5, SQL Server 2, DesignV1 44, unit khác 12; 0 failure/error/skipped; BUILD SUCCESS | PASS |
-| OpenAPI/Postman/CSRF | Contract và artifacts đồng bộ | npm check đạt: 29 operations, 12 UCs, 287 examples; 2 CSRF tests đạt | PASS |
-| Smoke chung | WAR/spec/assets và BE/DB hoạt động | Spec khớp source; Swagger assets được phục vụ; health=200 connected | PASS |
-| T10 tạo đơn | Validation, replay và concurrent create đạt | 24 HTTP checks passed | PASS |
-| T16 lịch sử | Ownership, pagination, filters, totals, schema đạt | 27 HTTP checks passed | PASS |
-| T13 hủy | Quyền, lý do, hủy đơn chờ/đã gán và giải phóng tài xế đạt | 34 HTTP checks passed | PASS |
-| T17 báo cáo/Excel | Quyền quản trị, receipts, unallocated receipts và XLSX khớp API | 53 HTTP checks passed | PASS |
-| T14 tiền mặt | Đúng trạng thái/người xác nhận, replay và chặn thanh toán trùng | 32 HTTP checks passed | PASS |
-| T11 điều phối | Quyền/CSRF, gán/từ chối và hai race 8 request đạt | 85 HTTP checks passed | PASS |
-| Reset/seed rồi T12 tiến trình | Fixture mới; state machine và completion đạt | Reset/seed BUILD SUCCESS; 93 HTTP checks passed | PASS |
-| Đối chiếu designV1 sau progress | Các invariant được script kiểm tra không có vi phạm | sqlcmd -b: `designV1 invariant reconciliation passed` | PASS |
+| Maven clean verify | Toàn bộ test chạy với REQUIRE_TEST_DB=true, không lỗi/skip | 16:08:21: 73 tests, 0 failures/errors/skipped; Auth 5, SQL Server 2, DesignV1 54, unit 12; BUILD SUCCESS | PASS |
+| OpenAPI/Postman/CSRF | Contract, examples và artifact đồng bộ | 29 operations / 12 UCs / 287 examples; 2 CSRF tests pass | PASS |
+| Smoke chung sau rebuild V4 | Spec/assets và DB thật hoạt động | Spec khớp source; health=200 connected; Swagger JS/CSS được phục vụ | PASS |
+| T10 tạo đơn | Validate/replay/concurrency đạt | 24 HTTP checks | PASS |
+| T16 lịch sử | Ownership/phân trang/lọc/tổng/schema đạt | 27 HTTP checks | PASS |
+| T13 hủy | Quyền/lý do/hủy và giải phóng tài xế đạt | 34 HTTP checks | PASS |
+| T17 báo cáo/Excel | Quyền, receipts/unallocated và XLSX khớp JSON | 53 HTTP checks | PASS |
+| T14 tiền mặt | Quyền/trạng thái/replay/chặn thu trùng | 32 HTTP checks | PASS |
+| T11 điều phối | Quyền/CSRF/gán/từ chối và race | 85 HTTP checks | PASS |
+| Invariant trước reset | Profile/role/order/event/policy và payment hợp lệ | sqlcmd -b: designV1 invariant reconciliation passed | PASS |
+| Reset/seed rồi T12 | Fixture mới; tiến trình/sự cố/hoàn tất | 15:54:08 reset/seed BUILD SUCCESS; 93 HTTP checks | PASS |
+| Invariant sau progress | Dữ liệu lượt progress nhất quán | sqlcmd -b: designV1 invariant reconciliation passed | PASS |
 
-Tổng: **63 Java tests và 348 HTTP checks nghiệp vụ đạt**, cộng smoke chung và API contract check. Các log ERROR do test cố ý inject lỗi/vi phạm constraint có suite kết thúc với 0 failure/error. VNPay callback được kiểm tra bằng gateway giả lập trong DesignV1IntegrationTest; chưa có bằng chứng thanh toán VNPay Sandbox thật.
+348 = 24 + 27 + 34 + 53 + 32 + 85 + 93; smoke chung và contract không cộng vào số này. Các lần chạy lặp lại chỉ là retest, không cộng để tăng số lượng case.
 
-## Bổ sung hồi quy và đối chiếu — chờ chạy lại bản mới
+## Truy vết 12 UC
 
-Lượt người dùng chạy lại lúc 15:31 (+07:00) tại `d00db8c` đạt 53 HTTP checks báo cáo, 32 tiền mặt và invariant trước reset. Script của commit đó chưa có truy vấn kiểm tra số tiền xác nhận thanh toán, nên kết quả chỉ chứng minh các invariant cũ.
+| UC | Kiểm thử thực thi | Kết quả và phạm vi |
+| --- | --- | --- |
+| UC-01 | AuthServiceIntegrationTest + đăng ký/login/session/CSRF trong các smoke | PASS |
+| UC-02 | DesignV1IntegrationTest + smoke:orders | PASS |
+| UC-03 | FareCalculatorTest + quote/order integration, DT04/DT07 mới | PASS |
+| UC-04 | RouteServiceTest, GoongRouteProviderTest + smoke:orders | PASS; Goong HTTP provider giả lập |
+| UC-05 | Membership/window/policy integration, DT05 expiry mới | PASS |
+| UC-08 | Cash payment integration + smoke:payment/reports | PASS |
+| UC-10 | VNPay IPN/Return/query integration trên SQL Server | PASS giả lập; Sandbox thật chưa chạy |
+| UC-12 | Dispatch integration + smoke:dispatch | PASS |
+| UC-13 | Lifecycle integration + smoke:progress | PASS |
+| UC-14 | Cancellation/rollback/race integration + smoke:cancel | PASS |
+| UC-15 | Report integration, exporter unit + smoke:reports | PASS |
+| UC-19 | History/detail integration + smoke:history | PASS |
 
-T19 hiện bổ sung migration V4: trigger chặn hồ sơ khách/tài xế gắn sai role và chặn thay đổi vai trò tài khoản. FK trước đó chỉ chứng minh tài khoản tồn tại, chưa bảo vệ role/profile. Ghi nhận `T19-BUG-01`, phát hiện qua rà DDL; sửa đã biên dịch nhưng kiểm chứng SQL Server còn PENDING, chưa ghi PASS.
+## Ma trận DT01–DT27
 
-Script invariant được bổ sung đối chiếu khoản xác nhận với đúng đơn HOAN_TAT, payment thành công và đúng tổng cước; chặn nhiều payment chưa giải quyết trên một đơn, payment trước hoàn tất/đơn miễn cước và callback DA_AP_DUNG thiếu chữ ký hợp lệ/liên kết payment. CI và README chạy invariant cả trước reset lẫn sau progress.
+Các tên test không có tiền tố lớp thuộc `src/backend/src/test/java/com/miniongvang/persistence/DesignV1IntegrationTest.java`. Actual được xác nhận từ suite 54 test đạt cùng các log smoke; không có log kết quả từng assertion riêng. HTTP đã chạy trên f3b94f1; các commit sau đó chỉ thay test Java, không đổi mã nghiệp vụ, migration, smoke script hoặc invariant SQL.
 
-| DT / nhánh thiếu | Test bổ sung | Expected | Actual / kết quả |
-| --- | --- | --- | --- |
-| DT01 | dt01WrongProfileRoleAndDuplicateProfileAreRejectedAtomically | Sai role, đổi role hoặc hồ sơ trùng bị SQL Server chặn; không đổi hồ sơ cũ | Biên dịch đạt; runtime PENDING |
-| DT09 | dt09IdempotencyExpiresAtExactlyTwentyFourHoursWithoutDeletingOldOrder | Replay trước 24 giờ; đúng 24 giờ cần quote mới; đơn cũ giữ nguyên | Biên dịch đạt; runtime PENDING |
-| DT12 | dt12SuggestionsAndAssignmentRejectEveryIneligibleDriver | Cả gợi ý và gán chặn thiếu xe/xe tắt/GPLX hết hạn/account khóa | Biên dịch đạt; runtime PENDING |
-| DT15 | dt15CompletedReplayCannotCloseDriversNewAssignment | Retry đơn cũ không đổi timestamp/event hoặc assignment mới | Biên dịch đạt; runtime PENDING |
-| DT16 | dt16CancellationRacingPickupLeavesOneConsistentOutcome | Barrier cho hai worker; chỉ hủy hoặc lấy hàng thắng, trạng thái/assignment/tài xế nhất quán | Biên dịch đạt; runtime PENDING |
-| DT26 | dt26DeletingReferencedAccountPolicyOrOrderCannotEraseHistory | Xóa lịch sử bị chặn bởi FK/trigger, toàn bộ số dòng giữ nguyên | Biên dịch đạt; runtime PENDING |
-| Payment invariant | t19InvariantQueryAcceptsValidPaymentAndDetectsWrongConfirmedAmount | Script chấp nhận khoản thu đúng; sai số tiền xác nhận bị lỗi 51010 | Biên dịch đạt; runtime PENDING |
-
-Cần pull bản mới, chạy `clean verify` với REQUIRE_TEST_DB=true (dự kiến **70 test**, trong đó DesignV1 51), rồi chạy lại nhóm reports/payment và script invariant mới trước reset. 70 là số mong đợi, chưa phải kết quả đã chạy. Gateway VNPay vẫn giả lập; không ghi Sandbox thật đã PASS.
-
-## Bug và retest cập nhật
-
-- `ENV-T19-01`: cloud vẫn không tải được MCR; trên máy Windows người dùng, image SQL Server tải được và toàn suite/HTTP đã chạy. Trở ngại thực thi local đã giải quyết.
-- `T19-COV-01`: smoke tiền mặt mới thêm vào workflow đã được chạy local: 32 checks PASS. CI trên PR vẫn cần kết quả riêng.
-- Lần đầu người dùng dán cú pháp PowerShell vào Git Bash, nên DB tests không chạy (chỉ 12 unit tests). Sau đổi sang `export`, chạy lại đạt 63 tests, gồm 44 DesignV1 integration tests. Chỉ lần chạy lại được dùng làm bằng chứng DB.
-
-## Phạm vi còn cần xác nhận
-
-Kết quả PASS của suite không tự chứng minh đủ mọi nhánh trong DT01–DT27. Ma trận Expected bên dưới giữ làm checklist; các trạng thái BLOCKED trong đó mô tả lần cloud ban đầu, đã được thay bằng kết quả suite local ở trên. Cần đối chiếu từng assertion với từng nhánh DT, đặc biệt ca chưa có test riêng như key hết hạn đúng 24 giờ, sai role/profile, và bảo vệ xóa lịch sử; không đánh dấu toàn bộ 27 ca PASS chỉ dựa trên tổng số test.
-
-Truy vấn invariant trong log cuối chạy sau reset/seed và smoke progress. Nó xác nhận dữ liệu của lượt progress; không phải đối chiếu dữ liệu tiền mặt/báo cáo từ lượt trước, vì reset đã xóa lượt đó. Cần chạy invariant trước reset giữa hai nhóm để có bằng chứng riêng cho dữ liệu thanh toán/báo cáo/điều phối. T19 chưa được ghi Done cho đến khi hoàn tất đối chiếu độ phủ, phần bằng chứng còn thiếu và PR review/CI/merge.
-
----
-
-# Lần thử ban đầu trên cloud — lịch sử
-
-Ngày: 12/10/2026. Nhánh: `feat/t19-backend-integration`. Commit nền: `a2a5aefaf8fb91e2be8beb4cb6ba50b0a70897ee` (`source/develop`, PR #16 đã merge). Schema yêu cầu: SQL Server 2022, designV1 Flyway V1 + V2, DB kiểm thử cô lập `mini_ong_vang_test`.
-
-## Kết luận lần chạy hiện tại
-
-**T19 chưa đạt; phần kiểm thử SQL Server/API bị BLOCKED do môi trường không tải được image SQL Server.** `docker compose ... up db-test` và `docker pull mcr.microsoft.com/mssql/server:2022-latest` đều kết thúc với `Forbidden` khi Docker tải layer từ MCR. Không có container/DB SQL Server được tạo, vì vậy không chạy Maven integration suite, HTTP smoke trên SQL Server, hoặc truy vấn đối chiếu dữ liệu. Không đánh dấu các ca DB là FAIL hay PASS khi chưa thực thi.
-
-Các kiểm tra độc lập DB đã thực sự chạy:
-
-| Kiểm tra | Expected | Actual | Kết quả |
-| --- | --- | --- | --- |
-| `npm run check --prefix tools/api` | OpenAPI/Postman hợp lệ; các test Swagger CSRF đạt | 29 operation, 12 UC, 287 example hợp lệ; Postman đồng bộ; 2 test pass, 0 fail/skip | PASS |
-| Unit tests không cần DB (FareCalculator, GoongRouteProvider, RouteService, RevenueExcelExporter, PasswordHasher) | Tất cả test được chọn đạt | 12 test, 0 failure, 0 error, 0 skipped | PASS |
-| Maven compile/package trên designV1 | Main/test source biên dịch, WAR đóng gói | 87 main source và 8 test source biên dịch; `BUILD SUCCESS` với `-DskipTests` | PASS (chỉ build, không phải kết quả test) |
-| Khởi tạo SQL Server test | Image SQL Server 2022 chạy và DB test sẵn sàng | Registry `mcr.microsoft.com` trả `Forbidden`; không có DB test | BLOCKED |
-| Maven integration tests, 12 UC, HTTP smoke, đối chiếu SQL | Chạy trên SQL Server designV1; không skip | Chưa chạy vì DB prerequisite không có | BLOCKED / NOT RUN |
-
-Không có bug nghiệp vụ nào được xác nhận trong lần chạy này: kiểm thử tích hợp chưa chạy đến code runtime. Bug môi trường ghi nhận là `ENV-T19-01` — Docker registry từ chối tải image. Re-test cần chạy lại trên máy/runner truy cập được MCR hoặc sau khi registry khả dụng.
-
-## Chuỗi 12 UC và kết quả
-
-Các suite dưới đây đã có trong repo; cột kết quả mô tả lần chạy T19 hiện tại, không phải trạng thái code hay kết quả lịch sử. T19 bổ sung bước HTTP smoke tiền mặt vào workflow CI vì script đã tồn tại nhưng trước đó chưa được gọi trực tiếp trong workflow. Callback VNPay được kiểm tra bằng integration test với gateway giả lập, không gọi Sandbox thật.
-
-| UC | Phạm vi | Bằng chứng dự kiến | Expected | Actual / kết quả T19 |
+| DT | Expected | Test / bằng chứng | Actual | Kết quả |
 | --- | --- | --- | --- | --- |
-| UC-01 | Đăng ký, đăng nhập, session, role, CSRF | `AuthServiceIntegrationTest`, API check | Tài khoản/profile nguyên tử; phân quyền và CSRF đúng | Integration BLOCKED; API contract check PASS nhưng không thay runtime test |
-| UC-02 | Tạo đơn, validate, replay/idempotency | `DesignV1IntegrationTest`, `smoke:orders` | Aggregate đơn/cước/kiện/event/cache cùng transaction; retry không tạo đơn trùng | DB/HTTP BLOCKED |
-| UC-03 | Báo giá, tính cước, làm tròn | `FareCalculatorTest`, `DesignV1IntegrationTest`, order smoke | Cước breakdown chính xác; không âm/tràn; báo giá hết hạn bị từ chối | Unit subtests PASS; DB integration BLOCKED |
-| UC-04 | Chuẩn hóa tuyến và kiểm tra phạm vi | `RouteServiceTest`, `GoongRouteProviderTest`, order smoke | Tuyến hợp lệ; địa chỉ sai/ngoài vùng/lỗi provider có mã lỗi ổn định | Unit tests PASS; DB/HTTP BLOCKED |
-| UC-05 | Chính sách thành viên | `DesignV1IntegrationTest` | Hạng/hiệu lực đúng biên; giảm 0/100%; policy chồng lấn hoặc sửa bản công bố bị chặn | DB integration BLOCKED |
-| UC-08 | Thu tiền mặt | `DesignV1IntegrationTest`, `smoke:payment`, `smoke:reports` | Chỉ thu khi hoàn tất; đúng người/tiền; xác nhận nguyên tử và không trùng | DB/HTTP BLOCKED |
-| UC-10 | VNPay URL, IPN, Return, query/đối soát | `DesignV1IntegrationTest` | Return không xác nhận tiền; IPN kiểm tra chữ ký/số tiền, dedup và xử lý callback muộn | DB integration BLOCKED; không gọi VNPay Sandbox thật |
-| UC-12 | Điều phối, gán/từ chối | `DesignV1IntegrationTest`, `smoke:dispatch` | Không gán trùng; tài xế không đủ điều kiện/từ chối bị xử lý đúng | DB/HTTP BLOCKED |
-| UC-13 | Tiến trình, sự cố, hoàn tất | `DesignV1IntegrationTest`, `smoke:progress` | State machine đúng; hoàn tất giải phóng tài xế và ghi event nguyên tử | DB/HTTP BLOCKED |
-| UC-14 | Hủy đơn | `DesignV1IntegrationTest`, `smoke:cancel` | Quyền và mốc 300 giây đúng; tranh chấp gán/lấy hàng không để sót assignment | DB/HTTP BLOCKED |
-| UC-15 | Báo cáo, Excel, công nợ | `DesignV1IntegrationTest`, `smoke:reports` | Kỳ rỗng bằng 0; tiền thu/công nợ theo đúng thời điểm; Excel khớp API | Unit exporter subtests PASS; DB/HTTP BLOCKED |
-| UC-19 | Lịch sử/chi tiết đơn | `DesignV1IntegrationTest`, `smoke:history` | Đúng quyền sở hữu, bộ lọc/phân trang/tổng và thứ tự event | DB/HTTP BLOCKED |
+| DT01 | Sai role/hồ sơ trùng bị chặn; không để dữ liệu dở dang | `dt01WrongProfileRoleAndDuplicateProfileAreRejectedAtomically` | Trigger V4 trả đúng lỗi 51080/81/82; unique hồ sơ chặn trùng; số dòng/profile giữ nguyên | PASS |
+| DT02 | Hai đăng ký cùng SĐT chỉ tạo một khách | `AuthServiceIntegrationTest.concurrentDuplicateRegistrationCreatesOnlyOneCustomer` | Một winner; một lỗi trùng; một account/profile | PASS |
+| DT03 | Chính sách công bố không chồng phạm vi | `concurrentPolicyPublicationSerializesEmptyScopeAndAuditsWinner` | Một công bố thắng; không overlap; audit winner | PASS |
+| DT04 | Policy công bố bất biến; phiên bản mới không đổi giá đơn cũ | `publishedPoliciesRejectDirectMutationAndControlledSuccessorsDoNotOverlap; dt04PublishedSuccessorNeverChangesCommittedOrderFare` | Policy successor cho quote mới giá khác; cước/giá/mã policy của đơn cũ giữ nguyên. hieuLucDen được đóng đúng boundary theo quy tắc cho phép | PASS |
+| DT05 | Đúng mốc hết hạn thành viên/policy, không lệ thuộc timezone máy | `membershipWindowAndZeroOrFullDiscountUseExactBoundaries; dt05PublishedMembershipPolicyExpiresAtExactBoundaryInEveryClockZone` | Trước policy expiry 1 ms còn giảm; đúng/sau mốc giảm 0 dù thành viên còn hạn; ba Clock zone UTC/HCM/New York cho cùng kết quả | PASS |
+| DT06 | Làm tròn đúng, không âm/tràn; miễn cước không tạo payment | `FareCalculatorTest; membershipWindowAndZeroOrFullDiscountUseExactBoundaries; freeOrderDoesNotCreatePayment` | Số học/overflow, 0%/100% và miễn cước đạt | PASS |
+| DT07 | Quote hết hạn 300 giây; thay giá/tuyến/kiện trả lỗi | `quoteExpiresAtExactlyThreeHundredSeconds; dt07ChangedPolicyOrParcelsRejectsQuoteWithoutPartialOrder; smoke:orders` | 300 giây QUOTE_EXPIRED; đổi giá/kiện/tuyến QUOTE_CHANGED; số dòng 6 bảng aggregate/cache không tăng; quote mới được chấp nhận đúng giá | PASS |
+| DT08 | Replay cùng key/payload khi route lỗi không tạo thêm đơn | `committedOrderReplaysWithoutRouteProviderOrLiveQuote` | Response gốc giữ nguyên khi route timeout và quote đã hết hạn | PASS |
+| DT09 | Cùng key khác payload conflict; key hết hạn đúng 24 giờ dùng lại, đơn cũ còn nguyên | `quoteAndOrderKeepVersionedFareAndReplayResponse; dt09IdempotencyExpiresAtExactlyTwentyFourHoursWithoutDeletingOldOrder` | Replay trước 24 giờ; quote cũ hết hạn; quote mới cùng key tạo đơn khác; 2 đơn/1 cache | PASS |
+| DT10 | Lỗi ghi aggregate/event/cache rollback toàn bộ | `failedIdempotencyWriteRollsBackWholeOrderAggregate` | Inject lỗi cuối ghi cache; số dòng 6 bảng trước/sau bằng nhau | PASS |
+| DT11 | Không gán trùng cùng đơn hoặc cùng tài xế | `concurrentAssignmentsLeaveOnlyOneActiveDriver; smoke:dispatch` | Hai lượt 8 request: mỗi lượt 1 winner; 7 conflict/unavailable | PASS |
+| DT12 | Gợi ý và gán cùng chặn xe/GPLX/account không hợp lệ | `dt12SuggestionsAndAssignmentRejectEveryIneligibleDriver; assignmentRechecksAccountAndVehicleAfterConcurrentChange` | 4 tình huống thiếu xe/xe tắt/GPLX hết hạn/account khóa bị loại và chặn gán; không audit dư | PASS |
+| DT13 | Không gán lại người từ chối cùng đơn; giữ lịch sử | `rejectedDriverCannotBeAssignedAgainToSameOrder; t16DetailIncludesRejectedAssignmentsAndConfirmedPayment` | Tài xế cũ DRIVER_UNAVAILABLE; tài xế khác nhận; lịch sử TU_CHOI còn | PASS |
+| DT14 | Chặn nhảy/lùi trạng thái; retry không nhân event | `smoke:progress` | Sai cạnh 409; 8 request mỗi bước cùng trả trạng thái nhưng chỉ thêm 1 event | PASS |
+| DT15 | Retry hoàn tất đơn cũ không tác động phân công mới | `dt15CompletedReplayCannotCloseDriversNewAssignment; smoke:progress` | Giữ timestamp/event đơn cũ và assignment mới đang hoạt động | PASS |
+| DT16 | Hủy trước/đúng 300 giây; race lấy hàng nhất quán | `cancellationChecksOwnerRoleReasonStateAndExactDeadline; dt16CancellationRacingPickupLeavesOneConsistentOutcome` | 299.999 giây được hủy; 300/301 bị chặn; barrier race chỉ một trạng thái thắng và driver/assignment khớp | PASS |
+| DT17 | Event trùng timestamp vẫn có thứ tự xác định | `t16EventsUseSequenceWhenTimestampsTie; smoke:progress` | thuTu xác định; phân trang mỗi event khớp danh sách | PASS |
+| DT18 | Không thu trước hoàn tất hoặc tạo payment cho miễn cước | `cashPaymentRequiresCompletionAndCorrectConfirmer; freeOrderDoesNotCreatePayment` | Trạng thái chưa hoàn tất bị chặn; miễn cước không tạo attempt | PASS |
+| DT19 | Return chưa xác thực IPN không xác nhận đã thu | `vnpayIpnSettlesOnceAndReturnNeverSettles` | Return KHONG_THAY_DOI; daXacNhanDu=false tới khi IPN hợp lệ | PASS (giả lập) |
+| DT20 | Khử lặp/sai chữ ký/sai tiền/timeout/callback muộn | `vnpayInvalidMismatchLateAndTimeoutAreRetained; concurrentVnpayIpnsCreateOneConfirmation; signedQueryResultCanSettleButPendingQueryCannot` | Sai/không khớp được lưu; timeout CHUA_RO_KET_QUA; duplicate khử lặp; callback muộn đối soát; xác nhận tối đa một | PASS (giả lập) |
+| DT21 | Payment đơn A không xác nhận đơn B | `paymentCannotSettleAnotherOrder` | FK ghép chặn sai cặp; payment hợp lệ vẫn xác nhận được | PASS |
+| DT22 | Khách và tài xế không hoàn tất đơn không được xác nhận tiền mặt | `cashPaymentRequiresCompletionAndCorrectConfirmer; smoke:payment` | Hai vai trò sai nhận 403; người hoàn tất/tổng đài hợp lệ | PASS |
+| DT23 | Giữ hai khoản thu thực tế nhưng chỉ một xác nhận đủ | `secondRealCollectionRemainsUnallocated; vnpayInvalidMismatchLateAndTimeoutAreRetained` | Khoản dư có bằng chứng/canDoiSoat, không tạo xác nhận đủ thứ hai | PASS |
+| DT24 | Thu kỳ sau không xóa công nợ kỳ trước | `t17LaterReceiptDoesNotEraseEarlierReceivable` | Công nợ đầu kỳ giữ đúng; tiền nằm ở kỳ thu | PASS |
+| DT25 | Sai chủ không đọc được đơn/event; tài xế từ chối mất quyền | `t16DetailKeepsPolicyVersionsAndProtectsOwnership; t16DetailIncludesRejectedAssignmentsAndConfirmedPayment; smoke:history/dispatch` | Sai chủ 404; driver từ chối không truy cập được đơn | PASS |
+| DT26 | Không xóa account/policy/order làm mất lịch sử | `dt26DeletingReferencedAccountPolicyOrOrderCannotEraseHistory` | SQL exception từ FK/trigger; số dòng và 5 event lịch sử giữ nguyên | PASS |
+| DT27 | Nhiều kiện/phụ thu/payment event không nhân tiền | `t17UnallocatedReceiptAndManyChildrenDoNotMultiplyFare; t16HistoryFiltersPagesAndSummarizesWithoutChildMultiplication; smoke:reports` | Cước/thu chưa phân bổ/tổng các trang đúng; Excel khớp JSON | PASS |
 
-## DT01–DT27 — Expected / Actual / PASS-FAIL
+## Bug / sửa / retest
 
-`BLOCKED` nghĩa là chưa có actual runtime vì SQL Server chưa khởi động được; không tương đương FAIL. DT06 có kiểm tra unit số học một phần đã chạy, nhưng toàn case vẫn chưa đạt do phần payment/schema chưa chạy.
-
-| Ca | Expected | Actual lần chạy T19 | PASS/FAIL |
-| --- | --- | --- | --- |
-| DT01 | Sai role/hồ sơ trùng bị từ chối, không để account/profile dở dang | Chưa chạy trên SQL Server; image DB bị registry từ chối | BLOCKED |
-| DT02 | Hai đăng ký cùng SĐT chỉ tạo một account; request còn lại nhận lỗi trùng | Chưa chạy concurrency DB | BLOCKED |
-| DT03 | Hai policy cùng phạm vi không thể cùng công bố | Chưa chạy trên SQL Server | BLOCKED |
-| DT04 | Không sửa/xóa policy đã công bố; đơn cũ giữ giá đã chốt | Chưa chạy trên SQL Server | BLOCKED |
-| DT05 | Mốc hiệu lực thành viên chính xác, không phụ thuộc timezone máy | Chưa chạy trên SQL Server | BLOCKED |
-| DT06 | Làm tròn đúng; giảm bằng cước thành miễn cước; không tạo payment; tiền tràn bị chặn | Unit FareCalculator: 2 test PASS gồm làm tròn/overflow; nhánh persistence/payment chưa chạy | PARTIAL — overall BLOCKED |
-| DT07 | Quote hết hạn đúng 300 giây hoặc dữ liệu thay đổi trả lỗi, không tự đổi giá | Chưa chạy integration trên SQL Server | BLOCKED |
-| DT08 | Retry cùng key/payload khi route lỗi trả response cũ, không tạo đơn khác | Chưa chạy integration trên SQL Server | BLOCKED |
-| DT09 | Cùng key khác payload bị conflict; key hết hạn có thể dùng lại mà đơn cũ còn nguyên | Chưa chạy integration trên SQL Server | BLOCKED |
-| DT10 | Lỗi giữa ghi aggregate không để lại đơn/cước/kiện/event/cache một phần | Chưa chạy fault-injection trên SQL Server | BLOCKED |
-| DT11 | Hai request cùng đơn/hai đơn cùng tài xế tối đa có một assignment hợp lệ | Chưa chạy test cạnh tranh SQL Server hoặc HTTP | BLOCKED |
-| DT12 | Thiếu xe, xe tắt, GPLX hết hạn hoặc account khóa đều không được gán | Chưa chạy trên SQL Server | BLOCKED |
-| DT13 | Tài xế từ chối không được gán lại cùng đơn; lịch sử từ chối còn nguyên | Chưa chạy trên SQL Server | BLOCKED |
-| DT14 | Chuyển trạng thái sai/lùi bị chặn; retry không thêm event | Chưa chạy trên SQL Server | BLOCKED |
-| DT15 | Retry hoàn tất đơn cũ không đóng assignment mới, không sửa timestamp cũ | Chưa chạy trên SQL Server | BLOCKED |
-| DT16 | Hủy chỉ hợp lệ trước 300 giây; race hủy/lấy hàng không để tài xế bận sót | Chưa chạy test thời gian/race trên SQL Server | BLOCKED |
-| DT17 | Event trùng timestamp vẫn sắp xếp/phân trang ổn định theo `thu_tu` | Chưa chạy trên SQL Server | BLOCKED |
-| DT18 | Chưa hoàn tất hoặc miễn cước thì không khởi tạo thanh toán/VNPay sai | Chưa chạy trên SQL Server | BLOCKED |
-| DT19 | VNPay Return thành công nhưng chưa xác thực IPN không đánh dấu đã thu | Chưa chạy callback integration | BLOCKED |
-| DT20 | Callback lặp/sai chữ ký/sai tiền/timeout/đến muộn được lưu và không xác nhận sai/đúp | Chưa chạy callback integration trên SQL Server | BLOCKED |
-| DT21 | Không dùng payment của đơn A để xác nhận thanh toán đủ đơn B | Chưa chạy constraint/service test trên SQL Server | BLOCKED |
-| DT22 | Khách không tự xác nhận tiền mặt; tài xế phải hoàn tất đơn trước khi xác nhận | Chưa chạy trên SQL Server | BLOCKED |
-| DT23 | Hai khoản thu thật có thể lưu bằng chứng nhưng tối đa một xác nhận đủ; khoản dư chờ đối soát | Chưa chạy concurrency/payment test | BLOCKED |
-| DT24 | Công nợ được tính theo mốc cuối kỳ; khoản thu nằm ở kỳ thực thu | Chưa chạy report query trên SQL Server | BLOCKED |
-| DT25 | Đổi ID không đọc được đơn/event người khác; tài xế từ chối không còn quyền nếu không có quan hệ khác | Chưa chạy authorization integration/HTTP | BLOCKED |
-| DT26 | Không xóa mất lịch sử; tài khoản/policy được khóa hoặc hết hiệu lực theo quy tắc | Chưa chạy trên SQL Server | BLOCKED |
-| DT27 | Nhiều kiện/phụ thu/payment event không làm nhân tổng cước/tiền trong báo cáo | Chưa chạy trên SQL Server | BLOCKED |
-
-## Bug / retest / đối chiếu dữ liệu
-
-| ID | Mô tả | Loại | Trạng thái | Retest |
+| ID | Expected / vấn đề | Actual ban đầu | Sửa và retest | Trạng thái |
 | --- | --- | --- | --- | --- |
-| ENV-T19-01 | Docker daemon không tải được `mcr.microsoft.com/mssql/server:2022-latest`; registry/layer trả `Forbidden` | Hạ tầng, chưa phải bug ứng dụng | Open / BLOCKED | Chạy lại `docker compose -f docker-compose.ci.yml up --wait --wait-timeout 180 db-test` trên Docker host truy cập được MCR, sau đó chạy toàn bộ pipeline dưới đây |
-| T19-COV-01 | Workflow CI chưa gọi HTTP smoke tiền mặt dù script `smoke:payment` có sẵn | Thiếu bước regression | Đã thêm bước sau `smoke:reports`; runtime chưa retest do DB image bị chặn | Chờ CI trên PR hoặc chạy `npm run smoke:payment --prefix tools/api` trên DB test |
+| ENV-T19-01 | Executor tải được SQL Server image | MCR Forbidden trên cloud | Docker Windows tải được image; suite SQL Server và HTTP thực thi | Giải quyết cho local; cloud vẫn hạn chế |
+| T19-COV-01 | CI chạy smoke tiền mặt có sẵn | Workflow không gọi smoke:payment riêng | Thêm bước sau reports; local 32 checks đạt | Local PASS; CI PR chờ xác nhận |
+| T19-BUG-01 | Hồ sơ đúng vai trò, role account bất biến | Rà DDL thấy FK chỉ kiểm tra account tồn tại | V4 thêm 3 trigger; DT01 retest kiểm tra đúng mã lỗi và rollback đạt | Fixed / PASS local |
+| T19-BUG-02 | Test invariant không làm thay đổi session cho Hibernate | 15:42:50: 70 tests, 11 errors ở seed, row count -1 | finally SET NOCOUNT OFF cả positive/negative; 15:46:57: 70 tests, 0 errors | Fixed / PASS local |
 
-Đối chiếu `scripts/check-design-v1-invariants.sql` **chưa chạy**. Chưa có truy vấn DB nào tạo PASS cho lần T19 này. Khi chạy được, cần lưu output của truy vấn invariant, Flyway V1/V2, JPA validate và danh sách bảng/constraint cùng Surefire/HTTP logs trong artifact của PR.
+Không coi các dòng ERROR từ lỗi constraint/fault injection trong suite đạt là bug chưa sửa. Lần đầu người dùng dùng cú pháp PowerShell trong Git Bash chỉ chạy 12 unit tests; lần đó bị loại khỏi bằng chứng SQL Server. Kết quả 63 tests/d00db8c trước bổ sung V4 là lịch sử; 70 tests là lượt trước bổ sung DT04/DT05/DT07, kết quả cuối là 73 tests.
 
-## Re-test trên SQL Server
+## Đối chiếu dữ liệu
 
-Chạy theo đúng thứ tự CI trên máy có Docker truy cập được MCR. Dùng PowerShell theo [README CI](../README.md#ci-và-môi-trường-kiểm-thử-t05); đặt `TEST_DB_PASSWORD` mạnh, riêng cho test, không commit hoặc gửi mật khẩu. Bắt buộc `TEST_DB_URL` trỏ `mini_ong_vang_test` và `REQUIRE_TEST_DB=true`.
+`scripts/check-design-v1-invariants.sql` đã chạy trên DB test **trước reset** sau reports/payment/dispatch, và **sau reset + progress**. Script kiểm tra Flyway V2/V4 và trigger bật, role/profile, đầy đủ aggregate, trạng thái assignment/event, thứ tự event và policy không overlap. Phần thanh toán kiểm tra xác nhận thuộc đúng đơn HOAN_TAT/payment thành công và số tiền bằng tổng cước, tối đa một attempt chưa giải quyết kể cả hai trạng thái pending khác nhau, không tạo payment trước hoàn tất/cho đơn miễn cước, callback DA_AP_DUNG phải có chữ ký hợp lệ và liên kết payment.
 
-1. `npm ci --ignore-scripts --prefix tools/api`, sau đó `npm run check --prefix tools/api`.
-2. Khởi động SQL Server test và initializer `db-init-test` trong `docker-compose.ci.yml`.
-3. Chạy `mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml verify` với DB test.
-4. Reset/seed fixture DB test bằng `scripts/reset-test-db.ps1`; khởi động `backend-test`.
-5. Chạy lần lượt `smoke`, `smoke:orders`, `smoke:history`, `smoke:cancel`, `smoke:reports`, `smoke:payment`, `smoke:dispatch`; reset/seed rồi restart backend trước `smoke:progress` như CI.
-6. Chạy `scripts/check-design-v1-invariants.sql` qua `sqlcmd -b -d mini_ong_vang_test`.
-7. Ghi số test/check thực tế, giờ chạy, commit, phiên bản designV1, Actual, PASS/FAIL, bug và retest. Dọn riêng Compose test bằng `docker compose -f docker-compose.ci.yml down --volumes --remove-orphans`.
+Test `t19InvariantQueryAcceptsValidPaymentAndDetectsWrongConfirmedAmount` xác nhận script chấp nhận khoản thu đúng và trả SQL error 51010 khi cố đổi tiền của khoản đã xác nhận. Ranh giới ngày/công nợ và không nhân tiền do join được kiểm tra trong report integration, không suy ra chỉ từ invariant.
 
-Cho tới khi bước 2–6 chạy xong, T19 vẫn **In Progress/Blocked**, không phải Done. Tài liệu này không tái sử dụng số liệu kiểm thử schema PostgreSQL cũ hoặc các kết quả M1 lịch sử làm bằng chứng designV1 cho T19.
+## Retest cuối và điều kiện bàn giao
 
+Lượt đầu chạy 73 test có 1 failure tại DT04: assertion so toàn bộ PolicyVersions đã coi thay đổi hieuLucDen hợp lệ là lỗi. Bản a75fea9 sửa assertion: so tất cả trường nội dung giá/ID/tham chiếu, cước của đơn cũ và xác nhận hieuLucDen bằng boundary. Retest ngày 12/10/2026 lúc 16:08:21 (+07:00) đạt **73 tests, 0 failures/errors/skipped, BUILD SUCCESS**. Ghi `T19-BUG-03` là lỗi kỳ vọng test, Fixed/retest PASS; DT05/DT07 cũng đạt.
 
-## Retest V4 — lỗi fixture và bản sửa
+Các ca bổ sung cuối không đổi code nghiệp vụ, schema hoặc HTTP tools nên 348 HTTP checks cùng invariant trước/sau reset của f3b94f1 vẫn là bằng chứng cho phiên bản nghiệp vụ này. Cần PR CI và reviewer approve trước merge; không xem báo cáo local là chứng nhận T20 hoặc bằng chứng Sandbox thật.
 
-Log người dùng ngày 12/10/2026, 15:42:50 (+07:00): 70 tests, 0 failures, **11 errors**, 0 skipped; BUILD FAILURE. Các errors xảy ra ở resetFixture/seed với Hibernate `Unexpected row count: -1; expected: 1`. Ghi `T19-BUG-02`: test invariant chạy batch có SET NOCOUNT ON nhưng không khôi phục session khi trả connection về Hikari pool. Kết nối bị tái sử dụng khiến Hibernate không nhận row count của INSERT. Đã thêm finally SET NOCOUNT OFF cho cả nhánh thành công và lỗi 51010 của test; giữ nguyên assertion rollback/constraint. Bản sửa biên dịch được; kết quả runtime 70 test vẫn PENDING cho tới khi chạy lại clean verify trên SQL Server.
+## Chạy lại
 
-
-## Retest sau sửa NOCOUNT — PASS
-
-Log người dùng ngày 12/10/2026 lúc 15:46:57 (+07:00) xác nhận Flyway validate **4 migrations** và Maven clean verify: **70 tests, 0 failures, 0 errors, 0 skipped, BUILD SUCCESS**. DesignV1IntegrationTest chạy **51 test**, Auth 5, SQL Server 2, unit khác 12. Bảy test bổ sung trong bảng trên đã chạy trong suite 51 test và đạt; các nhánh DT01/09/12/15/16/26 cùng kiểm tra invariant payment dương/âm đã có kết quả runtime. `T19-BUG-02` NOCOUNT: retest PASS, 11 lỗi fixture trước đó không còn. `T19-BUG-01` role/profile: test SQL Server V4 đạt. Log chưa có git rev-parse mới; bản sửa được cung cấp là 257114d.
-
-HTTP 348 checks trước đó thuộc bản d00db8c. Cần rebuild backend và chạy lại các HTTP smoke với V4, đồng thời dùng script invariant mới trước reset, để ghi kết quả hồi quy endpoint trên bản sửa. Không nâng kết quả HTTP cũ thành bằng chứng của V4.
+Dùng chuỗi lệnh SQL Server test trong [README](../README.md#ci-và-môi-trường-kiểm-thử-t05) hoặc workflow `.github/workflows/ci.yml`. Bắt buộc DB `mini_ong_vang_test`, REQUIRE_TEST_DB=true; dừng backend trước Maven, reset/seed sau JUnit, rebuild WAR, chạy nhóm HTTP, invariant **trước reset**, reset/seed rồi progress và invariant lần nữa. Git Bash dùng export và MSYS_NO_PATHCONV=1 cho đường dẫn Linux container; script reset PowerShell gọi từ Bash bằng powershell.exe. Không commit credential hoặc dùng reset cho DB dev.

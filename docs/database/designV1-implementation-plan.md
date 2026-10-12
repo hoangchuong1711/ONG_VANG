@@ -401,3 +401,9 @@ Nếu cần chia nhỏ hơn, chia theo luồng nghiệp vụ như bảng trên, 
 
 
 **Retest T19 trên Windows (12/10/2026):** Log người dùng cung cấp xác nhận SQL Server designV1: 63 Java tests, 0 fail/error/skip; 348 HTTP checks nghiệp vụ và invariant sau progress đạt. Xem [báo cáo T19](../../tests/T19-validation.md) để phân biệt kết quả local mới với lần cloud bị chặn, phạm vi callback giả lập và bằng chứng/độ phủ DT còn cần bổ sung.
+
+
+**Tổng hợp T19 (12/10/2026):** Retest local tại HEAD f3b94f1 đạt 70 Java tests, 348 HTTP checks và invariant mới trước/sau reset trên SQL Server designV1 V1–V4. Ma trận DT trong [báo cáo T19](../../tests/T19-validation.md) còn DT04/DT05/DT07 PARTIAL vì thiếu assertion một số nhánh; chưa đóng T19/M2/T20. Hai lỗi role/profile và NOCOUNT đã sửa, retest local đạt.
+
+
+**Chốt kiểm thử T19 local (12/10/2026, 16:08 +07:00):** Retest đạt 73 Java tests (DesignV1 54), 348 HTTP checks và invariant trước/sau reset. DT04/DT05/DT07 đã bổ sung assertion và chạy đạt; xem ma trận Expected/Actual, bug/retest trong [báo cáo T19](../../tests/T19-validation.md). T19 sẵn sàng review; Done còn phụ thuộc PR review/CI/merge, không đồng nghĩa T20 nghiệm thu hoặc Sandbox thật đã chạy.
