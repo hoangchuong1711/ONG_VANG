@@ -5,16 +5,15 @@ import Link from "next/link";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { SAMPLE_ORDERS, SAMPLE_DRIVERS, SAMPLE_INCIDENTS } from "@/lib/sample-data";
-import { OrderItem, DriverItem, IncidentItem } from "@/lib/types";
+import { OrderItem } from "@/lib/types";
+import { useDemoStore, updateDemoState } from "@/lib/demo-store";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 export default function DispatcherLiveBoardPage() {
   const { showToast } = useToast();
-  const [orders, setOrders] = useState<OrderItem[]>(SAMPLE_ORDERS);
-  const [drivers, setDrivers] = useState<DriverItem[]>(SAMPLE_DRIVERS);
-  const [incidents, setIncidents] = useState<IncidentItem[]>(SAMPLE_INCIDENTS);
+  const { state: demo } = useDemoStore();
+  const { orders, drivers, incidents } = demo;
 
   // Modal phân công tài xế thông minh (UC-12)
   const [assigningOrder, setAssigningOrder] = useState<OrderItem | null>(null);
@@ -43,8 +42,8 @@ export default function DispatcherLiveBoardPage() {
     const assignedDriver = drivers.find((d) => d.id === selectedDriverId);
     if (!assignedDriver) return;
 
-    setOrders((prev) =>
-      prev.map((o) =>
+    updateDemoState((previous) => ({ ...previous,
+      orders: previous.orders.map((o) =>
         o.id === assigningOrder.id
           ? {
               ...o,
@@ -59,14 +58,11 @@ export default function DispatcherLiveBoardPage() {
               },
             }
           : o
-      )
-    );
-
-    setDrivers((prev) =>
-      prev.map((d) =>
+      ),
+      drivers: previous.drivers.map((d) =>
         d.id === selectedDriverId ? { ...d, status: "ONLINE_BUSY", idleSinceMinutes: 0 } : d
-      )
-    );
+      ),
+    }));
 
     showToast(
       `Đã phân công tài xế ${assignedDriver.name} (${assignedDriver.vehiclePlate}) cho đơn ${assigningOrder.id}!`,
@@ -77,8 +73,9 @@ export default function DispatcherLiveBoardPage() {
 
   // Xử lý sự cố: Đổi tài xế khác (UC-13)
   const handleReassignIncidentOrder = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
+    const priorDriverId = orders.find((order) => order.id === orderId)?.driver?.id;
+    updateDemoState((previous) => ({ ...previous,
+      orders: previous.orders.map((o) =>
         o.id === orderId
           ? {
               ...o,
@@ -88,16 +85,18 @@ export default function DispatcherLiveBoardPage() {
               driver: undefined,
             }
           : o
-      )
-    );
-    setIncidents((prev) => prev.filter((i) => i.orderId !== orderId));
+      ),
+      incidents: previous.incidents.map((incident) => incident.orderId === orderId ? { ...incident, status: "DA_GIAI_QUYET" } : incident),
+      drivers: previous.drivers.map((driver) => driver.id === priorDriverId ? { ...driver, status: "ONLINE_IDLE" } : driver),
+    }));
     showToast(`Đã thu hồi đơn ${orderId} về hàng đợi chờ gán để phân công tài xế mới!`, "info");
   };
 
   // Hủy đơn hàng từ điều phối (UC-14)
   const handleCancelOrder = (orderId: string, reason: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
+    const priorDriverId = orders.find((order) => order.id === orderId)?.driver?.id;
+    updateDemoState((previous) => ({ ...previous,
+      orders: previous.orders.map((o) =>
         o.id === orderId
           ? {
               ...o,
@@ -105,48 +104,11 @@ export default function DispatcherLiveBoardPage() {
               statusText: `Đã hủy: ${reason}`,
             }
           : o
-      )
-    );
-    setIncidents((prev) => prev.filter((i) => i.orderId !== orderId));
+      ),
+      incidents: previous.incidents.map((incident) => incident.orderId === orderId ? { ...incident, status: "DA_GIAI_QUYET" } : incident),
+      drivers: previous.drivers.map((driver) => driver.id === priorDriverId ? { ...driver, status: "ONLINE_IDLE" } : driver),
+    }));
     showToast(`Đã hủy đơn ${orderId} thành công theo yêu cầu nghiệp vụ!`, "error");
-  };
-
-  // Giả lập nhận đơn mới từ hotline
-  const handleSimulateNewOrder = () => {
-    const newId = `DH-2025-${Math.floor(100000 + Math.random() * 900000)}`;
-    const newOrder: OrderItem = {
-      id: newId,
-      sender: {
-        name: "Lê Minh Tuấn",
-        phone: "0911223344",
-        street: "45 Hai Bà Trưng",
-        district: "Quận 1",
-        city: "TP.HCM",
-      },
-      receiver: {
-        name: "Trần Thị Mai",
-        phone: "0988776655",
-        street: "128 Cách Mạng Tháng 8",
-        district: "Quận 3",
-        city: "TP.HCM",
-      },
-      packageType: "Tài liệu hỏa tốc",
-      packageWeightKg: 0.3,
-      distanceKm: 2.8,
-      baseFee: 35000,
-      surchargeFee: 10000,
-      vipDiscountFee: 0,
-      totalFee: 45000,
-      status: "CHO_GAN",
-      statusText: "Chờ gán tài xế",
-      createdAt: "Vừa xong",
-      createdTimestamp: Date.now(),
-      paid: false,
-      paymentMethod: "TIEN_MAT",
-    };
-
-    setOrders([newOrder, ...orders]);
-    showToast(`Tiếp nhận đơn hỏa tốc mới (${newId}) đưa vào hàng đợi!`, "info");
   };
 
   return (
@@ -181,7 +143,7 @@ export default function DispatcherLiveBoardPage() {
 
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 whitespace-nowrap">
               <span className="text-stone-500 font-semibold text-xs">Sự cố can thiệp:</span>
-              <span className={`text-base font-extrabold ${incidents.length > 0 ? "text-rose-600" : "text-stone-400"}`}>
+              <span className={`text-base font-extrabold ${incidents.some((incident) => incident.status === "CHO_XU_LY") ? "text-rose-600" : "text-stone-400"}`}>
                 {incidents.filter((i) => i.status === "CHO_XU_LY").length}
               </span>
             </div>
@@ -189,18 +151,11 @@ export default function DispatcherLiveBoardPage() {
 
           {/* Quick Simulation Triggers */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleSimulateNewOrder}
-              className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-800 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
-            >
-              + Giả lập đơn Hotline
-            </button>
             <Link
               href="/dispatcher/create-order"
               className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-900 text-xs font-bold shadow-xs transition-all active:scale-[0.98] whitespace-nowrap"
             >
-              + Tiếp Nhận Cuộc Gọi (UC-02)
+              + Tiếp nhận cuộc gọi
             </Link>
           </div>
         </div>
@@ -219,7 +174,7 @@ export default function DispatcherLiveBoardPage() {
                 {pendingOrders.length}
               </span>
             </div>
-            <span className="text-xs font-semibold text-stone-400 whitespace-nowrap">UC-12 Hàng đợi</span>
+            <span className="text-xs font-semibold text-stone-400 whitespace-nowrap">Hàng đợi</span>
           </div>
 
           <div className="flex-1 p-3.5 space-y-3 overflow-y-auto max-h-[calc(100vh-220px)]">
@@ -268,7 +223,7 @@ export default function DispatcherLiveBoardPage() {
                       onClick={() => handleOpenAssignModal(order)}
                       className="text-xs font-bold"
                     >
-                      Phân công tài xế (UC-12)
+                      Phân công tài xế
                     </Button>
                     <Link
                       href={`/dispatcher/orders/${order.id}`}
@@ -306,7 +261,7 @@ export default function DispatcherLiveBoardPage() {
                     <span className="w-2 h-2 rounded-full bg-rose-600" />
                     <span>Cảnh báo sự cố cần can thiệp ({incidents.length})</span>
                   </div>
-                  <span className="text-[11px] text-rose-700 font-semibold">UC-13 / UC-14</span>
+                  <span className="text-[11px] text-rose-700 font-semibold">Cần xử lý</span>
                 </div>
                 {incidents.map((inc) => (
                   <div key={inc.id} className="p-3 rounded-lg bg-white border border-rose-200 text-xs space-y-2">
@@ -321,14 +276,14 @@ export default function DispatcherLiveBoardPage() {
                         onClick={() => handleReassignIncidentOrder(inc.orderId)}
                         className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-900 text-xs font-bold transition-colors cursor-pointer"
                       >
-                        Đổi tài xế khác (UC-13)
+                        Đổi tài xế khác
                       </button>
                       <button
                         type="button"
                         onClick={() => handleCancelOrder(inc.orderId, inc.note)}
                         className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-rose-100 text-rose-800 text-xs font-semibold border border-stone-200 transition-colors cursor-pointer"
                       >
-                        Hủy đơn (UC-14)
+                        Hủy đơn
                       </button>
                     </div>
                   </div>
@@ -446,7 +401,7 @@ export default function DispatcherLiveBoardPage() {
             <div className="flex items-start justify-between border-b border-stone-200 pb-3">
               <div>
                 <span className="text-xs font-bold text-amber-800 uppercase tracking-wider block">
-                  ĐIỀU PHỐI TÀI XẾ (UC-12)
+                  ĐIỀU PHỐI TÀI XẾ
                 </span>
                 <h3 className="text-lg font-extrabold text-stone-900 mt-1">
                   Phân công tài xế cho đơn {assigningOrder.id}
@@ -548,7 +503,7 @@ export default function DispatcherLiveBoardPage() {
                 onClick={handleConfirmAssignment}
                 className="text-xs font-bold shadow-sm"
               >
-                Xác nhận phân công (UC-12)
+                Xác nhận phân công
               </Button>
             </div>
           </div>

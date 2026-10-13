@@ -6,7 +6,8 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { OrderStatus } from "@/lib/types";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
+import { useDemoStore } from "@/lib/demo-store";
+import { INITIAL_CUSTOMER_PROFILE, readCustomerDemo } from "@/lib/customer-demo";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import { OrderCardSkeleton } from "@/components/ui/Skeleton";
@@ -15,6 +16,10 @@ type DateFilter = "ALL" | "TODAY" | "7_DAYS" | "30_DAYS";
 
 export default function MyOrdersPage() {
   const { showToast } = useToast();
+  const { state: demo, ready } = useDemoStore();
+  const customerPhone = ready ? readCustomerDemo().profile.phone : INITIAL_CUSTOMER_PROFILE.phone;
+  const orders = demo.orders.filter((order) => [INITIAL_CUSTOMER_PROFILE.phone, customerPhone].includes(order.sender.phone));
+  const [asOf] = useState(() => Date.now());
   const [statusFilter, setStatusFilter] = useState<"ALL" | OrderStatus>("ALL");
   const [dateFilter, setDateFilter] = useState<DateFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,23 +42,19 @@ export default function MyOrdersPage() {
   };
 
   // Filter orders
-  const filteredOrders = SAMPLE_ORDERS.filter((order) => {
+  const filteredOrders = orders.filter((order) => {
     // 1. Status filter
     if (statusFilter !== "ALL" && order.status !== statusFilter) {
       return false;
     }
 
-    // 2. Date filter (demo simulation using order id/timestamp)
+    // 2. Date filter
     if (dateFilter === "TODAY") {
-      // Cho là đơn DH-2025-001234 và 001235 là hôm nay
-      if (!order.id.endsWith("234") && !order.id.endsWith("235")) {
-        return false;
-      }
+      if (new Date(order.createdTimestamp).toDateString() !== new Date(asOf).toDateString()) return false;
     } else if (dateFilter === "7_DAYS") {
-      // 7 ngày qua: loại bỏ đơn quá cũ
-      if (order.id.endsWith("231")) {
-        return false;
-      }
+      if (order.createdTimestamp < asOf - 7 * 86400000) return false;
+    } else if (dateFilter === "30_DAYS") {
+      if (order.createdTimestamp < asOf - 30 * 86400000) return false;
     }
 
     // 3. Search query
@@ -67,12 +68,12 @@ export default function MyOrdersPage() {
     return true;
   });
 
-  const totalSpent = SAMPLE_ORDERS.reduce((sum, o) => sum + (o.paid ? o.totalFee : 0), 0);
+  const totalSpent = orders.reduce((sum, o) => sum + (o.paid ? o.totalFee : 0), 0);
 
   // Status counts for tabs
   const getCountForStatus = (status: "ALL" | OrderStatus) => {
-    if (status === "ALL") return SAMPLE_ORDERS.length;
-    return SAMPLE_ORDERS.filter((o) => o.status === status).length;
+    if (status === "ALL") return orders.length;
+    return orders.filter((o) => o.status === status).length;
   };
 
   const resetFilters = () => {
@@ -93,7 +94,7 @@ export default function MyOrdersPage() {
               LỊCH SỬ GIAO HÀNG
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
-              Đơn hàng của tôi (K6 / UC-19)
+              Đơn hàng của tôi
             </h1>
             <p className="text-xs sm:text-sm text-stone-500 mt-1">
               Quản lý danh sách đơn hàng đã gửi, theo dõi tiến trình và hóa đơn cước phí
@@ -127,7 +128,7 @@ export default function MyOrdersPage() {
                   Tổng đơn
                 </span>
                 <span className="text-base sm:text-lg font-black text-stone-900">
-                  {SAMPLE_ORDERS.length} đơn
+                  {orders.length} đơn
                 </span>
               </div>
             </div>

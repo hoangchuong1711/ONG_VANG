@@ -6,34 +6,26 @@ import { useParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
-import { OrderItem } from "@/lib/types";
+import { updateDemoState, useDemoStore } from "@/lib/demo-store";
 import { formatVND, getCancelRemainingSeconds, formatSecondsToTime } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 export default function OrderTrackingPage() {
   const { showToast } = useToast();
   const params = useParams();
-  const orderId = (params?.id as string) || "DH-2025-001235";
-
-  // Tìm đơn hàng theo ID hoặc fallback đơn mẫu (pure initialization)
-  const [order, setOrder] = useState<OrderItem>(() => {
-    return (
-      SAMPLE_ORDERS.find((o) => o.id === orderId) || {
-        ...SAMPLE_ORDERS[2],
-        id: orderId,
-      }
-    );
-  });
+  const orderId = params?.id as string;
+  const { state: demo, ready } = useDemoStore();
+  const order = demo.orders.find((item) => item.id === orderId);
 
   const [remainingSeconds, setRemainingSeconds] = useState(210);
 
   // Modal Hủy đơn (K9 / K10)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("Đặt nhầm địa chỉ nhận hàng");
-  const [isCancelled, setIsCancelled] = useState(order.status === "DA_HUY");
+  const isCancelled = order?.status === "DA_HUY";
 
   const handleCopyId = () => {
+    if (!order) return;
     navigator.clipboard?.writeText(order.id);
     showToast(`Đã sao chép mã đơn ${order.id} vào bộ nhớ tạm!`, "success");
   };
@@ -45,25 +37,25 @@ export default function OrderTrackingPage() {
 
   // Đếm ngược 300 giây (tính toán qua interval callback)
   useEffect(() => {
-    if (order.status === "DA_HUY" || order.status === "HOAN_TAT") return;
+    if (!order || order.status === "DA_HUY" || order.status === "HOAN_TAT") return;
 
     const interval = setInterval(() => {
       setRemainingSeconds(getCancelRemainingSeconds(order.createdTimestamp));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [order.status, order.createdTimestamp]);
+  }, [order]);
 
   const handleCancelOrder = () => {
-    setOrder({
-      ...order,
-      status: "DA_HUY",
-      statusText: "Đã hủy đơn hàng",
-    });
-    setIsCancelled(true);
+    if (!order) return;
+    updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
+      item.id === order.id ? { ...item, status: "DA_HUY", statusText: "Đã hủy đơn hàng", driver: undefined } : item) }));
   };
 
-  const canCancel = remainingSeconds > 0 && (order.status === "CHO_GAN" || order.status === "DA_GAN");
+  const canCancel = Boolean(order && remainingSeconds > 0 && (order.status === "CHO_GAN" || order.status === "DA_GAN"));
+
+  if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><Navbar /><main className="mx-auto max-w-4xl px-4 py-8">Đang tải đơn hàng...</main></div>;
+  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><Navbar /><main className="mx-auto max-w-4xl px-4 py-8"><h1 className="text-xl font-bold">Không tìm thấy đơn hàng</h1><Link href="/orders" className="mt-4 inline-block text-amber-800 underline">Về danh sách đơn</Link></main></div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917]">
@@ -152,7 +144,7 @@ export default function OrderTrackingPage() {
         {/* TIMELINE HÀNH TRÌNH TIẾN TRÌNH 5 BƯỚC */}
         <section className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-7 space-y-6 shadow-2xs">
           <h2 className="text-base sm:text-lg font-bold text-stone-900 pb-3 border-b border-stone-100">
-            Tiến độ xử lý kiện hàng (UC-12 / UC-13)
+            Tiến độ xử lý kiện hàng
           </h2>
 
           <div className="relative pl-6 sm:pl-8 space-y-8 before:absolute before:left-2.5 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-stone-200">

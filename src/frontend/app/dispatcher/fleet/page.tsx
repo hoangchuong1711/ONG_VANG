@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
-import { SAMPLE_DRIVERS } from "@/lib/sample-data";
+import { useDemoStore } from "@/lib/demo-store";
 import { DriverItem, DriverStatus } from "@/lib/types";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
@@ -12,7 +12,8 @@ type FilterStatus = "ALL" | DriverStatus;
 
 export default function DispatcherFleetPage() {
   const { showToast } = useToast();
-  const [drivers] = useState<DriverItem[]>(SAMPLE_DRIVERS);
+  const { state: demo } = useDemoStore();
+  const drivers: DriverItem[] = demo.drivers;
   const [filter, setFilter] = useState<FilterStatus>("ALL");
   const [searchDistrict, setSearchDistrict] = useState<string>("ALL");
 

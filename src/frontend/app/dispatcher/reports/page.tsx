@@ -4,34 +4,48 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
-import { SAMPLE_DRIVERS } from "@/lib/sample-data";
+import { useDemoStore, updateDemoState } from "@/lib/demo-store";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 export default function DispatcherReportsPage() {
   const { showToast } = useToast();
-  const [drivers, setDrivers] = useState(SAMPLE_DRIVERS);
+  const { state: demo } = useDemoStore();
+  const { drivers } = demo;
   const [dateRange, setDateRange] = useState<"TODAY" | "WEEK" | "MONTH">("TODAY");
+  const [asOf] = useState(() => Date.now());
+  const shown = demo.orders.filter((order) => dateRange === "TODAY" ?
+    new Date(order.createdTimestamp).toDateString() === new Date(asOf).toDateString() :
+    dateRange === "WEEK" ? order.createdTimestamp >= asOf - 7 * 86400000 :
+      new Date(order.createdTimestamp).getMonth() === new Date(asOf).getMonth() &&
+      new Date(order.createdTimestamp).getFullYear() === new Date(asOf).getFullYear());
+  const completed = shown.filter((order) => ["HOAN_TAT", "CHUA_THANH_TOAN"].includes(order.status));
+  const exceptionCount = shown.filter((order) => order.status === "DA_HUY" || demo.incidents.some((incident) => incident.orderId === order.id)).length;
 
   // Tổng tiền COD các tài xế đang giữ
   const totalCodHolding = drivers.reduce((sum, d) => sum + d.codCashHolding, 0);
 
   // Xác nhận tài xế nộp COD về quỹ (UC-08)
   const handleSettleCod = (driverId: string, driverName: string, amount: number) => {
-    setDrivers((prev) =>
-      prev.map((d) => (d.id === driverId ? { ...d, codCashHolding: 0 } : d))
-    );
+    updateDemoState((previous) => ({ ...previous, drivers: previous.drivers.map((driver) =>
+      driver.id === driverId ? { ...driver, codCashHolding: 0, codSettlementRequested: false } : driver) }));
     showToast(
       `Đã đối soát & xác nhận thu ${formatVND(amount)} tiền COD từ tài xế ${driverName} vào quỹ!`,
       "success"
     );
   };
 
-  const handleExportExcel = () => {
-    showToast("Đang kết xuất và tải xuống báo cáo vận hành Excel (UC-15)...", "info");
-    setTimeout(() => {
-      showToast("Tải xuống hoàn tất: Bao_Cao_Van_Hanh_Ca_Truc.xlsx", "success");
-    }, 1200);
+  const handleExportCsv = () => {
+    const lines = [["Mã đơn", "Người gửi", "Trạng thái", "Cước (VND)", "Đã thu"],
+      ...shown.map((order) => [order.id, order.sender.name, order.statusText, String(order.totalFee), order.paid ? "Có" : "Chưa"])];
+    const csv = "\uFEFF" + lines.map((line) => line.map((cell) => '"' + cell.replaceAll('"', '""') + '"').join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "bao-cao-dieu-phoi.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast("Đã tải báo cáo CSV theo kỳ đang xem.", "success");
   };
 
   return (
@@ -43,7 +57,7 @@ export default function DispatcherReportsPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-200">
           <div>
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-1.5 whitespace-nowrap">
-              ĐỐI SOÁT VẬN HÀNH (UC-15 / UC-08)
+              ĐỐI SOÁT VẬN HÀNH
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
               Báo Cáo Ca Trực & Bàn Đối Soát Quỹ COD
@@ -57,10 +71,10 @@ export default function DispatcherReportsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleExportExcel}
+              onClick={handleExportCsv}
               className="text-xs font-bold whitespace-nowrap"
             >
-              Xuất báo cáo Excel (UC-15)
+              Tải báo cáo CSV
             </Button>
             <Link
               href="/dispatcher"
@@ -101,10 +115,10 @@ export default function DispatcherReportsPage() {
               Tổng cước snapshot
             </span>
             <div className="text-2xl sm:text-3xl font-extrabold text-amber-700">
-              {formatVND(1840000)}
+              {formatVND(completed.reduce((sum, order) => sum + order.totalFee, 0))}
             </div>
             <span className="text-xs text-emerald-700 font-medium block">
-              +12% so với ca hôm qua
+              Theo đơn trong kỳ đang xem
             </span>
           </div>
 
@@ -113,10 +127,10 @@ export default function DispatcherReportsPage() {
               Tỷ lệ hoàn tất đơn
             </span>
             <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600">
-              96.8%
+              {shown.length ? (completed.length / shown.length * 100).toFixed(1) : "0.0"}%
             </div>
             <span className="text-xs text-stone-500 font-medium block">
-              31/32 cuốc thành công
+              {completed.length}/{shown.length} đơn hoàn tất
             </span>
           </div>
 
@@ -125,10 +139,10 @@ export default function DispatcherReportsPage() {
               Tỷ lệ sự cố / Hủy đơn
             </span>
             <div className="text-2xl sm:text-3xl font-extrabold text-rose-600">
-              3.2%
+              {shown.length ? (exceptionCount / shown.length * 100).toFixed(1) : "0.0"}%
             </div>
             <span className="text-xs text-stone-500 font-medium block">
-              01 sự cố được can thiệp
+              {exceptionCount} đơn có sự cố hoặc bị hủy
             </span>
           </div>
 
@@ -150,7 +164,7 @@ export default function DispatcherReportsPage() {
           <div className="p-5 sm:p-6 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3">
             <div>
               <span className="text-sm font-extrabold text-stone-900 block">
-                Bàn đối soát thu hồi tiền mặt COD từ tài xế (UC-08)
+                Bàn đối soát thu hồi tiền mặt từ tài xế
               </span>
               <p className="text-xs text-stone-500 mt-1 font-medium">
                 Hạn mức tiền mặt tối đa mỗi tài xế được tạm giữ trong ca là <strong className="text-stone-800">2.000.000đ</strong>
@@ -198,6 +212,7 @@ export default function DispatcherReportsPage() {
                         >
                           {formatVND(d.codCashHolding)}
                         </span>
+                        {d.codSettlementRequested && <span className="mt-1 block text-[11px] font-bold text-amber-800">Tài xế yêu cầu đối soát</span>}
                       </td>
                       <td className="p-4">
                         {isNearLimit ? (
@@ -222,7 +237,7 @@ export default function DispatcherReportsPage() {
                             onClick={() => handleSettleCod(d.id, d.name, d.codCashHolding)}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
                           >
-                            Thu quỹ COD ✓
+                            Xác nhận đã nhận tiền
                           </Button>
                         ) : (
                           <span className="text-stone-400 text-xs font-medium">Đã thanh toán</span>

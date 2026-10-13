@@ -6,19 +6,17 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { OrderStatus } from "@/lib/types";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
+import { useDemoStore } from "@/lib/demo-store";
+import { INITIAL_CUSTOMER_PROFILE, readCustomerDemo } from "@/lib/customer-demo";
 import { formatVND } from "@/lib/utils";
 
 import { useToast } from "@/components/ui/Toast";
-import { OrderCardSkeleton, StatsCardSkeleton } from "@/components/ui/Skeleton";
 
 export default function CustomerDashboardKH01() {
   const { showToast } = useToast();
+  const { state: demo, ready } = useDemoStore();
   const [statusFilter, setStatusFilter] = useState<"ALL" | OrderStatus>("ALL");
-  const [isEmptyView, setIsEmptyView] = useState<boolean>(false);
-  const [isLoadingView, setIsLoadingView] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showPaymentSuccess, setShowPaymentSuccess] = useState<boolean>(false);
 
   const handleCopyId = (id: string) => {
     navigator.clipboard?.writeText(id);
@@ -27,15 +25,9 @@ export default function CustomerDashboardKH01() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleSimulateLoading = () => {
-    setIsLoadingView(true);
-    setTimeout(() => {
-      setIsLoadingView(false);
-      showToast("Đã tải xong dữ liệu đơn hàng!", "info");
-    }, 1200);
-  };
-
-  const orders = isEmptyView ? [] : SAMPLE_ORDERS;
+  const customerProfile = ready ? readCustomerDemo().profile : INITIAL_CUSTOMER_PROFILE;
+  const orders = demo.orders.filter((order) => [INITIAL_CUSTOMER_PROFILE.phone, customerProfile.phone].includes(order.sender.phone));
+  const customerName = customerProfile.name;
 
   // Filter orders
   const filteredOrders = orders.filter((order) => {
@@ -74,35 +66,15 @@ export default function CustomerDashboardKH01() {
                 DỊCH VỤ GIAO HÀNG TRONG NGÀY TP.HCM
               </div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-stone-900 tracking-tight">
-                Xin chào, Nguyễn Thu Hà!
+                Xin chào, {customerName}!
               </h1>
               <p className="text-sm sm:text-base text-stone-600 max-w-xl">
                 Kiểm tra hành trình đơn hàng hiện tại hoặc tạo nhanh đơn mới chỉ trong 60 giây.
               </p>
             </div>
 
-            {/* Primary Action Button (Touch target 48px+ on mobile) & Quick Demo Tools */}
+            {/* Primary Action Button */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-              <button
-                type="button"
-                onClick={handleSimulateLoading}
-                className="px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-                title="Giả lập hiệu ứng Skeleton khi tải dữ liệu từ máy chủ"
-              >
-                <span>⏳</span>
-                <span>Giả lập tải (Skeleton)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsEmptyView(!isEmptyView)}
-                className="px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-                title="Chuyển đổi giao diện khi chưa có đơn hàng"
-              >
-                <span>📦</span>
-                <span>{isEmptyView ? "Xem có đơn mẫu" : "Xem Empty State"}</span>
-              </button>
-
               <Link href="/create-order" className="w-full sm:w-auto">
                 <Button variant="primary" size="lg" fullWidth>
                   <svg className="w-5 h-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -116,7 +88,7 @@ export default function CustomerDashboardKH01() {
         </section>
 
         {/* UNPAID WARNING BANNER (Nổi bật nếu có đơn hoàn tất nhưng chưa thanh toán) */}
-        {unpaidOrder && !showPaymentSuccess && (
+        {unpaidOrder && (
           <section className="bg-red-50/90 border border-red-200 rounded-xl p-4 sm:p-5 shadow-2xs transition-all duration-200 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
               <div className="flex items-start gap-3">
@@ -147,41 +119,22 @@ export default function CustomerDashboardKH01() {
                     Xem chi tiết
                   </Button>
                 </Link>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => {
-                    setShowPaymentSuccess(true);
-                    setTimeout(() => setShowPaymentSuccess(false), 4000);
-                  }}
-                >
+                <Link href={ "/payment/" + encodeURIComponent(unpaidOrder.id) }>
+                <Button variant="danger" size="sm">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
                   <span>Thanh toán VNPay ngay</span>
                 </Button>
+                </Link>
               </div>
             </div>
           </section>
         )}
 
-        {/* Payment Success Toast */}
-        {showPaymentSuccess && (
-          <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-emerald-900 text-xs sm:text-sm font-semibold flex items-center gap-2 animate-fadeIn">
-            <span className="text-emerald-600 text-base">✓</span>
-            Giao dịch thanh toán sandbox qua VNPay thành công! Đơn hàng đã được cập nhật trạng thái &quot;Đã thanh toán&quot;.
-          </div>
-        )}
-
         {/* 3 QUICK STATS CARDS: Đang giao, Chờ gán, Hoàn tất */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5" aria-label="Tóm tắt đơn hàng">
-          {isLoadingView ? (
-            <>
-              <StatsCardSkeleton />
-              <StatsCardSkeleton />
-              <StatsCardSkeleton />
-            </>
-          ) : (
+          {(
             <>
               {/* Card 1: Đang giao */}
               <div className="bg-white border border-stone-200 rounded-xl p-4 sm:p-5 shadow-2xs flex items-center justify-between hover:border-amber-300 transition-colors">
@@ -283,13 +236,7 @@ export default function CustomerDashboardKH01() {
           </div>
 
           {/* LIST VIEW / SKELETON / EMPTY STATE */}
-          {isLoadingView ? (
-            <div className="space-y-3.5">
-              <OrderCardSkeleton />
-              <OrderCardSkeleton />
-              <OrderCardSkeleton />
-            </div>
-          ) : filteredOrders.length === 0 ? (
+          {filteredOrders.length === 0 ? (
             /* EMPTY STATE VIEW */
             <div className="py-12 sm:py-16 text-center flex flex-col items-center justify-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-amber-100/80 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs">
@@ -302,9 +249,7 @@ export default function CustomerDashboardKH01() {
                   Chưa có đơn hàng nào
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-500">
-                  {isEmptyView
-                    ? "Bạn chưa tạo đơn hàng nào gần đây. Hãy gửi kiện hàng đầu tiên để trải nghiệm dịch vụ giao siêu tốc của Mini Ong Vàng."
-                    : "Không có đơn hàng nào khớp với bộ lọc đã chọn."}
+                  {orders.length === 0 ? "Bạn chưa tạo đơn hàng nào. Hãy gửi kiện hàng đầu tiên để trải nghiệm dịch vụ Mini Ong Vàng." : "Không có đơn hàng nào khớp với bộ lọc đã chọn."}
                 </p>
               </div>
               <Link href="/create-order">
@@ -430,7 +375,7 @@ export default function CustomerDashboardKH01() {
         {/* 5. FOOTER */}
         <footer className="pt-4 pb-12 text-center text-xs text-stone-400 space-y-1">
           <p>
-            Phân hệ Khách hàng <strong>Mini Ong Vàng</strong> · Thiết kế theo chuẩn Figma và kỹ năng Design Taste Frontend.
+            <strong>Mini Ong Vàng</strong> · Giao hàng trong ngày tại TP.HCM.
           </p>
           <p className="text-[11px] text-stone-400">
             Dữ liệu minh họa (Sample Data) · Responsive 320px đến 1920px

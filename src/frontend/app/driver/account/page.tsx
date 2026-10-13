@@ -1,15 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { toggleDemoDriverOnline, useDemoStore } from "@/lib/demo-store";
 
 export default function DriverProfilePage() {
   const { showToast } = useToast();
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const { state: demo } = useDemoStore();
+  const driver = demo.drivers.find((item) => item.id === "TX-DEMO-1");
+  const isOnline = driver?.status !== "OFFLINE";
+  const completedTrips = demo.orders.filter((order) => order.driver?.id === driver?.id &&
+    ["HOAN_TAT", "CHUA_THANH_TOAN"].includes(order.status));
+  const ratings = completedTrips.flatMap((order) => order.rating ? [order.rating] : []);
+  const praiseCounts = ratings.flatMap((rating) => rating.tags).reduce<Record<string, number>>((counts, tag) => {
+    counts[tag] = (counts[tag] ?? 0) + 1;
+    return counts;
+  }, {});
 
   const handleCopyText = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
@@ -18,16 +28,16 @@ export default function DriverProfilePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
-      <DriverNavbar isOnline={isOnline} onToggleOnline={() => setIsOnline(!isOnline)} />
+      <DriverNavbar isOnline={isOnline} onToggleOnline={() => toggleDemoDriverOnline("TX-DEMO-1")} />
 
       <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
         {/* Header */}
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
-            Hồ sơ tài xế & Đánh giá sao (TX-08)
+            Hồ sơ tài xế & đánh giá
           </h1>
           <p className="text-xs text-stone-500 mt-0.5">
-            Thông tin phương tiện, giấy tờ pháp lý và xếp hạng uy tín của bạn
+            Thông tin phương tiện và đánh giá đã ghi nhận trong dữ liệu demo.
           </p>
         </div>
 
@@ -43,21 +53,21 @@ export default function DriverProfilePage() {
 
           <div className="flex items-center gap-4 relative z-10">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-stone-950 flex items-center justify-center font-black text-2xl shadow-sm">
-              T
+              {driver?.name?.charAt(0) ?? "T"}
             </div>
             <div className="space-y-1 flex-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                TÀI XẾ CHÍNH THỨC
+              HỒ SƠ TÀI XẾ
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-white">
-                Trần Minh Tuấn
+                {driver?.name ?? "Tài xế demo"}
               </h2>
               <div className="flex items-center gap-2 text-xs text-stone-400 font-mono">
-                <span>MÃ TX: <strong>TX-DEMO-1</strong></span>
+                <span>MÃ TX: <strong>{driver?.id ?? "—"}</strong></span>
                 <button
                   type="button"
-                  onClick={() => handleCopyText("TX-DEMO-1", "mã tài xế")}
+                  onClick={() => handleCopyText(driver?.id ?? "", "mã tài xế")}
                   className="p-1 rounded hover:bg-stone-800 text-stone-400 hover:text-white transition-colors"
                   title="Sao chép mã tài xế"
                 >
@@ -73,18 +83,18 @@ export default function DriverProfilePage() {
           <div className="pt-4 border-t border-stone-800 grid grid-cols-3 gap-2 text-center relative z-10">
             <div className="space-y-0.5">
               <span className="text-[10px] uppercase font-bold text-stone-400 block">Đánh giá</span>
-              <div className="text-xl sm:text-2xl font-black text-amber-400">★ 4.95</div>
-              <span className="text-[10px] text-stone-400">420+ lượt</span>
+              <div className="text-xl sm:text-2xl font-black text-amber-400">{ratings.length ? "★ " + (ratings.reduce((sum, rating) => sum + rating.stars, 0) / ratings.length).toFixed(1) : "—"}</div>
+              <span className="text-[10px] text-stone-400">{ratings.length} lượt</span>
             </div>
             <div className="space-y-0.5 border-x border-stone-800">
-              <span className="text-[10px] uppercase font-bold text-stone-400 block">Tỷ lệ nhận</span>
-              <div className="text-xl sm:text-2xl font-black text-emerald-400">98.2%</div>
-              <span className="text-[10px] text-stone-400">Rất tốt</span>
+              <span className="text-[10px] uppercase font-bold text-stone-400 block">Đơn hoàn tất</span>
+              <div className="text-xl sm:text-2xl font-black text-emerald-400">{completedTrips.length}</div>
+              <span className="text-[10px] text-stone-400">Trong dữ liệu demo</span>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[10px] uppercase font-bold text-stone-400 block">Hoàn thành</span>
-              <div className="text-xl sm:text-2xl font-black text-white">99.1%</div>
-              <span className="text-[10px] text-stone-400">Xuất sắc</span>
+              <span className="text-[10px] uppercase font-bold text-stone-400 block">Trạng thái</span>
+              <div className="text-sm sm:text-base font-black text-white">{isOnline ? "Trực tuyến" : "Tạm nghỉ"}</div>
+              <span className="text-[10px] text-stone-400">Theo bàn điều phối</span>
             </div>
           </div>
         </section>
@@ -96,7 +106,7 @@ export default function DriverProfilePage() {
               Thông tin xe máy đăng ký
             </h3>
             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              Đã kiểm định
+              Thông tin phương tiện
             </span>
           </div>
 
@@ -104,20 +114,20 @@ export default function DriverProfilePage() {
             <div>
               <span className="text-stone-400 block mb-0.5">BIỂN SỐ XE</span>
               <strong className="font-mono text-sm text-stone-900 bg-stone-100 px-2 py-0.5 rounded inline-block">
-                59-K1 889.23
+                {driver?.vehiclePlate ?? "—"}
               </strong>
             </div>
             <div>
               <span className="text-stone-400 block mb-0.5">LOẠI XE</span>
-              <strong className="text-stone-900">Honda Wave Alpha 110cc</strong>
+              <strong className="text-stone-900">{driver?.vehicleType ?? "—"}</strong>
             </div>
             <div>
               <span className="text-stone-400 block mb-0.5">MÀU SẮC</span>
-              <span className="text-stone-800">Đỏ - Đen</span>
+              <span className="text-stone-800">Chưa lưu trong dữ liệu demo</span>
             </div>
             <div>
               <span className="text-stone-400 block mb-0.5">ĐỘI XE PHỤ TRÁCH</span>
-              <span className="text-stone-800">Đội Ong Vàng Q.1 & Q.3</span>
+              <span className="text-stone-800">{driver?.currentDistrict ?? "—"}</span>
             </div>
           </div>
         </section>
@@ -129,18 +139,8 @@ export default function DriverProfilePage() {
           </h3>
 
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-semibold flex items-center gap-1.5">
-              <span>⚡</span> Giao hàng siêu tốc <strong className="ml-1 text-amber-950">(184)</strong>
-            </span>
-            <span className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-semibold flex items-center gap-1.5">
-              <span>😊</span> Thân thiện, lịch sự <strong className="ml-1 text-amber-950">(152)</strong>
-            </span>
-            <span className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-semibold flex items-center gap-1.5">
-              <span>📦</span> Giữ hàng cẩn thận <strong className="ml-1 text-amber-950">(128)</strong>
-            </span>
-            <span className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-semibold flex items-center gap-1.5">
-              <span>🏍️</span> Lái xe an toàn <strong className="ml-1 text-amber-950">(96)</strong>
-            </span>
+            {Object.keys(praiseCounts).length === 0 && <span className="text-stone-500">Chưa có lời khen từ khách hàng trong dữ liệu demo.</span>}
+            {Object.entries(praiseCounts).map(([tag, count]) => <span key={tag} className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-semibold">{tag} <strong>({count})</strong></span>)}
           </div>
         </section>
 

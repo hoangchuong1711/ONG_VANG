@@ -6,20 +6,17 @@ import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { Button } from "@/components/ui/Button";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
-
-const WALLET_LOGS = [
-  { id: "TX-GD-104", type: "INCOME", title: "Cước cuốc xe DH-2025-001236", amount: 35700, time: "Hôm nay, 14:15" },
-  { id: "TX-GD-103", type: "COD_HOLD", title: "Thu hộ tiền mặt COD DH-2025-001236", amount: 42000, time: "Hôm nay, 14:15" },
-  { id: "TX-GD-102", type: "INCOME", title: "Cước cuốc xe DH-2025-001234", amount: 27200, time: "Hôm nay, 11:30" },
-  { id: "TX-GD-101", type: "WITHDRAW", title: "Rút tiền về Vietcombank (*8899)", amount: -500000, time: "Hôm qua, 18:00" },
-  { id: "TX-GD-100", type: "INCOME", title: "Cước cuốc xe DH-2025-001228", amount: 32300, time: "Hôm qua, 16:45" },
-];
+import { updateDemoState, useDemoStore, toggleDemoDriverOnline } from "@/lib/demo-store";
 
 export default function DriverWalletPage() {
   const { showToast } = useToast();
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [balance, setBalance] = useState<number>(1450000);
-  const [codHold, setCodHold] = useState<number>(385000);
+  const { state: demo } = useDemoStore();
+  const driver = demo.drivers.find((item) => item.id === "TX-DEMO-1");
+  const isOnline = driver?.status !== "OFFLINE";
+  const balance = driver?.walletBalance ?? 0;
+  const codHold = driver?.codCashHolding ?? 0;
+  const cashOrders = demo.orders.filter((order) => order.driver?.id === driver?.id &&
+    order.paymentMethod === "TIEN_MAT" && order.paid && order.status === "HOAN_TAT");
 
   // Modal rút tiền
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState<boolean>(false);
@@ -34,26 +31,29 @@ export default function DriverWalletPage() {
       showToast("Số dư ví không đủ để rút số tiền này!", "error");
       return;
     }
-    setBalance(balance - withdrawAmount);
+    if (withdrawAmount < 50000) return showToast("Số tiền rút tối thiểu là 50.000đ.", "error");
+    updateDemoState((previous) => ({ ...previous, drivers: previous.drivers.map((item) =>
+      item.id === driver?.id ? { ...item, walletBalance: balance - withdrawAmount } : item) }));
     setIsWithdrawModalOpen(false);
-    showToast(`Đã gửi yêu cầu rút ${formatVND(withdrawAmount)} về Vietcombank! Tiền sẽ về trong 5 phút.`, "success");
+    showToast("Đã ghi nhận yêu cầu rút " + formatVND(withdrawAmount) + " trong demo; chưa chuyển tiền thật.", "info");
   };
 
   const handlePayCod = () => {
-    setCodHold(0);
+    updateDemoState((previous) => ({ ...previous, drivers: previous.drivers.map((item) =>
+      item.id === driver?.id ? { ...item, codSettlementRequested: true } : item) }));
     setIsPayCodModalOpen(false);
-    showToast("Đã nộp thành công toàn bộ tiền mặt COD về công ty qua chuyển khoản QR!", "success");
+    showToast("Đã gửi yêu cầu nộp tiền mặt. Chờ điều phối xác nhận đã nhận tiền.", "info");
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
-      <DriverNavbar isOnline={isOnline} onToggleOnline={() => setIsOnline(!isOnline)} />
+      <DriverNavbar isOnline={isOnline} onToggleOnline={() => toggleDemoDriverOnline("TX-DEMO-1")} />
 
       <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
         {/* Header */}
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
-            Ví tài xế & Đối soát COD (TX-07)
+            Ví tài xế & đối soát tiền mặt
           </h1>
           <p className="text-xs text-stone-500 mt-0.5">
             Quản lý thu nhập thực nhận và số tiền COD cần nộp về công ty
@@ -65,19 +65,20 @@ export default function DriverWalletPage() {
           {/* Card 1: Số dư thu nhập khả dụng */}
           <div className="bg-stone-900 text-white rounded-2xl p-5 shadow-sm space-y-3 relative overflow-hidden">
             <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
-              Số dư thu nhập khả dụng
+              Số dư ví mô phỏng
             </span>
             <div className="text-3xl font-black">
               {formatVND(balance)}
             </div>
             <p className="text-[11px] text-stone-400">
-              Ngân hàng nhận: Vietcombank · STK: ****8899
+              Chưa kết nối ngân hàng hoặc hệ thống trả thu nhập.
             </p>
             <div className="pt-2">
               <Button
                 variant="primary"
                 size="sm"
                 fullWidth
+                disabled={balance === 0}
                 onClick={() => setIsWithdrawModalOpen(true)}
               >
                 Rút tiền về tài khoản ngân hàng
@@ -94,17 +95,19 @@ export default function DriverWalletPage() {
               {formatVND(codHold)}
             </div>
             <p className="text-[11px] text-stone-500">
-              Hạn mức tối đa được giữ: <strong>2.000.000đ</strong>
+              {driver?.codSettlementRequested ? "Đã gửi yêu cầu, đang chờ điều phối xác nhận." : "Tiền thu từ đơn đã giao, đang chờ đối soát."}
             </p>
+            <p className="text-[11px] text-stone-400">Số dư mẫu ban đầu có thể gồm các đơn ngoài danh sách đang hiển thị.</p>
             <div className="pt-2">
               <Button
                 variant="outline"
                 size="sm"
                 fullWidth
+                disabled={codHold === 0 || driver?.codSettlementRequested}
                 onClick={() => setIsPayCodModalOpen(true)}
                 className="border-amber-500 text-amber-900 bg-amber-50/50 hover:bg-amber-100 font-bold"
               >
-                Nộp tiền COD về công ty ngay
+                Yêu cầu đối soát tiền mặt
               </Button>
             </div>
           </div>
@@ -113,36 +116,27 @@ export default function DriverWalletPage() {
         {/* LỊCH SỬ BIẾN ĐỘNG SỐ DƯ */}
         <section className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
           <h3 className="font-extrabold text-stone-900 text-sm uppercase tracking-wider">
-            Lịch sử giao dịch gần đây
+            Đơn đã thu tiền mặt
           </h3>
 
           <div className="divide-y divide-stone-100">
-            {WALLET_LOGS.map((log) => {
-              const isPositive = log.amount > 0;
-              return (
-                <div key={log.id} className="py-3 flex items-center justify-between gap-3">
+            {cashOrders.length === 0 && <p className="py-6 text-center text-sm text-stone-500">Chưa có đơn đã thu tiền mặt.</p>}
+            {cashOrders.map((order) => (
+                <div key={order.id} className="py-3 flex items-center justify-between gap-3">
                   <div className="space-y-0.5">
                     <div className="font-bold text-xs sm:text-sm text-stone-900">
-                      {log.title}
+                      Thu tiền mặt đơn {order.id}
                     </div>
                     <div className="text-[11px] text-stone-400 font-mono">
-                      {log.id} · {log.time}
+                      {order.createdAt}
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span
-                      className={`font-black text-sm sm:text-base ${
-                        isPositive ? "text-emerald-600" : "text-stone-900"
-                      }`}
-                    >
-                      {isPositive ? "+" : ""}
-                      {formatVND(log.amount)}
-                    </span>
+                    <span className="font-black text-sm sm:text-base text-emerald-600">{formatVND(order.totalFee)}</span>
                   </div>
                 </div>
-              );
-            })}
+            ))}
           </div>
         </section>
       </main>
@@ -159,8 +153,7 @@ export default function DriverWalletPage() {
             </h3>
 
             <div className="p-3 bg-stone-50 rounded-xl border border-stone-100 text-xs space-y-1">
-              <div>Ngân hàng: <strong>Vietcombank</strong></div>
-              <div>Số tài khoản: <strong>0071000888899</strong> (Trần Minh Tuấn)</div>
+              <div>Thao tác mô phỏng. Chưa kết nối tài khoản ngân hàng để chuyển tiền.</div>
             </div>
 
             <div>
@@ -207,7 +200,7 @@ export default function DriverWalletPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 sm:p-6 space-y-4 animate-scaleUp">
             <h3 className="text-base font-extrabold text-stone-900">
-              Nộp tiền mặt COD về công ty
+              Yêu cầu nộp tiền mặt
             </h3>
 
             <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-center space-y-1">
@@ -220,7 +213,7 @@ export default function DriverWalletPage() {
             </div>
 
             <p className="text-xs text-stone-500 text-center">
-              Quét mã QR qua ứng dụng ngân hàng hoặc ví VNPay để nộp tiền tức thì về tài khoản Mini Ong Vàng.
+              Gửi yêu cầu để điều phối viên kiểm tra và xác nhận tiền đã nộp. Đây là dữ liệu demo, chưa có chuyển khoản thật.
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-1">
@@ -236,7 +229,7 @@ export default function DriverWalletPage() {
                 size="sm"
                 onClick={handlePayCod}
               >
-                Xác nhận đã nộp xong
+                Gửi yêu cầu
               </Button>
             </div>
           </div>

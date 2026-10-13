@@ -6,15 +6,25 @@ import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
 import { OrderItem } from "@/lib/types";
+import { useDemoStore, updateDemoState } from "@/lib/demo-store";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 export default function DriverDashboardPage() {
   const { showToast } = useToast();
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [activeOrder, setActiveOrder] = useState<OrderItem | null>(SAMPLE_ORDERS[2]); // Đơn DH-2025-001236
+  const { state: demo } = useDemoStore();
+  const driver = demo.drivers.find((item) => item.id === "TX-DEMO-1");
+  const activeOrder = demo.orders.find((item) => item.driver?.id === driver?.id &&
+    ["DA_GAN", "DA_LAY_HANG", "DANG_GIAO"].includes(item.status)) ?? null;
+  const isOnline = driver?.status !== "OFFLINE";
+  const today = new Date().toDateString();
+  const todayTrips = demo.orders.filter((item) => item.driver?.id === driver?.id &&
+    ["HOAN_TAT", "CHUA_THANH_TOAN"].includes(item.status) &&
+    new Date(item.createdTimestamp).toDateString() === today);
+  const ratedTrips = demo.orders.filter((item) => item.driver?.id === driver?.id && item.rating);
+  const averageRating = ratedTrips.length ?
+    (ratedTrips.reduce((sum, item) => sum + (item.rating?.stars ?? 0), 0) / ratedTrips.length).toFixed(1) : "—";
 
   // Modal đơn mới đến (TX-02 / UC-12)
   const [incomingOrder, setIncomingOrder] = useState<OrderItem | null>(null);
@@ -23,7 +33,8 @@ export default function DriverDashboardPage() {
 
   const handleToggleOnline = () => {
     const nextState = !isOnline;
-    setIsOnline(nextState);
+    updateDemoState((previous) => ({ ...previous, drivers: previous.drivers.map((item) =>
+      item.id === driver?.id ? { ...item, status: nextState ? (activeOrder ? "ONLINE_BUSY" : "ONLINE_IDLE") : "OFFLINE" } : item) }));
     if (nextState) {
       showToast("Bạn đã bật TRỰC TUYẾN. Sẵn sàng nhận cuốc!", "success");
     } else {
@@ -32,17 +43,35 @@ export default function DriverDashboardPage() {
   };
 
   const handleTriggerIncomingOrder = () => {
+    if (activeOrder) {
+      showToast("Hãy hoàn tất đơn đang phụ trách trước khi nhận đơn mới.", "info");
+      return;
+    }
     if (!isOnline) {
       showToast("Vui lòng bật trạng thái TRỰC TUYẾN trước khi nhận đơn!", "error");
       return;
     }
-    setIncomingOrder(SAMPLE_ORDERS[0]); // Đơn DH-2025-001234
-    showToast("Ting ting! Bạn có 01 cuốc giao hàng mới được gán!", "info");
+    const pending = demo.orders.find((item) => item.status === "CHO_GAN");
+    if (!pending) return showToast("Hiện không có đơn chờ phân công trong dữ liệu demo.", "info");
+    setIncomingOrder(pending);
+    showToast("Đã tìm thấy một đơn đang chờ phân công.", "info");
   };
 
   const handleAcceptOrder = () => {
     if (incomingOrder) {
-      setActiveOrder(incomingOrder);
+      if (!demo.orders.some((item) => item.id === incomingOrder.id && item.status === "CHO_GAN")) {
+        setIncomingOrder(null);
+        showToast("Đơn này đã được phân công. Hãy chọn đơn khác.", "error");
+        return;
+      }
+      updateDemoState((previous) => ({ ...previous,
+        orders: previous.orders.map((item) => item.id === incomingOrder.id ? {
+          ...item, status: "DA_GAN", statusText: "Đã gán tài xế",
+          driver: driver ? { id: driver.id, name: driver.name, phone: driver.phone,
+            vehiclePlate: driver.vehiclePlate, vehicleType: driver.vehicleType } : undefined,
+        } : item),
+        drivers: previous.drivers.map((item) => item.id === driver?.id ? { ...item, status: "ONLINE_BUSY" } : item),
+      }));
       setIncomingOrder(null);
       showToast(`Đã nhận cuốc ${incomingOrder.id}! Bắt đầu di chuyển đến điểm lấy hàng.`, "success");
     }
@@ -79,7 +108,7 @@ export default function DriverDashboardPage() {
               </h2>
               <p className="text-xs text-stone-500">
                 {isOnline
-                  ? "Hệ thống tự động quét đơn phù hợp trong bán kính 5km quanh bạn."
+                  ? "Bạn đang sẵn sàng nhận phân công từ điều phối viên."
                   : "Bật trực tuyến ở góc trên để bắt đầu nhận phân công từ điều phối viên."}
               </p>
             </div>
@@ -90,9 +119,9 @@ export default function DriverDashboardPage() {
             type="button"
             onClick={handleTriggerIncomingOrder}
             className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-bold shrink-0 shadow-2xs"
-            title="Mô phỏng trường hợp điều phối viên gán cuốc mới (UC-12)"
+            title="Xem đơn đang chờ phân công trong dữ liệu demo"
           >
-            ⚡ Thử nhận đơn mới
+            Xem đơn chờ nhận
           </button>
         </section>
 
@@ -103,22 +132,22 @@ export default function DriverDashboardPage() {
               Cuốc hôm nay
             </span>
             <div className="text-xl sm:text-3xl font-extrabold text-stone-900 mt-1">
-              08
+              {todayTrips.length}
             </div>
             <span className="text-[10px] text-emerald-600 font-semibold hidden sm:inline">
-              Đạt 100% chỉ tiêu
+              Đơn hoàn tất được tạo hôm nay
             </span>
           </div>
 
           <div className="bg-white border border-stone-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs text-center">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-400 block">
-              Thu nhập ngày
+              Tổng cước hôm nay
             </span>
             <div className="text-xl sm:text-3xl font-extrabold text-amber-600 mt-1">
-              285k
+              {formatVND(todayTrips.reduce((sum, item) => sum + item.totalFee, 0))}
             </div>
             <span className="text-[10px] text-stone-500 font-medium hidden sm:inline">
-              Ước tính thực nhận
+              Cước vận chuyển, chưa phải thu nhập thực nhận
             </span>
           </div>
 
@@ -127,10 +156,10 @@ export default function DriverDashboardPage() {
               Đánh giá sao
             </span>
             <div className="text-xl sm:text-3xl font-extrabold text-stone-900 mt-1 flex items-center justify-center gap-1">
-              <span className="text-amber-500">★</span> 4.95
+              <span className="text-amber-500">★</span> {averageRating}
             </div>
             <span className="text-[10px] text-amber-700 font-semibold hidden sm:inline">
-              420+ chuyến đi
+              {ratedTrips.length} lượt đánh giá
             </span>
           </div>
         </section>

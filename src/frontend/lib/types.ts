@@ -32,6 +32,7 @@ export interface OrderItem {
   createdAt: string;
   createdTimestamp: number;
   paid: boolean;
+  rating?: { stars: number; tags: string[]; comment: string };
   paymentMethod?: "TIEN_MAT" | "VNPAY";
   driver?: {
     id: string;
@@ -70,6 +71,8 @@ export interface DriverItem {
   rating: number;
   completedOrdersToday: number;
   codCashHolding: number;
+  walletBalance?: number;
+  codSettlementRequested?: boolean;
   acceptanceRate: number;
 }
 

@@ -7,8 +7,8 @@ import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
-import { OrderItem, OrderStatus } from "@/lib/types";
+import { OrderStatus } from "@/lib/types";
+import { useDemoStore, updateDemoState, toggleDemoDriverOnline } from "@/lib/demo-store";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
@@ -23,47 +23,37 @@ const INCIDENT_TYPES = [
 export default function DriverOrderExecutionPage() {
   const { showToast } = useToast();
   const params = useParams();
-  const orderId = (params?.id as string) || "DH-2025-001236";
-
-  const initialOrder: OrderItem =
-    SAMPLE_ORDERS.find((o) => o.id === orderId) || {
-      ...SAMPLE_ORDERS[2],
-      id: orderId,
-      status: "DA_GAN",
-      statusText: "Đã gán tài xế",
-    };
-
-  const [order, setOrder] = useState<OrderItem>(initialOrder);
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const orderId = params?.id as string;
+  const { state: demo, ready } = useDemoStore();
+  const order = demo.orders.find((item) => item.id === orderId);
+  const currentDriver = demo.drivers.find((item) => item.id === "TX-DEMO-1");
+  const isOnline = currentDriver?.status !== "OFFLINE";
 
   // Modal Báo sự cố (TX-04 / UC-13)
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState<boolean>(false);
   const [incidentType, setIncidentType] = useState<string>(INCIDENT_TYPES[0]);
   const [incidentNote, setIncidentNote] = useState<string>("");
-  const [incidentLogs, setIncidentLogs] = useState<string[]>([]);
+  const incidentLogs = demo.incidents.filter((incident) => incident.orderId === orderId)
+    .map((incident) => incident.type + ": " + incident.note);
 
   // Modal Thu tiền mặt COD (TX-05 / UC-08)
   const [isCashCollectModalOpen, setIsCashCollectModalOpen] = useState<boolean>(false);
-  const [collectedAmount, setCollectedAmount] = useState<number>(initialOrder.totalFee);
+  const [collectedAmount, setCollectedAmount] = useState<number>(order?.totalFee ?? 0);
 
   // Tiến trình chuyển bước (DA_GAN -> DA_LAY_HANG -> DANG_GIAO -> HOAN_TAT)
   const handleNextStep = () => {
+    if (!order) return;
     if (order.status === "DA_GAN") {
-      setOrder({
-        ...order,
-        status: "DA_LAY_HANG",
-        statusText: "Đã lấy hàng từ người gửi",
-      });
+      updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
+        item.id === order.id ? { ...item, status: "DA_LAY_HANG", statusText: "Đã lấy hàng từ người gửi" } : item) }));
       showToast("Xác nhận: Đã lấy hàng thành công từ người gửi!", "success");
     } else if (order.status === "DA_LAY_HANG") {
-      setOrder({
-        ...order,
-        status: "DANG_GIAO",
-        statusText: "Đang trên đường giao đến người nhận",
-      });
+      updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
+        item.id === order.id ? { ...item, status: "DANG_GIAO", statusText: "Đang trên đường giao đến người nhận" } : item) }));
       showToast("Bắt đầu di chuyển giao kiện hàng cho người nhận!", "info");
     } else if (order.status === "DANG_GIAO") {
       if (order.paymentMethod === "TIEN_MAT" && !order.paid) {
+        setCollectedAmount(order.totalFee);
         setIsCashCollectModalOpen(true);
       } else {
         completeOrder();
@@ -71,30 +61,50 @@ export default function DriverOrderExecutionPage() {
     }
   };
 
-  const completeOrder = () => {
-    setOrder({
-      ...order,
-      status: "HOAN_TAT",
-      statusText: "Đã giao hàng thành công",
-      paid: true,
-    });
+  const completeOrder = (cashCollected = false) => {
+    if (!order) return;
+    updateDemoState((previous) => ({ ...previous,
+      orders: previous.orders.map((item) => item.id === order.id ? {
+        ...item, status: item.paid || cashCollected ? "HOAN_TAT" : "CHUA_THANH_TOAN",
+        statusText: item.paid || cashCollected ? "Đã giao hàng thành công" : "Hoàn tất - Chờ thanh toán",
+        paid: item.paid || cashCollected, paymentMethod: cashCollected ? "TIEN_MAT" : item.paymentMethod,
+      } : item),
+      drivers: previous.drivers.map((driver) => driver.id === currentDriver?.id ? {
+        ...driver, status: "ONLINE_IDLE",
+        codCashHolding: driver.codCashHolding + (cashCollected ? collectedAmount : 0),
+      } : driver),
+    }));
     showToast("Chúc mừng! Cuốc xe đã hoàn thành thành công.", "success");
   };
 
   const handleConfirmCashCollection = () => {
+    if (!order || collectedAmount !== order.totalFee) {
+      showToast("Số tiền xác nhận cần khớp với cước đơn hàng.", "error");
+      return;
+    }
     setIsCashCollectModalOpen(false);
-    completeOrder();
+    completeOrder(true);
     showToast(`Đã xác nhận thu tiền mặt ${formatVND(collectedAmount)} thành công!`, "success");
   };
 
   const handleSubmitIncident = (e: React.FormEvent) => {
     e.preventDefault();
-    const logEntry = `[14:50] ${incidentType}: ${incidentNote || "Đã gọi điện báo tổng đài"}`;
-    setIncidentLogs([logEntry, ...incidentLogs]);
+    if (order) updateDemoState((previous) => ({ ...previous,
+      incidents: [{ id: crypto.randomUUID(), orderId: order.id, driverId: currentDriver?.id ?? "",
+        driverName: currentDriver?.name ?? "", driverPhone: currentDriver?.phone ?? "",
+        type: incidentType, note: incidentNote.trim() || "Đã gọi điện báo tổng đài",
+        reportedAt: new Date().toLocaleString("vi-VN"), status: "CHO_XU_LY", assignee: "", resolution: "" }, ...previous.incidents],
+      orders: previous.orders.map((item) => item.id === order.id ? { ...item,
+        incident: { type: incidentType, note: incidentNote.trim() || "Đã gọi điện báo tổng đài", reportedAt: new Date().toLocaleString("vi-VN") },
+      } : item),
+    }));
     setIsIncidentModalOpen(false);
     setIncidentNote("");
     showToast("Đã gửi báo cáo sự cố về tổng đài điều phối viên!", "error");
   };
+
+  if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} /><main className="p-6">Đang tải đơn hàng...</main></div>;
+  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} /><main className="p-6"><h1 className="text-xl font-bold">Không tìm thấy đơn hàng</h1><Link href="/driver" className="text-amber-800 underline">Về trang tài xế</Link></main></div>;
 
   // Xác định bước hiện tại của timeline tài xế (1 -> 4)
   const getStepNumber = (st: OrderStatus): number => {
@@ -118,7 +128,7 @@ export default function DriverOrderExecutionPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
-      <DriverNavbar isOnline={isOnline} onToggleOnline={() => setIsOnline(!isOnline)} />
+      <DriverNavbar isOnline={isOnline} onToggleOnline={() => toggleDemoDriverOnline("TX-DEMO-1")} />
 
       <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
         {/* Top Header & Breadcrumb */}

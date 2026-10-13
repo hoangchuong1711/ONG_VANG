@@ -4,93 +4,49 @@ import React, { useState } from "react";
 import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { formatVND } from "@/lib/utils";
+import { toggleDemoDriverOnline, useDemoStore } from "@/lib/demo-store";
 
 type HistoryFilter = "TODAY" | "YESTERDAY" | "7_DAYS" | "MONTH";
 
-const DRIVER_TRIPS = [
-  {
-    id: "DH-2025-001236",
-    time: "14:15 - Hôm nay",
-    from: "56 Nguyễn Đình Chiểu, Q.3",
-    to: "220 Nguyễn Tri Phương, Q.5",
-    distanceKm: 3.8,
-    grossFee: 42000,
-    netIncome: 35700, // 85%
-    paymentMethod: "TIEN_MAT",
-    rating: 5,
-  },
-  {
-    id: "DH-2025-001234",
-    time: "11:30 - Hôm nay",
-    from: "123 Lê Lợi, Q.1",
-    to: "456 Nguyễn Thị Minh Khai, Q.3",
-    distanceKm: 2.5,
-    grossFee: 32000,
-    netIncome: 27200,
-    paymentMethod: "VNPAY",
-    rating: 5,
-  },
-  {
-    id: "DH-2025-001228",
-    time: "09:40 - Hôm nay",
-    from: "15 Lê Thánh Tôn, Q.1",
-    to: "72 Trần Hưng Đạo, Q.5",
-    distanceKm: 3.2,
-    grossFee: 38000,
-    netIncome: 32300,
-    paymentMethod: "VNPAY",
-    rating: 5,
-  },
-  {
-    id: "DH-2025-001225",
-    time: "08:15 - Hôm nay",
-    from: "10 Nguyễn Huệ, Q.1",
-    to: "300 Điện Biên Phủ, Bình Thạnh",
-    distanceKm: 4.1,
-    grossFee: 45000,
-    netIncome: 38250,
-    paymentMethod: "TIEN_MAT",
-    rating: 4,
-  },
-  {
-    id: "DH-2025-001220",
-    time: "17:10 - Hôm qua",
-    from: "88 Nam Kỳ Khởi Nghĩa, Q.3",
-    to: "12 Võ Văn Kiệt, Q.1",
-    distanceKm: 4.5,
-    grossFee: 53000,
-    netIncome: 45050,
-    paymentMethod: "VNPAY",
-    rating: 5,
-  },
-];
-
 export default function DriverTripHistoryPage() {
-  const [filter, setFilter] = useState<HistoryFilter>("TODAY");
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [filter, setFilter] = useState<HistoryFilter>("7_DAYS");
+  const [asOf] = useState(() => Date.now());
+  const { state: demo } = useDemoStore();
+  const isOnline = demo.drivers.find((item) => item.id === "TX-DEMO-1")?.status !== "OFFLINE";
 
-  const trips =
-    filter === "TODAY"
-      ? DRIVER_TRIPS.slice(0, 4)
-      : filter === "YESTERDAY"
-      ? DRIVER_TRIPS.slice(4)
-      : DRIVER_TRIPS;
+  const trips = demo.orders
+    .filter((order) => order.driver?.id === "TX-DEMO-1" && ["HOAN_TAT", "CHUA_THANH_TOAN"].includes(order.status))
+    .filter((order) => {
+      const day = new Date(order.createdTimestamp).toDateString();
+      if (filter === "TODAY") return day === new Date(asOf).toDateString();
+      if (filter === "YESTERDAY") return day === new Date(asOf - 86400000).toDateString();
+      if (filter === "7_DAYS") return order.createdTimestamp >= asOf - 7 * 86400000;
+      return new Date(order.createdTimestamp).getMonth() === new Date(asOf).getMonth() &&
+        new Date(order.createdTimestamp).getFullYear() === new Date(asOf).getFullYear();
+    })
+    .map((order) => ({
+      id: order.id, time: order.createdAt,
+      from: order.sender.street + ", " + order.sender.district,
+      to: order.receiver.street + ", " + order.receiver.district,
+      distanceKm: order.distanceKm, fee: order.totalFee,
+      paymentMethod: order.paymentMethod, paid: order.paid, rating: order.rating?.stars,
+    }));
 
-  const totalIncome = trips.reduce((sum, t) => sum + t.netIncome, 0);
+  const totalFare = trips.reduce((sum, t) => sum + t.fee, 0);
   const totalKm = trips.reduce((sum, t) => sum + t.distanceKm, 0);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
-      <DriverNavbar isOnline={isOnline} onToggleOnline={() => setIsOnline(!isOnline)} />
+      <DriverNavbar isOnline={isOnline} onToggleOnline={() => toggleDemoDriverOnline("TX-DEMO-1")} />
 
       <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
         {/* Header */}
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
-            Lịch sử chuyến xe & Thu nhập (TX-06)
+            Lịch sử chuyến giao
           </h1>
           <p className="text-xs text-stone-500 mt-0.5">
-            Xem lại các chuyến giao hàng đã hoàn thành và đối soát tiền cước
+            Xem các đơn đã hoàn tất được tạo trong kỳ và cước vận chuyển tương ứng.
           </p>
         </div>
 
@@ -124,10 +80,10 @@ export default function DriverTripHistoryPage() {
           <div className="flex items-center justify-between pb-3 border-b border-stone-950/15">
             <div>
               <span className="text-[10px] uppercase font-black tracking-wider text-amber-950 block">
-                Thu nhập thực nhận (85%)
+                Tổng cước chuyến hoàn tất
               </span>
               <div className="text-3xl font-black mt-0.5">
-                {formatVND(totalIncome)}
+                {formatVND(totalFare)}
               </div>
             </div>
             <div className="text-right">
@@ -147,7 +103,9 @@ export default function DriverTripHistoryPage() {
             </div>
             <div className="text-right">
               <span className="opacity-80 block text-[10px]">Đánh giá trung bình:</span>
-              <span>★ 4.98 / 5.0</span>
+              <span>{trips.some((trip) => trip.rating) ?
+                "★ " + (trips.reduce((sum, trip) => sum + (trip.rating ?? 0), 0) / trips.filter((trip) => trip.rating).length).toFixed(1) + " / 5.0" :
+                "Chưa có đánh giá"}</span>
             </div>
           </div>
         </section>
@@ -159,6 +117,7 @@ export default function DriverTripHistoryPage() {
           </h3>
 
           <div className="space-y-3">
+            {trips.length === 0 && <div className="rounded-xl border border-stone-200 bg-white p-8 text-center text-sm text-stone-500">Chưa có chuyến giao hoàn tất trong kỳ đã chọn.</div>}
             {trips.map((trip) => (
               <article
                 key={trip.id}
@@ -174,10 +133,10 @@ export default function DriverTripHistoryPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-black text-amber-600">
-                      +{formatVND(trip.netIncome)}
+                      {formatVND(trip.fee)}
                     </span>
                     <span className="text-[10px] text-stone-400 block">
-                      (Cước gốc: {formatVND(trip.grossFee)})
+                      Cước vận chuyển
                     </span>
                   </div>
                 </div>
@@ -196,12 +155,12 @@ export default function DriverTripHistoryPage() {
                 <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded bg-stone-100 text-[10px] font-bold text-stone-700">
-                      {trip.paymentMethod === "TIEN_MAT" ? "💵 Đã thu COD" : "💳 VNPay"}
+                      {trip.paid ? (trip.paymentMethod === "TIEN_MAT" ? "Đã thu tiền mặt" : "Đã thanh toán trực tuyến") : "Chưa thanh toán"}
                     </span>
                     <span className="text-[11px] text-stone-400">{trip.distanceKm} km</span>
                   </div>
                   <div className="font-bold text-amber-600">
-                    ★ {trip.rating}.0
+                    {trip.rating ? "★ " + trip.rating + ".0" : "Chưa có đánh giá"}
                   </div>
                 </div>
               </article>

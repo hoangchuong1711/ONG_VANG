@@ -1,14 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext } from "react";
 import {
-  ADMIN_STORAGE_KEY,
   availableDrivers,
   canCancelOrder,
   initialAdminState,
-  readAdminState,
   type AdminDemoState,
 } from "@/lib/admin-demo";
+import { resetDemoState, updateDemoState, useDemoStore } from "@/lib/demo-store";
 
 type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -21,17 +20,8 @@ type AdminContextValue = AdminDemoState & {
 };
 
 const AdminContext = createContext<AdminContextValue | null>(null);
-const subscribeToMount = () => () => {};
-
 export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AdminDemoState>(readAdminState);
-  const ready = useSyncExternalStore(subscribeToMount, () => true, () => false);
-
-  useEffect(() => {
-    if (!ready) return;
-    try { window.localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(state)); }
-    catch { /* Keep demo usable even when browser storage is unavailable. */ }
-  }, [ready, state]);
+  const { state, ready } = useDemoStore();
 
   const assignDriver = useCallback((orderId: string, driverId: string): ActionResult => {
     const order = state.orders.find((item) => item.id === orderId);
@@ -45,7 +35,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       return { ok: false, message: "Tài xế không còn sẵn sàng. Hãy chọn người khác." };
     }
     const isChange = Boolean(order.driver);
-    setState((previous) => ({
+    updateDemoState((previous) => ({
       ...previous,
       orders: previous.orders.map((item) => item.id === orderId ? {
         ...item,
@@ -74,7 +64,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     if (!order) return { ok: false, message: "Không tìm thấy đơn hàng." };
     if (!canCancelOrder(order)) return { ok: false, message: "Đơn này không thể hủy ở trạng thái hiện tại." };
     if (reason.trim().length < 8) return { ok: false, message: "Vui lòng nhập lý do ít nhất 8 ký tự." };
-    setState((previous) => ({
+    updateDemoState((previous) => ({
       ...previous,
       orders: previous.orders.map((item) => item.id === orderId ? {
         ...item, status: "DA_HUY", statusText: "Đã hủy", driver: undefined,
@@ -88,10 +78,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   }, [state.orders]);
 
   const resetDemo = useCallback(() => {
-    window.localStorage.removeItem(ADMIN_STORAGE_KEY);
-    window.location.reload();
+    resetDemoState();
   }, []);
-  const updateDemo = useCallback((updater: (previous: AdminDemoState) => AdminDemoState) => setState(updater), []);
+  const updateDemo = updateDemoState;
 
   const visibleState = ready ? state : initialAdminState();
   return <AdminContext.Provider value={{ ...visibleState, ready, updateDemo, assignDriver, cancelOrder, resetDemo }}>

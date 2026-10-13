@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
-import { OrderItem } from "@/lib/types";
+import { updateDemoState, useDemoStore } from "@/lib/demo-store";
 import { useToast } from "@/components/ui/Toast";
 
 const QUICK_TAGS = [
@@ -29,13 +28,9 @@ const RATING_LABELS: Record<number, string> = {
 export default function DriverRatingPage() {
   const { showToast } = useToast();
   const params = useParams();
-  const orderId = (params?.id as string) || "DH-2025-001231";
-
-  const order: OrderItem =
-    SAMPLE_ORDERS.find((o) => o.id === orderId) || {
-      ...SAMPLE_ORDERS[0],
-      id: orderId,
-    };
+  const orderId = params?.id as string;
+  const { state: demo, ready } = useDemoStore();
+  const order = demo.orders.find((item) => item.id === orderId);
 
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number>(0);
@@ -56,9 +51,16 @@ export default function DriverRatingPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!order) return;
+    updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
+      item.id === order.id ? { ...item, rating: { stars: rating, tags: selectedTags, comment: comment.trim() } } : item) }));
     setIsSubmitted(true);
-    showToast("Cảm ơn bạn! Bạn nhận được +50 điểm thưởng Vàng.", "success");
+    showToast("Đã lưu đánh giá trong dữ liệu demo.", "success");
   };
+
+  if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><Navbar /><main className="mx-auto max-w-3xl px-4 py-8">Đang tải đơn hàng...</main></div>;
+  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><Navbar /><main className="mx-auto max-w-3xl px-4 py-8"><h1 className="text-xl font-bold">Không tìm thấy đơn hàng</h1><Link href="/orders" className="mt-4 inline-block text-amber-800 underline">Về danh sách đơn</Link></main></div>;
+  if (!["HOAN_TAT", "CHUA_THANH_TOAN"].includes(order.status) || !order.driver) return <div className="min-h-dvh bg-[#FAFAF9]"><Navbar /><main className="mx-auto max-w-3xl px-4 py-8"><h1 className="text-xl font-bold">Chưa thể đánh giá đơn này</h1><p className="mt-2 text-sm">Bạn có thể đánh giá sau khi đơn được giao hoàn tất.</p><Link href={"/tracking/" + order.id} className="mt-4 inline-block text-amber-800 underline">Xem tiến độ đơn</Link></main></div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917]">
@@ -75,7 +77,7 @@ export default function DriverRatingPage() {
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900">
-              Đánh giá dịch vụ giao hàng (K11)
+              Đánh giá dịch vụ giao hàng
             </h1>
             <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
               {order.id}
@@ -86,7 +88,7 @@ export default function DriverRatingPage() {
         {/* ========================================================================= */}
         {/* FORM ĐÁNH GIÁ (K11)                                                       */}
         {/* ========================================================================= */}
-        {!isSubmitted ? (
+        {!isSubmitted && !order.rating ? (
           <form onSubmit={handleSubmit} className="space-y-5 animate-fadeIn">
             {/* Driver Profile Card */}
             <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-6 shadow-2xs space-y-4">
@@ -209,13 +211,13 @@ export default function DriverRatingPage() {
                 </Button>
               </Link>
               <Button variant="primary" size="lg" type="submit">
-                Gửi đánh giá (+50 xu thưởng)
+                Gửi đánh giá
               </Button>
             </div>
           </form>
         ) : (
           /* ========================================================================= */
-          /* MÀN HÌNH CẢM ƠN & TÍCH XU (K12)                                            */
+          /* MÀN HÌNH CẢM ƠN                                                            */
           /* ========================================================================= */
           <div className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-10 text-center space-y-6 shadow-2xs animate-scaleUp">
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-amber-100 text-amber-600 mx-auto flex items-center justify-center text-3xl">
@@ -224,7 +226,7 @@ export default function DriverRatingPage() {
 
             <div className="space-y-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
-                CẢM ƠN BẠN ĐÃ GÓP Ý (K12)
+                CẢM ƠN BẠN ĐÃ GÓP Ý
               </span>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900">
                 Đánh giá thành công!
@@ -232,24 +234,6 @@ export default function DriverRatingPage() {
               <p className="text-sm text-stone-600 max-w-md mx-auto">
                 Ý kiến của bạn là động lực rất lớn giúp tài xế <strong>{order.driver?.name || "Trần Minh Tuấn"}</strong> và đội ngũ Mini Ong Vàng nâng cao chất lượng dịch vụ mỗi ngày.
               </p>
-            </div>
-
-            {/* Reward Box */}
-            <div className="max-w-md mx-auto bg-gradient-to-br from-amber-500 via-amber-400 to-amber-600 p-5 rounded-2xl text-stone-950 text-left shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-950 block">
-                  Thưởng tích lũy thành viên Vàng
-                </span>
-                <span className="text-2xl font-black text-stone-950">
-                  +50 Điểm Ong Vàng
-                </span>
-                <p className="text-[11px] text-amber-900 mt-0.5">
-                  Đã tự động cộng vào tài khoản của Nguyễn Thu Hà
-                </p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-white/30 backdrop-blur-xs flex items-center justify-center font-bold text-2xl">
-                🪙
-              </div>
             </div>
 
             {/* Actions */}

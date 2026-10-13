@@ -1,11 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { useDemoStore, updateDemoState } from "@/lib/demo-store";
+import { quoteDemoFare } from "@/lib/demo-pricing";
+import { readCustomerDemo } from "@/lib/customer-demo";
+import { INITIAL_CUSTOMERS } from "@/lib/admin-extras";
+
+const subscribeToMount = () => () => {};
+const currentTimestamp = () => Date.now();
 
 // Quận TP.HCM hợp lệ trong hệ thống
 const DISTRICTS = [
@@ -29,13 +36,19 @@ const PACKAGE_TYPES = [
 
 export default function BookingWizardPage() {
   const { showToast } = useToast();
+  const { state: demo } = useDemoStore();
+  const ready = useSyncExternalStore(subscribeToMount, () => true, () => false);
+  const [savedCustomer] = useState(readCustomerDemo);
+  const defaultAddress = savedCustomer.addresses.find((address) => address.isDefault);
+  const savedDistrict = DISTRICTS.find((district) => defaultAddress?.detail.includes(district)) ?? "Quận 7";
+  const savedStreet = defaultAddress?.detail.replace(new RegExp(",\\s*" + savedDistrict + ",\\s*TP\\.HCM$", "i"), "") ?? "123 Nguyễn Văn Linh";
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Form State
-  const [senderName, setSenderName] = useState("Nguyễn Thu Hà");
-  const [senderPhone, setSenderPhone] = useState("0900000001");
-  const [senderStreet, setSenderStreet] = useState("123 Nguyễn Văn Linh");
-  const [senderDistrict, setSenderDistrict] = useState("Quận 7");
+  const [senderName, setSenderName] = useState(savedCustomer.profile.name);
+  const [senderPhone, setSenderPhone] = useState(savedCustomer.profile.phone);
+  const [senderStreet, setSenderStreet] = useState(savedStreet);
+  const [senderDistrict, setSenderDistrict] = useState(savedDistrict);
 
   const [receiverName, setReceiverName] = useState("");
   const [receiverPhone, setReceiverPhone] = useState("");
@@ -51,10 +64,9 @@ export default function BookingWizardPage() {
 
   // Calculation simulation
   const distanceKm = senderDistrict === receiverDistrict ? 3.5 : 7.8;
-  const baseFee = 30000 + Math.round(distanceKm * 5000);
-  const surcharge = 10000;
-  const vipDiscount = 10000; // Thành viên Vàng được giảm
-  const totalFee = Math.max(0, baseFee + surcharge - vipDiscount);
+  const tier = demo.customers.find((customer) => customer.id === INITIAL_CUSTOMERS[0].id)?.tier ?? "THUONG";
+  const { baseFee, surchargeFee: surcharge, vipDiscountFee: vipDiscount, totalFee } =
+    quoteDemoFare(demo.fare, demo.discounts, tier, distanceKm);
 
   const handleGoToStep2 = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +76,7 @@ export default function BookingWizardPage() {
     }
 
     // Kiểm tra giả lập nếu người dùng nhập cự ly quá xa (K5 testing trigger)
-    if (receiverStreet.toLowerCase().includes("hà nội") || receiverStreet.toLowerCase().includes("vũng tàu")) {
+    if (distanceKm > demo.fare.maxKm || receiverStreet.toLowerCase().includes("hà nội") || receiverStreet.toLowerCase().includes("vũng tàu")) {
       setIsDistanceExceeded(true);
       return;
     }
@@ -75,11 +87,22 @@ export default function BookingWizardPage() {
   };
 
   const handleConfirmOrder = () => {
-    const randomId = "DH-2025-00" + Math.floor(1000 + Math.random() * 9000);
+    const now = currentTimestamp();
+    const randomId = "DH-" + new Date(now).getFullYear() + "-" + now.toString().slice(-8);
+    updateDemoState((previous) => ({ ...previous, orders: [{
+      id: randomId,
+      sender: { name: senderName.trim(), phone: senderPhone.trim(), street: senderStreet.trim(), district: senderDistrict, city: "TP.HCM" },
+      receiver: { name: receiverName.trim(), phone: receiverPhone.trim(), street: receiverStreet.trim(), district: receiverDistrict, city: "TP.HCM", notes: packageNote.trim() || undefined },
+      packageType, distanceKm, baseFee, surchargeFee: surcharge, vipDiscountFee: vipDiscount, totalFee,
+      status: "CHO_GAN", statusText: "Chờ gán tài xế", createdAt: new Date(now).toLocaleString("vi-VN"),
+      createdTimestamp: now, paid: false,
+    }, ...previous.orders] }));
     setCreatedOrderId(randomId);
     setStep(3);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><Navbar /><main className="mx-auto max-w-4xl px-4 py-8 text-sm text-stone-500">Đang tải biểu mẫu...</main></div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917]">
@@ -152,7 +175,7 @@ export default function BookingWizardPage() {
                 Khoảng cách vượt quá phạm vi phục vụ
               </h2>
               <p className="text-sm text-stone-600 max-w-md mx-auto">
-                Hệ thống <strong>Mini Ong Vàng</strong> chỉ hỗ trợ giao hàng nội thành với cự ly tối đa <strong>30 km</strong>. Tuyến đường bạn chọn đã vượt quá giới hạn này.
+                Hệ thống <strong>Mini Ong Vàng</strong> chỉ hỗ trợ giao hàng nội thành với cự ly tối đa <strong>{demo.fare.maxKm} km</strong>. Tuyến đường bạn chọn đã vượt quá giới hạn này.
               </p>
             </div>
             <Button variant="primary" onClick={() => setIsDistanceExceeded(false)}>
@@ -399,11 +422,11 @@ export default function BookingWizardPage() {
                     <span>{formatVND(baseFee)}</span>
                   </div>
                   <div className="py-2.5 flex justify-between text-stone-600">
-                    <span>Phụ thu giờ cao điểm & bảo hiểm kiện hàng:</span>
+                    <span>Phụ thu theo biểu phí demo:</span>
                     <span>{formatVND(surcharge)}</span>
                   </div>
                   <div className="py-2.5 flex justify-between text-amber-700 font-semibold bg-amber-50/60 px-3 rounded-lg">
-                    <span>Ưu đãi thành viên Hạng Vàng:</span>
+                    <span>Ưu đãi thành viên hạng {tier === "VANG" ? "Vàng" : tier === "BAC" ? "Bạc" : "Thường"}:</span>
                     <span>-{formatVND(vipDiscount)}</span>
                   </div>
                   <div className="pt-3.5 flex justify-between text-base sm:text-lg font-extrabold text-stone-900">
@@ -416,7 +439,7 @@ export default function BookingWizardPage() {
               </div>
 
               <div className="text-xs text-stone-500 bg-amber-50/40 p-3 rounded-xl border border-amber-200/60">
-                💡 <strong>Lưu ý:</strong> Cước phí đã được hệ thống chốt cố định theo chính sách giá. Bạn có thể chọn thanh toán tiền mặt khi tài xế giao hoặc quét mã VNPay sau khi đơn hoàn tất.
+                💡 <strong>Lưu ý:</strong> Đây là báo giá demo theo cấu hình hiện tại. Bạn có thể chọn thanh toán tiền mặt khi giao hoặc VNPay sau khi đơn hoàn tất.
               </div>
             </div>
 

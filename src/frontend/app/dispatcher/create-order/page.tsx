@@ -7,6 +7,9 @@ import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { updateDemoState, useDemoStore } from "@/lib/demo-store";
+import { quoteDemoFare } from "@/lib/demo-pricing";
+import type { AdminCustomer } from "@/lib/admin-extras";
 
 const DISTRICTS = [
   "Quận 1",
@@ -26,8 +29,11 @@ const PACKAGE_TYPES = [
   "Khác",
 ];
 
+const newHotlineOrderId = () => "DH-" + new Date().getFullYear() + "-" + crypto.randomUUID().slice(0, 8).toUpperCase();
+
 export default function DispatcherCreateOrderPage() {
   const { showToast } = useToast();
+  const { state: demo } = useDemoStore();
   const router = useRouter();
 
   // Khách hàng gọi đến
@@ -35,7 +41,7 @@ export default function DispatcherCreateOrderPage() {
   const [senderName, setSenderName] = useState("Nguyễn Thu Hà");
   const [senderStreet, setSenderStreet] = useState("123 Nguyễn Văn Linh");
   const [senderDistrict, setSenderDistrict] = useState("Quận 7");
-  const [isVipMember, setIsVipMember] = useState(true);
+  const [customerTier, setCustomerTier] = useState<AdminCustomer["tier"]>("VANG");
 
   // Người nhận
   const [receiverName, setReceiverName] = useState("Lê Hoàng Phúc");
@@ -51,30 +57,23 @@ export default function DispatcherCreateOrderPage() {
 
   // Snapshot cước ước tính (UC-04 / UC-05)
   const distanceKm = 4.2;
-  const baseFee = 45000;
-  const surchargeFee = weightKg > 2 ? 15000 : 0;
-  const vipDiscount = isVipMember ? 10000 : 0;
-  const totalFee = Math.max(0, baseFee + surchargeFee - vipDiscount);
+  const { baseFee, surchargeFee, vipDiscountFee: vipDiscount, totalFee } =
+    quoteDemoFare(demo.fare, demo.discounts, customerTier, distanceKm, weightKg > 2);
 
   // Tìm kiếm khách hàng theo SĐT (UC-02)
   const handleLookupCustomer = (phoneInput: string) => {
     setCallerPhone(phoneInput);
-    if (phoneInput === "0900000001") {
-      setSenderName("Nguyễn Thu Hà");
-      setSenderStreet("123 Nguyễn Văn Linh");
-      setSenderDistrict("Quận 7");
-      setIsVipMember(true);
-      showToast("Đã tìm thấy hồ sơ: Nguyễn Thu Hà (Hạng VIP Vàng)", "success");
-    } else if (phoneInput === "0900000002") {
-      setSenderName("Trần Văn Bình");
-      setSenderStreet("56 Nguyễn Đình Chiểu");
-      setSenderDistrict("Quận 3");
-      setIsVipMember(false);
-      showToast("Đã tìm thấy hồ sơ: Trần Văn Bình (Khách hàng Thường)", "info");
+    const customer = demo.customers.find((item) => item.phone === phoneInput);
+    if (customer) {
+      setSenderName(customer.name);
+      setSenderStreet(phoneInput === "0900000001" ? "123 Nguyễn Văn Linh" : "");
+      setSenderDistrict(phoneInput === "0900000001" ? "Quận 7" : DISTRICTS[0]);
+      setCustomerTier(customer.tier);
+      showToast(`Đã tìm thấy hồ sơ: ${customer.name}.`, "success");
     } else {
       setSenderName("");
       setSenderStreet("");
-      setIsVipMember(false);
+      setCustomerTier("THUONG");
     }
   };
 
@@ -85,13 +84,25 @@ export default function DispatcherCreateOrderPage() {
       showToast("Vui lòng điền đầy đủ thông tin người gửi và người nhận!", "error");
       return;
     }
+    if (distanceKm > demo.fare.maxKm) {
+      showToast("Quãng đường vượt phạm vi giao hàng đang cấu hình.", "error");
+      return;
+    }
 
-    const orderId = `DH-2025-${Math.floor(100000 + Math.random() * 900000)}`;
+    const orderId = newHotlineOrderId();
     showToast(
       `Tạo đơn hotline thành công (${orderId})! Đã chuyển vào hàng đợi chờ gán tài xế.`,
       "success"
     );
 
+    updateDemoState((previous) => ({ ...previous, orders: [{
+      id: orderId,
+      sender: { name: senderName.trim(), phone: callerPhone.trim(), street: senderStreet.trim(), district: senderDistrict, city: "TP.HCM" },
+      receiver: { name: receiverName.trim(), phone: receiverPhone.trim(), street: receiverStreet.trim(), district: receiverDistrict, city: "TP.HCM", notes: receiverNotes.trim() || undefined },
+      packageType, packageWeightKg: weightKg, distanceKm, baseFee, surchargeFee, vipDiscountFee: vipDiscount, totalFee,
+      status: "CHO_GAN", statusText: "Chờ gán tài xế", createdAt: new Date().toLocaleString("vi-VN"),
+      createdTimestamp: Date.now(), paid: false, paymentMethod,
+    }, ...previous.orders] }));
     setTimeout(() => {
       router.push("/dispatcher");
     }, 1000);
@@ -106,7 +117,7 @@ export default function DispatcherCreateOrderPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-200">
           <div className="shrink-0">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-1.5 whitespace-nowrap">
-              HOTLINE TIẾP NHẬN (UC-02)
+              HOTLINE TIẾP NHẬN
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
               Tiếp Nhận Cuộc Gọi Tạo Đơn Nhanh
@@ -131,9 +142,9 @@ export default function DispatcherCreateOrderPage() {
               <span className="text-xs font-bold uppercase tracking-wider text-stone-700">
                 1. Thông tin khách gọi đến (Người gửi)
               </span>
-              {isVipMember && (
+              {customerTier !== "THUONG" && (
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                  Hội viên VIP Vàng (Giảm 10.000đ)
+                  Hạng {customerTier === "VANG" ? "Vàng" : "Bạc"} (giảm {formatVND(vipDiscount)})
                 </span>
               )}
             </div>
@@ -297,7 +308,7 @@ export default function DispatcherCreateOrderPage() {
           {/* STEP 3: KIỆN HÀNG & BÁO GIÁ CƯỚC TỨC THÌ */}
           <section className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
             <span className="text-xs font-bold uppercase tracking-wider text-stone-700 block border-b border-stone-200 pb-3">
-              3. Kiện hàng & Tính cước tức thì (UC-04 / UC-05)
+              3. Kiện hàng & tính cước tức thì
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

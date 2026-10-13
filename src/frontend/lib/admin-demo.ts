@@ -73,11 +73,7 @@ export function readAdminState(): AdminDemoState {
       "settings" in parsed && typeof parsed.settings === "object" &&
       "activity" in parsed && Array.isArray(parsed.activity)
     ) {
-      const knownIds = new Set(SAMPLE_ORDERS.map((order) => order.id));
-      const orders = (parsed.orders as OrderItem[]).filter((order) => knownIds.has(order.id));
-      if (orders.length === SAMPLE_ORDERS.length) {
-        return { ...(parsed as AdminDemoState), orders };
-      }
+      return parsed as AdminDemoState;
     }
   } catch {
     // A corrupt demo snapshot should not prevent the admin UI from loading.

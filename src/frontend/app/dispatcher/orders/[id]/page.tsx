@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { SAMPLE_ORDERS, SAMPLE_DRIVERS } from "@/lib/sample-data";
+import { useDemoStore, updateDemoState } from "@/lib/demo-store";
 import { OrderItem } from "@/lib/types";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
@@ -14,15 +14,12 @@ import { useToast } from "@/components/ui/Toast";
 export default function DispatcherOrderDetailPage() {
   const { showToast } = useToast();
   const params = useParams();
-  const orderId = (params?.id as string) || "DH-2025-001235";
-
-  const initialOrder =
-    SAMPLE_ORDERS.find((o) => o.id === orderId) || {
-      ...SAMPLE_ORDERS[0],
-      id: orderId,
-    };
-
-  const [order, setOrder] = useState<OrderItem>(initialOrder);
+  const orderId = params?.id as string;
+  const { state: demo, ready } = useDemoStore();
+  const order = demo.orders.find((item) => item.id === orderId);
+  const setOrder = (next: OrderItem) => updateDemoState((previous) => ({
+    ...previous, orders: previous.orders.map((item) => item.id === next.id ? next : item),
+  }));
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("Khách yêu cầu hủy qua hotline");
   const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
@@ -30,45 +27,56 @@ export default function DispatcherOrderDetailPage() {
 
   // Hủy đơn (UC-14)
   const handleConfirmCancel = () => {
-    setOrder({
-      ...order,
-      status: "DA_HUY",
-      statusText: `Đã hủy: ${cancelReason}`,
-    });
+    if (!order) return;
+    updateDemoState((previous) => ({ ...previous,
+      orders: previous.orders.map((item) => item.id === order.id ? { ...item,
+        status: "DA_HUY", statusText: `Đã hủy: ${cancelReason}` } : item),
+      drivers: previous.drivers.map((driver) => driver.id === order.driver?.id ?
+        { ...driver, status: "ONLINE_IDLE" } : driver),
+      incidents: previous.incidents.map((incident) => incident.orderId === order.id ?
+        { ...incident, status: "DA_GIAI_QUYET", resolution: "Đơn đã hủy" } : incident),
+    }));
     setIsCancelModalOpen(false);
     showToast(`Đã hủy đơn ${order.id} thành công! Lý do: "${cancelReason}"`, "error");
   };
 
   // Điều phối lại tài xế (UC-13)
   const handleConfirmReassign = () => {
-    const newDriver = SAMPLE_DRIVERS.find((d) => d.id === selectedDriverId);
-    if (!newDriver) return;
+    const newDriver = demo.drivers.find((d) => d.id === selectedDriverId);
+    if (!newDriver || !order) return;
 
-    setOrder({
-      ...order,
-      status: "DA_GAN",
-      statusText: "Đã gán lại tài xế",
-      incident: undefined,
-      driver: {
+    updateDemoState((previous) => ({ ...previous,
+      orders: previous.orders.map((item) => item.id === order.id ? { ...item,
+        status: "DA_GAN", statusText: "Đã gán lại tài xế", incident: undefined,
+        driver: {
         id: newDriver.id,
         name: newDriver.name,
         phone: newDriver.phone,
         vehiclePlate: newDriver.vehiclePlate,
         vehicleType: newDriver.vehicleType,
-      },
-    });
+        },
+      } : item),
+      drivers: previous.drivers.map((driver) => driver.id === newDriver.id ?
+        { ...driver, status: "ONLINE_BUSY" } : driver.id === order.driver?.id ?
+          { ...driver, status: "ONLINE_IDLE" } : driver),
+      incidents: previous.incidents.map((incident) => incident.orderId === order.id ?
+        { ...incident, status: "DA_GIAI_QUYET", resolution: "Đã gán lại tài xế" } : incident),
+    }));
     setIsReassignModalOpen(false);
     showToast(`Đã điều phối lại tài xế ${newDriver.name} cho đơn ${order.id}!`, "success");
   };
 
   // Xác nhận thu COD hộ (UC-08)
   const handleConfirmCODCollect = () => {
-    setOrder({
-      ...order,
-      paid: true,
-    });
+    if (!order) return;
+    setOrder({ ...order, paid: true,
+      status: order.status === "CHUA_THANH_TOAN" ? "HOAN_TAT" : order.status,
+      statusText: order.status === "CHUA_THANH_TOAN" ? "Đã giao và thu tiền" : order.statusText });
     showToast(`Đã xác nhận thu đối soát ${formatVND(order.totalFee)} thành công!`, "success");
   };
+
+  if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><DispatcherNavbar /><main className="p-6">Đang tải đơn hàng...</main></div>;
+  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><DispatcherNavbar /><main className="p-6"><h1 className="text-xl font-bold">Không tìm thấy đơn hàng</h1><Link href="/dispatcher" className="text-amber-800 underline">Về bàn điều phối</Link></main></div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] font-sans">
@@ -97,7 +105,7 @@ export default function DispatcherOrderDetailPage() {
                 onClick={() => setIsCancelModalOpen(true)}
                 className="text-xs font-bold whitespace-nowrap"
               >
-                Hủy đơn khẩn cấp (UC-14)
+                Hủy đơn khẩn cấp
               </Button>
             )}
           </div>
@@ -129,7 +137,7 @@ export default function DispatcherOrderDetailPage() {
                 onClick={() => setIsReassignModalOpen(true)}
                 className="text-xs font-bold shadow-sm"
               >
-                Thu hồi & Đổi tài xế khác (UC-13)
+                Thu hồi & đổi tài xế khác
               </Button>
               <Button
                 variant="outline"
@@ -262,7 +270,7 @@ export default function DispatcherOrderDetailPage() {
                     onClick={handleConfirmCODCollect}
                     className="border-amber-300 text-amber-900 hover:bg-amber-50 text-xs font-bold"
                   >
-                    Xác nhận đã thu tiền mặt COD tại bàn (UC-08)
+                    Xác nhận đã thu tiền mặt tại bàn
                   </Button>
                 </div>
               )}
@@ -321,7 +329,7 @@ export default function DispatcherOrderDetailPage() {
                     onClick={() => setIsReassignModalOpen(true)}
                     className="text-xs font-bold shadow-sm"
                   >
-                    Gán tài xế ngay (UC-12)
+                    Gán tài xế ngay
                   </Button>
                 </div>
               )}
@@ -448,7 +456,7 @@ export default function DispatcherOrderDetailPage() {
               <label className="block text-xs font-bold text-stone-700">
                 Chọn tài xế đang trực tuyến rảnh:
               </label>
-              {SAMPLE_DRIVERS.filter((d) => d.status === "ONLINE_IDLE").map((d) => (
+              {demo.drivers.filter((d) => d.status === "ONLINE_IDLE").map((d) => (
                 <label
                   key={d.id}
                   className={`flex items-center justify-between p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${

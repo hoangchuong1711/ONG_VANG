@@ -6,31 +6,33 @@ import { useParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
-import { OrderItem } from "@/lib/types";
+import { updateDemoState, useDemoStore } from "@/lib/demo-store";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 type PaymentMethod = "VNPAY" | "COD";
-type PaymentState = "SELECTION" | "PROCESSING" | "SUCCESS" | "FAILURE";
+type PaymentState = "SELECTION" | "PROCESSING" | "SUCCESS" | "FAILURE" | "CASH_SELECTED";
 
 export default function PaymentPage() {
   const { showToast } = useToast();
   const params = useParams();
-  const orderId = (params?.id as string) || "DH-2025-001231";
-
-  const order: OrderItem =
-    SAMPLE_ORDERS.find((o) => o.id === orderId) || {
-      ...SAMPLE_ORDERS[0],
-      id: orderId,
-      paid: false,
-    };
+  const orderId = params?.id as string;
+  const { state: demo, ready } = useDemoStore();
+  const order = demo.orders.find((item) => item.id === orderId);
 
   const [method, setMethod] = useState<PaymentMethod>("VNPAY");
   const [state, setState] = useState<PaymentState>("SELECTION");
   const [txnCode, setTxnCode] = useState<string>("");
 
   const handlePay = (simulateError = false) => {
+    if (!order) return;
+    if (method === "COD" && !simulateError) {
+      updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
+        item.id === order.id ? { ...item, paymentMethod: "TIEN_MAT" } : item) }));
+      setState("CASH_SELECTED");
+      showToast("Đã chọn trả tiền mặt khi giao. Đơn vẫn chưa được ghi nhận đã thu.", "info");
+      return;
+    }
     setState("PROCESSING");
 
     setTimeout(() => {
@@ -39,12 +41,19 @@ export default function PaymentPage() {
         showToast("Giao dịch thanh toán chưa thành công (Mã lỗi VNP-99)", "error");
       } else {
         const generatedTxn = `VNP${Date.now().toString().slice(-8)}`;
+        updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
+          item.id === order.id ? { ...item, paid: true, paymentMethod: "VNPAY",
+            status: item.status === "CHUA_THANH_TOAN" ? "HOAN_TAT" : item.status,
+            statusText: item.status === "CHUA_THANH_TOAN" ? "Đã hoàn tất" : item.statusText } : item) }));
         setTxnCode(generatedTxn);
         setState("SUCCESS");
-        showToast("Thanh toán cước phí thành công qua VNPay Sandbox!", "success");
+        showToast("Đã ghi nhận thanh toán VNPay mô phỏng trong dữ liệu demo.", "success");
       }
     }, 1500);
   };
+
+  if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><Navbar /><main className="mx-auto max-w-3xl px-4 py-8">Đang tải đơn hàng...</main></div>;
+  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><Navbar /><main className="mx-auto max-w-3xl px-4 py-8"><h1 className="text-xl font-bold">Không tìm thấy đơn hàng</h1><Link href="/orders" className="mt-4 inline-block text-amber-800 underline">Về danh sách đơn</Link></main></div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917]">
@@ -61,7 +70,7 @@ export default function PaymentPage() {
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900">
-              Thanh toán cước vận chuyển (K7)
+              Thanh toán cước vận chuyển
             </h1>
             <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
               {order.id}
@@ -72,7 +81,8 @@ export default function PaymentPage() {
         {/* ========================================================================= */}
         {/* STATE 1: SELECTION (K7)                                                   */}
         {/* ========================================================================= */}
-        {state === "SELECTION" && (
+        {state === "SELECTION" && order.paid && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6"><h2 className="text-lg font-bold text-emerald-950">Đơn này đã được ghi nhận thanh toán</h2><p className="mt-2 text-sm">Không cần thanh toán thêm trong dữ liệu demo.</p><Link href={"/tracking/" + order.id} className="mt-4 inline-block font-bold text-emerald-900 underline">Xem chi tiết đơn</Link></div>}
+        {state === "SELECTION" && !order.paid && (
           <div className="space-y-5 animate-fadeIn">
             {/* Order Summary Card */}
             <div className="bg-white border border-stone-200 rounded-2xl p-5 sm:p-6 shadow-2xs space-y-4">
@@ -133,14 +143,14 @@ export default function PaymentPage() {
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-stone-900 text-sm">
-                        Cổng VNPay Sandbox (VNPAY-QR / Thẻ ATM / Visa)
+                        VNPay mô phỏng (bản demo)
                       </span>
                       <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
                         Khuyên dùng
                       </span>
                     </div>
                     <p className="text-xs text-stone-500">
-                      Thanh toán trực tuyến bảo mật, xác nhận tức thì và tự động gửi hóa đơn điện tử vào email.
+                      Xem thử luồng thanh toán trực tuyến. Chưa kết nối cổng VNPay và chưa gửi hóa đơn.
                     </p>
                   </div>
                 </label>
@@ -163,7 +173,7 @@ export default function PaymentPage() {
                   />
                   <div className="flex-1 space-y-1">
                     <span className="font-bold text-stone-900 text-sm">
-                      Tiền mặt trực tiếp cho Tài xế (COD)
+                      Trả cước tiền mặt cho tài xế
                     </span>
                     <p className="text-xs text-stone-500">
                       Tài xế Mini Ong Vàng sẽ thu tiền mặt khi giao kiện hàng đến tay người nhận.
@@ -182,7 +192,7 @@ export default function PaymentPage() {
                 className="text-stone-500 hover:text-stone-800 text-xs w-full sm:w-auto"
                 title="Mô phỏng trường hợp giao dịch bị từ chối hoặc lỗi mạng (K8-E)"
               >
-                ⚡ Thử trường hợp Lỗi thanh toán (K8-E)
+                Thử giao dịch lỗi
               </Button>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -204,6 +214,12 @@ export default function PaymentPage() {
           </div>
         )}
 
+        {state === "CASH_SELECTED" && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
+          <h2 className="text-xl font-bold text-amber-950">Đã chọn trả cước bằng tiền mặt</h2>
+          <p className="mt-2 text-sm text-amber-900">Số tiền {formatVND(order.totalFee)} vẫn ở trạng thái chưa thu. Tài xế sẽ xác nhận khi nhận tiền.</p>
+          <Link href={"/tracking/" + order.id} className="mt-5 inline-block font-bold text-amber-950 underline">Xem chi tiết đơn hàng</Link>
+        </div>}
+
         {/* ========================================================================= */}
         {/* STATE 2: PROCESSING SIMULATION                                            */}
         {/* ========================================================================= */}
@@ -211,10 +227,10 @@ export default function PaymentPage() {
           <div className="bg-white border border-stone-200 rounded-2xl p-12 text-center space-y-4 shadow-2xs">
             <div className="w-14 h-14 rounded-full border-4 border-amber-200 border-t-amber-500 animate-spin mx-auto" />
             <h3 className="text-lg font-extrabold text-stone-900">
-              Đang kết nối cổng thanh toán...
+              Đang mô phỏng thanh toán...
             </h3>
             <p className="text-xs text-stone-500 max-w-sm mx-auto">
-              Vui lòng không tắt hoặc tải lại trang web trong quá trình giao dịch được xử lý.
+              Trạng thái đơn sẽ được cập nhật trong dữ liệu demo khi mô phỏng thành công.
             </p>
           </div>
         )}
@@ -232,7 +248,7 @@ export default function PaymentPage() {
 
             <div className="space-y-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                GIAO DỊCH THÀNH CÔNG (K8-S)
+                THANH TOÁN DEMO ĐÃ GHI NHẬN
               </span>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900">
                 Thanh toán hoàn tất!
@@ -255,7 +271,7 @@ export default function PaymentPage() {
               <div className="flex justify-between">
                 <span className="text-stone-400">Phương thức:</span>
                 <span className="font-semibold text-stone-800">
-                  {method === "VNPAY" ? "VNPay Sandbox" : "Tiền mặt COD"}
+                  VNPay mô phỏng
                 </span>
               </div>
               <div className="flex justify-between">
@@ -268,7 +284,7 @@ export default function PaymentPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <Link href={`/rating/${order.id}`} className="w-full sm:w-auto">
                 <Button variant="primary" size="lg" fullWidth>
-                  Đánh giá tài xế (Nhận 50 xu) →
+                  Đánh giá tài xế →
                 </Button>
               </Link>
               <Link href={`/tracking/${order.id}`} className="w-full sm:w-auto">

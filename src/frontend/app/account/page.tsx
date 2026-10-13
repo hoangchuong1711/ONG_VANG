@@ -7,44 +7,26 @@ import { Navbar } from "@/components/layout/Navbar";
 import { useToast } from "@/components/ui/Toast";
 import { INITIAL_CUSTOMERS, INITIAL_DISCOUNTS, type AdminCustomer, type MemberDiscount } from "@/lib/admin-extras";
 import { readAdminState } from "@/lib/admin-demo";
+import {
+  CUSTOMER_STORAGE_KEY, readCustomerDemo,
+  type CustomerProfile, type CustomerAddress,
+} from "@/lib/customer-demo";
 import { formatVND, isValidPhone } from "@/lib/utils";
 
-type Profile = { name: string; phone: string; email: string };
-type Address = { id: string; label: string; recipient: string; phone: string; detail: string; isDefault: boolean };
+type Profile = CustomerProfile;
+type Address = CustomerAddress;
 type AddressDraft = Omit<Address, "id" | "isDefault">;
-const STORAGE_KEY = "mini-ong-vang-customer-profile-demo-v1";
-const initialProfile: Profile = { name: "Nguyễn Thu Hà", phone: "0900000001", email: "thuha.nguyen@example.com" };
-const initialAddresses: Address[] = [{
-  id: "home", label: "Nhà riêng", recipient: "Nguyễn Thu Hà", phone: "0900000001",
-  detail: "123 Nguyễn Văn Linh, Phường Tân Phú, Quận 7, TP.HCM", isDefault: true,
-}];
 const tierName: Record<AdminCustomer["tier"], string> = { THUONG: "Thường", BAC: "Bạc", VANG: "Vàng" };
 const fieldClass = "mt-1.5 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100";
 const primaryClass = "rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-stone-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500";
 const secondaryClass = "rounded-xl px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-100";
 const subscribeToMount = () => () => {};
 
-function savedProfile(): { profile: Profile; addresses: Address[] } {
-  if (typeof window === "undefined") return { profile: initialProfile, addresses: initialAddresses };
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw);
-      if (typeof parsed === "object" && parsed !== null && "profile" in parsed && "addresses" in parsed) {
-        const data = parsed as { profile: Profile; addresses: Address[] };
-        if (typeof data.profile?.name === "string" && typeof data.profile?.phone === "string" &&
-            typeof data.profile?.email === "string" && Array.isArray(data.addresses)) return data;
-      }
-    }
-  } catch { /* Invalid demo data falls back to the sample. */ }
-  return { profile: initialProfile, addresses: initialAddresses };
-}
-
 export default function CustomerProfilePage() {
   const { showToast } = useToast();
-  const [profile, setProfile] = useState(() => savedProfile().profile);
-  const [draft, setDraft] = useState(() => savedProfile().profile);
-  const [addresses, setAddresses] = useState(() => savedProfile().addresses);
+  const [profile, setProfile] = useState<Profile>(() => readCustomerDemo().profile);
+  const [draft, setDraft] = useState<Profile>(() => readCustomerDemo().profile);
+  const [addresses, setAddresses] = useState<Address[]>(() => readCustomerDemo().addresses);
   const ready = useSyncExternalStore(subscribeToMount, () => true, () => false);
   const [editProfile, setEditProfile] = useState(false);
   const [addressForm, setAddressForm] = useState(false);
@@ -57,7 +39,7 @@ export default function CustomerProfilePage() {
   const [discounts] = useState<MemberDiscount[]>(() => readAdminState().discounts);
   useEffect(() => {
     if (!ready) return;
-    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile, addresses })); }
+    try { window.localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({ profile, addresses })); }
     catch { /* Demo works without browser storage. */ }
   }, [ready, profile, addresses]);
 
