@@ -5,6 +5,12 @@
     "version": "0.5.0",
     "description": "Backend operations on designV1 are implemented. T20 customer selection is available; shared VNPay Sandbox setup and live payment validation are deferred until deployment."
   },
+  "x-tx1-target-design": {
+    "status": "planned",
+    "businessAndData": "docs/database/designTX.md",
+    "apiContract": "docs/api/TX1-contract.md",
+    "note": "The paths and schemas below still describe the implemented designV1 API. TX3–TX7 update them together with runtime code and tests."
+  },
   "servers": [
     {
       "url": "./",
