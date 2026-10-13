@@ -14,7 +14,7 @@ Nhánh: `feat/t24-dispatcher-integration`, nền `develop` `0f98c06`. Nhóm cho 
 | Tranh chấp trạng thái đơn | `ORDER_STATE_CONFLICT` hiển thị lỗi, khóa xác nhận cũ và tải lại; không tự đổi trạng thái hoặc gửi lại POST |
 | Hủy theo quyền | POST cancel có lý do trim 1–500 ký tự; UI chỉ cho CHO_GAN/DA_GAN dưới 300 giây, cập nhật thời hạn mỗi giây; BE quyết định cuối cùng, xử lý hết hạn/tranh chấp |
 | Tài xế hiện tại | Danh sách dùng `maTx` BE suy từ phân công; chi tiết ưu tiên phân công đang mở trong `phanCong`, có lịch sử từ chối/kết thúc. Không dùng cột DB hoặc localStorage để suy phân công |
-| Mở form T23 | Có liên kết `/dispatcher/create-order`, dùng thanh điều hướng/session thật. Form T23 hiện vẫn là bản xem trước, được ghi rõ trên màn hình; tích hợp tạo đơn/báo giá thuộc T23 |
+| Form hotline T23 → hàng đợi T24 | `/dispatcher/create-order` tìm/chọn khách bằng API, lấy báo giá, tạo đơn qua backend với CSRF và Idempotency-Key; chỉ báo thành công với mã đơn backend rồi đọc lại hàng đợi. Không dùng demo-store/cước cố định |
 | Quyền/session/CSRF | `/dispatcher/sign-in` dùng login/me/logout thật; gate TONG_DAI, xử lý 401/403, cookie HttpOnly qua proxy; mỗi POST lấy CSRF hiện tại, không lưu token/mật khẩu trong localStorage |
 
 Không thay đổi schema, ERD, Entity, migration, SQL, API backend hoặc seed. `docker-compose.yml` chỉ thêm biến `API_PROXY_TARGET` cho service frontend. CI thêm kiểm thử FE, sử dụng DB test hiện có.
@@ -22,6 +22,7 @@ Không thay đổi schema, ERD, Entity, migration, SQL, API backend hoặc seed.
 ## API được dùng
 
 - `GET /api/auth/me`, `GET /api/auth/csrf`, `POST /api/auth/login`, `POST /api/auth/logout`.
+- `GET /api/customers?q&page&size`, `POST /api/quotes`, `POST /api/orders` (kèm `Idempotency-Key`).
 - `GET /api/orders?page&size&trangThai&tuNgay&denNgay` (`denNgay` không gồm ngày cuối).
 - `GET /api/orders/{maDon}` (OrderDetail: gồm phanCong và nhatKy).
 - `GET /api/drivers?page&size&trangThaiHoatDong&dangBanChuyen`.
@@ -70,7 +71,7 @@ SQL Server phải `healthy`; `db-init` thoát mã 0. Chờ log backend có `Serv
 curl --fail http://127.0.0.1:8081/api/health
 ```
 
-Expected: HTTP 200, databaseName `mini_ong_vang_design_v1`, database kết nối thành công. Nếu BE chưa sẵn sàng, xem `docker compose logs --tail 100 sqlserver db-init backend` và kiểm tra lại health sau khi startup xong. Các lệnh dùng schema/migration hiện có; T24 không thêm hoặc sửa ERD/schema. Seed demo chỉ bổ sung dữ liệu nền, không có đơn mới sẵn trong hàng đợi. Để thấy đơn thực, tạo đơn bằng API/Postman hiện có; form T23 đang là bản xem trước.
+Expected: HTTP 200, databaseName `mini_ong_vang_design_v1`, database kết nối thành công. Nếu BE chưa sẵn sàng, xem `docker compose logs --tail 100 sqlserver db-init backend` và kiểm tra lại health sau khi startup xong. Các lệnh dùng schema/migration hiện có; T24 không thêm hoặc sửa ERD/schema. Seed chỉ bổ sung khách/tài xế/cấu hình, không có đơn mới sẵn trong hàng đợi. Tạo đơn thực tại form hotline theo hướng dẫn dưới đây.
 
 ### 2. Chạy frontend
 
@@ -87,6 +88,18 @@ Nếu BE test đang chạy tại 18081, đổi `API_PROXY_TARGET=http://127.0.0.
 
 Compose dev dùng proxy nội bộ `http://backend:8080`. Browser luôn gọi `/api` cùng origin FE để giữ cookie/session; không cần cấu hình URL backend trong browser.
 
+### 3. Kiểm tra tạo đơn hotline → hàng đợi → gán/hủy
+
+1. Đăng nhập tổng đài, chọn **Tạo đơn tổng đài**. Nhập số điện thoại khách đã có hồ sơ, bấm **Tìm khách hàng**, chọn đúng hồ sơ trả về. Với DB đã seed, có thể tìm `0900000001` (khách thường) hoặc `0900000002` (khách Vàng). Hạng/ưu đãi lấy từ backend.
+2. Nhập điểm lấy/giao, số điện thoại người nhận và kiện hàng. Với `ROUTE_PROVIDER=fake`, dùng chính xác `Quận 1` → `Quận 3` hoặc `Quận 5`. Provider này không hỗ trợ địa chỉ đường phố tùy ý; muốn dùng địa chỉ đầy đủ cần cấu hình dịch vụ bản đồ thật. Không có quãng đường 4,2 km hoặc cước mặc định tại FE.
+3. Bấm **Lấy báo giá**. Expected: thấy quãng đường, cước gốc/phụ thu/giảm giá/tổng cước do backend trả. Khi sửa khách/tuyến/kiện hoặc hết 300 giây, nút tạo đơn khóa và yêu cầu báo giá mới. Ghi chú giao hàng/SĐT người nhận không làm thay đổi cước.
+4. Bấm **Tạo đơn & Đưa vào hàng đợi điều phối**. Expected: POST orders có CSRF và Idempotency-Key; chỉ sau backend trả thành công mới thông báo mã đơn thật và chuyển về hàng đợi `CHO_GAN`. Mã `DH-...` do form demo cũ tạo trên trình duyệt không phải đơn SQL Server và không được tự chuyển vào DB.
+5. Chọn mã đơn để đối chiếu chi tiết, bấm gán và chọn ứng viên backend. Expected: trạng thái DA_GAN và có phân công đang mở. Hủy trong thời hạn với lý do: DA_HUY, phân công kết thúc và tài xế được giải phóng.
+
+Khi tạo đơn bị mất phản hồi hoặc lỗi 5xx, không báo thành công và không tự gửi lại. FE giữ body/key trong `sessionStorage` theo tài khoản (không lưu mật khẩu/session token), kể cả tải lại trang. Nút **Kiểm tra lại yêu cầu tạo đơn** gửi lại đúng body/key để BE trả đơn đã lưu hoặc tạo đúng một đơn. Thông tin bị khóa trong lúc kết quả chưa rõ; có link mở hàng đợi để đối chiếu. Lỗi CSRF ở lần kiểm tra lại không xóa khóa cũ. Backend báo QUOTE_EXPIRED/QUOTE_CHANGED thì cần lấy báo giá mới.
+
+Form chỉ gửi trường mà API hiện có hỗ trợ; không thêm cột tên người nhận hoặc phương thức thanh toán vào schema. Thanh toán dùng luồng thanh toán riêng của dự án.
+
 ## Kiểm thử
 
 [Ma trận và kết quả T24](../tests/T24-validation.md) phân biệt browser fixture với FE/BE/SQL Server thật.
@@ -100,7 +113,7 @@ npm run build
 npm run test:t24
 ```
 
-`test:t24` tự khởi động FE tại 3100 và HTTP fixture tại 18082; cần hai cổng rảnh. Có 24 tình huống, chạy ở desktop và viewport mobile 390×844. Đây là test UI xử lý phản hồi, không chứng minh transaction SQL Server.
+`test:t24` tự khởi động FE tại 3100 và HTTP fixture tại 18082; cần hai cổng rảnh. Có 28 tình huống, chạy ở desktop và viewport mobile 390×844. Đây là test UI xử lý phản hồi, không chứng minh transaction SQL Server.
 
 ### FE + SQL Server thật
 
@@ -136,6 +149,6 @@ export API_BASE_URL=http://127.0.0.1:18081
 npm run test:t24:live --prefix src/frontend
 ```
 
-`DEMO_PASSWORD` phải đã được export đúng giá trị seed. Suite yêu cầu health.databaseName chính xác `mini_ong_vang_test`, fail nếu thiếu cấu hình; tự chạy FE tại 3101. Ba ca thực hiện gán/hủy và hai cuộc tranh chấp qua hai browser session, đối chiếu phân công/trạng thái/driver qua API backend đọc DB. Các đơn được tạo bằng API customer để độc lập với form T23; cleanup hủy các đơn test còn CHO_GAN/DA_GAN, không đổi schema/reset DB trong test.
+`DEMO_PASSWORD` phải đã được export đúng giá trị seed. Suite yêu cầu health.databaseName chính xác `mini_ong_vang_test`, fail nếu thiếu cấu hình; tự chạy FE tại 3101. Bốn ca gồm: hotline FE tạo đơn và đọc lại hàng đợi/nhật ký SQL Server; gán/đọc chi tiết/hủy; hai session tranh cùng đơn; hai đơn tranh cùng tài xế. Ba ca gán tạo fixture bằng API customer; ca hotline dùng chính form FE. Cleanup hủy các đơn test còn CHO_GAN/DA_GAN, không đổi schema/reset DB trong test.
 
-CI frontend chạy lint/build/48 browser fixture cases. CI backend chạy thêm 3 live cases sau seed/backend readiness, trước các HTTP smoke, đối chiếu invariant rồi reset/seed DB test để giữ nguyên thứ tự tài xế rảnh mà nhóm smoke cũ kỳ vọng. CI cần được xác nhận trên PR; review/merge là bước đóng task.
+CI frontend chạy lint/build/56 browser fixture cases. CI backend chạy thêm 4 live cases sau seed/backend readiness, trước các HTTP smoke, đối chiếu invariant rồi reset/seed DB test để giữ nguyên thứ tự tài xế rảnh mà nhóm smoke cũ kỳ vọng. CI cần được xác nhận trên PR; review/merge là bước đóng task.

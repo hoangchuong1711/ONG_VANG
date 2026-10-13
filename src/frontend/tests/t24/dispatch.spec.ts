@@ -82,7 +82,88 @@ test("lọc đơn và phân trang gửi đúng query; ngày sai không gửi", a
   await expect.poll(() => requests.at(-1)?.searchParams.get("trangThai")).toBe("DANG_GIAO"); expect(requests.at(-1)?.searchParams.get("page")).toBe("0"); expect(requests.at(-1)?.searchParams.get("tuNgay")).toBe("2026-10-12");
   const count = requests.length; await page.getByLabel("Đến ngày (không gồm)").fill("2026-10-11"); await page.getByRole("button", { name: "Áp dụng bộ lọc" }).click(); await expect(page.locator("main").getByRole("alert")).toContainText("phải sau"); expect(requests.length).toBe(count);
   await expect(page.getByRole("link", { name: "Tạo đơn tổng đài", exact: true }).first()).toHaveAttribute("href", "/dispatcher/create-order");
-  await page.getByRole("link", { name: "Tạo đơn tổng đài", exact: true }).first().click(); await expect(page.getByRole("heading", { name: "Tiếp Nhận Cuộc Gọi Tạo Đơn Nhanh" })).toBeVisible(); await expect(page.getByText(/Đây là bản xem trước form tạo đơn/)).toBeVisible();
+  await page.getByRole("link", { name: "Tạo đơn tổng đài", exact: true }).first().click(); await expect(page.getByRole("heading", { name: "Tiếp Nhận Cuộc Gọi Tạo Đơn Nhanh" })).toBeVisible(); await expect(page.getByRole("button", { name: "Tìm khách hàng" })).toBeVisible();
+});
+const hotlineCustomer = { maKh: "KH01", hoTen: "Khách hotline", soDienThoai: "0900000001", email: null, diaChiMacDinh: null, hangThanhVien: null };
+function hotlineQuote() { return { maBaoGia: "BG01", hetHanLuc: new Date(Date.now() + 300000).toISOString(), loTrinh: { diemLayHang: "Quận 1, TP.HCM", diemGiaoHang: "Quận 3, TP.HCM", quangDuongKm: "5.00", thoiGianDuKienGiay: 900, trongPhamVi: true, nguon: "FAKE" }, cuoc: order().cuoc, hangThanhVien: null }; }
+async function fillHotline(page: Page) {
+  await page.goto("/dispatcher/create-order");
+  await page.getByRole("button", { name: "Tìm khách hàng" }).click();
+  await page.getByLabel("Chọn khách Khách hotline", { exact: true }).check();
+  await page.getByLabel("Địa chỉ lấy hàng", { exact: true }).fill("Quận 1");
+  await page.getByLabel("Địa chỉ giao hàng", { exact: true }).fill("Quận 3");
+  await page.getByLabel("Số điện thoại người nhận", { exact: true }).fill("0901234567");
+  await page.getByRole("button", { name: "Lấy báo giá", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Báo giá từ backend" })).toBeVisible();
+}
+async function mockHotline(page: Page, handler?: Handler) {
+  await mock(page, async (route, path) => {
+    if (await handler?.(route, path)) return true;
+    if (path === "/api/customers") { expect(new URL(route.request().url()).searchParams.get("q")).toBe("0900000001"); await respond(route, pageOf([hotlineCustomer])); return true; }
+    if (path === "/api/quotes") { expect(route.request().headers()["x-csrf-token"]).toBe("test-token"); await respond(route, hotlineQuote()); return true; }
+  });
+}
+test("hotline tạo qua backend rồi thấy mã đơn backend trong hàng đợi", async ({ page }) => {
+  let writes = 0, saved = false;
+  const result = { ...order(), maDon: "DH-BACKEND-01" };
+  await mockHotline(page, async (route, path) => {
+    if (path === "/api/orders" && route.request().method() === "POST") {
+      writes++; expect(route.request().headers()["x-csrf-token"]).toBe("test-token"); expect(route.request().headers()["idempotency-key"]).toBeTruthy();
+      expect(route.request().postDataJSON()).toEqual({ maKh: "KH01", diemLayHang: "Quận 1", diemGiaoHang: "Quận 3", maBaoGia: "BG01", sdtNguoiNhan: "0901234567", ghiChuGiaoHang: null, kienHang: [{ loaiHangHoa: "Tài liệu & Hợp đồng", khoiLuongKg: "0.50", ghiChuBaoQuan: null }] });
+      saved = true; await respond(route, result, 201); return true;
+    }
+    if (path === "/api/orders") { await respond(route, { ...pageOf(saved ? [result] : []), summary: { tongSoDon: saved ? 1 : 0, tongCuoc: saved ? "55000.00" : "0.00" } }); return true; }
+  });
+  await fillHotline(page);
+  await page.getByRole("button", { name: "Tạo đơn & Đưa vào hàng đợi điều phối", exact: true }).dblclick();
+  await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "DH-BACKEND-01", exact: true })).toBeVisible(); expect(writes).toBe(1);
+});
+test("hotline mất phản hồi giữ khóa qua reload và lỗi CSRF khi kiểm tra lại", async ({ page }) => {
+  const requests: { key: string; body: unknown }[] = [];
+  await mockHotline(page, async (route, path) => {
+    if (path === "/api/orders" && route.request().method() === "POST") {
+      requests.push({ key: route.request().headers()["idempotency-key"], body: route.request().postDataJSON() });
+      if (requests.length === 1) await route.abort("failed"); else if (requests.length === 2) await respond(route, { code: "CSRF_INVALID" }, 403); else await respond(route, order(), 201);
+      return true;
+    }
+  });
+  await fillHotline(page);
+  await page.getByRole("button", { name: "Tạo đơn & Đưa vào hàng đợi điều phối", exact: true }).click();
+  await expect(page.getByText("Chưa xác định được đơn đã lưu hay chưa.")).toBeVisible();
+  await expect(page.getByLabel("Địa chỉ lấy hàng", { exact: true })).toBeDisabled();
+  expect(requests).toHaveLength(1);
+  await page.reload();
+  await expect(page.getByText("Chưa xác định được đơn đã lưu hay chưa.")).toBeVisible();
+  await page.getByRole("button", { name: "Kiểm tra lại yêu cầu tạo đơn", exact: true }).click();
+  await expect(page.locator("main").getByRole("alert").first()).toContainText("Phiên bảo vệ");
+  await expect(page.getByLabel("Địa chỉ lấy hàng", { exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Kiểm tra lại yêu cầu tạo đơn", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
+  expect(requests).toHaveLength(3); expect(requests[1]).toEqual(requests[0]); expect(requests[2]).toEqual(requests[0]);
+});
+test("hotline sửa tuyến hoặc báo giá đủ 300 giây thì khóa tạo đơn", async ({ page }) => {
+  await page.clock.install();
+  await mockHotline(page);
+  await fillHotline(page);
+  const submit = page.getByRole("button", { name: "Tạo đơn & Đưa vào hàng đợi điều phối", exact: true });
+  await expect(submit).toBeEnabled();
+  await page.getByLabel("Địa chỉ giao hàng", { exact: true }).fill("Quận 5");
+  await expect(submit).toBeDisabled(); await expect(page.getByText("Thông tin đơn đã thay đổi. Lấy báo giá mới trước khi tạo đơn.")).toBeVisible();
+  await page.getByLabel("Địa chỉ giao hàng", { exact: true }).fill("Quận 3");
+  await page.clock.fastForward(301000);
+  await expect(submit).toBeDisabled(); await expect(page.getByText("Báo giá đã hết hạn. Hãy lấy báo giá mới.")).toBeVisible();
+});
+test("hotline backend từ chối báo giá cũ không báo tạo thành công", async ({ page }) => {
+  let writes = 0;
+  await mockHotline(page, async (route, path) => {
+    if (path === "/api/orders" && route.request().method() === "POST") { writes++; await respond(route, { code: "QUOTE_CHANGED" }, 409); return true; }
+  });
+  await fillHotline(page);
+  await page.getByRole("button", { name: "Tạo đơn & Đưa vào hàng đợi điều phối", exact: true }).click();
+  await expect(page.locator("main").getByRole("alert")).toContainText("cước đã thay đổi");
+  await expect(page.getByRole("button", { name: "Tạo đơn & Đưa vào hàng đợi điều phối", exact: true })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Tiếp Nhận Cuộc Gọi Tạo Đơn Nhanh" })).toBeVisible(); expect(writes).toBe(1);
 });
 test("tài xế rảnh và bộ lọc trạng thái dùng API", async ({ page }) => {
   const queries: URL[] = [];

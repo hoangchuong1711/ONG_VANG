@@ -57,6 +57,26 @@ test.afterEach(async () => {
   }
 });
 test.afterAll(async () => { await customer?.dispose(); await dispatcher?.dispose(); });
+test("hotline FE báo giá và tạo đơn xuất hiện trong hàng đợi SQL Server", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/dispatcher/create-order");
+  await page.getByRole("button", { name: "Tìm khách hàng", exact: true }).click();
+  await page.getByLabel("Chọn khách Khách thường", { exact: true }).check();
+  await page.getByLabel("Địa chỉ lấy hàng", { exact: true }).fill("Quận 1");
+  await page.getByLabel("Địa chỉ giao hàng", { exact: true }).fill("Quận 3");
+  await page.getByLabel("Số điện thoại người nhận", { exact: true }).fill("0901234567");
+  await page.getByRole("button", { name: "Lấy báo giá", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Báo giá từ backend" })).toBeVisible();
+  const responsePromise = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/orders" && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Tạo đơn & Đưa vào hàng đợi điều phối", exact: true }).click();
+  const response = await responsePromise; expect(response.status()).toBe(201);
+  const value: Order = await response.json(); created.push(value.maDon);
+  await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
+  await expect(page.getByRole("link", { name: value.maDon, exact: true })).toBeVisible();
+  const stored = await current(value.maDon);
+  expect(stored.maKh).toBe("KH-DEMO-1"); expect(stored.maTkTao).toBe("TK-DEMO-NV"); expect(stored.trangThai).toBe("CHO_GAN");
+  expect(stored.nhatKy.some((event) => event.loaiSuKien === "TAO_DON")).toBe(true);
+});
 test("FE thật gán, đọc phân công, hủy có lý do và giải phóng tài xế", async ({ page }) => {
   const value = await createOrder(); const driverId = await candidate(value.maDon);
   await signIn(page); await openAssignment(page, value.maDon, driverId);

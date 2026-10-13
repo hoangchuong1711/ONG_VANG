@@ -31,6 +31,11 @@ export interface OrderEvent {
 }
 export interface OrderDetail extends Order { phanCong: Assignment[]; nhatKy: OrderEvent[] }
 export interface OrderPage extends Page<Order> { summary: { tongSoDon: number; tongCuoc: string } }
+export interface Membership { maHang: string; tenHang: string; phanTramGiamGia: string; ngayHetHan: string | null; conHieuLuc: boolean }
+export interface Customer { maKh: string; hoTen: string; soDienThoai: string; email: string | null; diaChiMacDinh: string | null; hangThanhVien: Membership | null }
+export interface QuoteInput { maKh: string; diemLayHang: string; diemGiaoHang: string; kienHang: { loaiHangHoa: string; ghiChuBaoQuan: string | null; khoiLuongKg: string }[] }
+export interface Quote { maBaoGia: string; hetHanLuc: string; loTrinh: { diemLayHang: string; diemGiaoHang: string; quangDuongKm: string; thoiGianDuKienGiay: number; trongPhamVi: boolean; nguon: string }; cuoc: Fare; hangThanhVien: Membership | null }
+export interface CreateOrderInput extends QuoteInput { maBaoGia: string; sdtNguoiNhan: string; ghiChuGiaoHang: string | null }
 export class ApiError extends Error {
   constructor(public status: number, public code: string, public traceId?: string) { super(code); }
 }
@@ -46,6 +51,16 @@ const messages: Record<string, string> = {
   DATE_RANGE_INVALID: "Khoảng ngày không hợp lệ. Ngày kết thúc phải sau ngày bắt đầu.",
   NETWORK_ERROR: "Không nhận được phản hồi. Hãy kiểm tra dữ liệu mới trước khi gửi lại thao tác.",
   INTERNAL_ERROR: "Hệ thống chưa xử lý được yêu cầu. Vui lòng thử tải lại.",
+  QUOTE_EXPIRED: "Báo giá đã hết hạn. Hãy lấy báo giá mới trước khi tạo đơn.",
+  QUOTE_CHANGED: "Tuyến hoặc cước đã thay đổi. Hãy lấy báo giá mới và kiểm tra lại.",
+  IDEMPOTENCY_CONFLICT: "Yêu cầu tạo đơn đã được dùng với thông tin khác. Hãy kiểm tra đơn trước khi tiếp tục.",
+  ADDRESS_NOT_FOUND: "Không tìm thấy địa chỉ. Kiểm tra địa chỉ lấy và giao hàng.",
+  OUT_OF_SERVICE_AREA: "Địa chỉ nằm ngoài phạm vi giao hàng.",
+  DISTANCE_INVALID: "Tuyến giao hàng không hợp lệ hoặc vượt quãng đường cho phép.",
+  ROUTE_PROVIDER_ERROR: "Dịch vụ xác định tuyến đang lỗi. Vui lòng thử lấy báo giá lại.",
+  ROUTE_PROVIDER_TIMEOUT: "Dịch vụ xác định tuyến phản hồi quá lâu. Vui lòng thử lại.",
+  FARE_CONFIG_MISSING: "Chưa có cấu hình cước phù hợp. Liên hệ người quản lý để kiểm tra.",
+  BROWSER_STORAGE_UNAVAILABLE: "Trình duyệt không lưu được trạng thái chống tạo trùng. Cho phép bộ nhớ phiên rồi thử lại; yêu cầu chưa được gửi.",
 };
 export function errorMessage(error: unknown) {
   return error instanceof ApiError ? (messages[error.code] ?? "Yêu cầu chưa thực hiện được. Vui lòng tải lại dữ liệu.") : "Không tải được dữ liệu. Vui lòng thử lại.";
@@ -71,9 +86,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(0, "NETWORK_ERROR");
   }
 }
-async function post<T>(path: string, body?: unknown) {
+async function post<T>(path: string, body?: unknown, extraHeaders: Record<string, string> = {}) {
   const csrf = await request<{ csrfToken: string; headerName: string }>("/auth/csrf");
-  return request<T>(path, { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf.csrfToken },
+  return request<T>(path, { method: "POST", headers: { ...extraHeaders, "Content-Type": "application/json", "X-CSRF-Token": csrf.csrfToken },
     body: body === undefined ? undefined : JSON.stringify(body) });
 }
 export function query(values: Record<string, string | number | undefined>) {
@@ -86,6 +101,9 @@ export const dispatchApi = {
   me: (signal?: AbortSignal) => request<User>("/auth/me", { signal }),
   login: (username: string, password: string) => post<User>("/auth/login", { username, password }),
   logout: () => post<void>("/auth/logout"),
+  customers: (q: string, signal?: AbortSignal) => request<Page<Customer>>(`/customers${query({ q, page: 0, size: 20 })}`, { signal }),
+  quote: (input: QuoteInput) => post<Quote>("/quotes", input),
+  createOrder: (input: CreateOrderInput, key: string) => post<Order>("/orders", input, { "Idempotency-Key": key }),
   orders: (filters: Record<string, string | number | undefined>, signal?: AbortSignal) => request<OrderPage>(`/orders${query(filters)}`, { signal }),
   detail: (id: string, signal?: AbortSignal) => request<OrderDetail>(orderPath(id), { signal }),
   drivers: (filters: Record<string, string | number | undefined>, signal?: AbortSignal) => request<Page<Driver>>(`/drivers${query(filters)}`, { signal }),
