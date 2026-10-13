@@ -104,14 +104,14 @@ export function Navbar() {
           <Link
             href="/account"
             className="flex items-center gap-2.5 pl-2 sm:border-l border-stone-200 hover:opacity-80 transition-opacity"
-            title="Xem hồ sơ và hạng thành viên"
+            title="Xem hồ sơ tài khoản"
           >
             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-400 to-amber-200 border-2 border-white shadow-2xs flex items-center justify-center font-bold text-xs text-amber-950">
-              TH
+              KH
             </div>
             <div className="hidden lg:flex flex-col text-left">
-              <span className="text-xs font-bold text-stone-900 leading-tight">Thu Hà</span>
-              <span className="text-[10px] text-amber-700 font-semibold tracking-wide">THÀNH VIÊN VÀNG</span>
+              <span className="text-xs font-bold text-stone-900 leading-tight">Tài khoản</span>
+              <span className="text-[10px] text-amber-700 font-semibold tracking-wide">HỒ SƠ KHÁCH HÀNG</span>
             </div>
           </Link>
 
@@ -163,7 +163,7 @@ export function Navbar() {
                 : "text-stone-700 hover:bg-stone-50"
             }`}
           >
-            <span>👑 Hồ sơ & Hạng thành viên Vàng</span>
+            <span>Hồ sơ tài khoản</span>
           </Link>
 
           <Link
