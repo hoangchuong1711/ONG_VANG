@@ -65,7 +65,11 @@ test("hotline FE báo giá và tạo đơn xuất hiện trong hàng đợi SQL 
   await page.getByLabel("Địa chỉ lấy hàng", { exact: true }).fill("Quận 1");
   await page.getByLabel("Địa chỉ giao hàng", { exact: true }).fill("Quận 3");
   await page.getByLabel("Số điện thoại người nhận", { exact: true }).fill("0901234567");
+  const quoteResponsePromise = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/quotes" && response.request().method() === "POST");
   await page.getByRole("button", { name: "Lấy báo giá", exact: true }).click();
+  const quoteResponse = await quoteResponsePromise;
+  const quoteResult = await quoteResponse.json();
+  expect(quoteResponse.status(), `quotes API: ${quoteResult.code ?? "unexpected status"}`).toBe(200);
   await expect(page.getByRole("region", { name: "Báo giá từ backend" })).toBeVisible();
   const responsePromise = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/orders" && response.request().method() === "POST");
   await page.getByRole("button", { name: "Tạo đơn & Đưa vào hàng đợi điều phối", exact: true }).click();

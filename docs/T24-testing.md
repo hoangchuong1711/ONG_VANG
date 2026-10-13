@@ -30,7 +30,7 @@ npm run build
 npm run test:t24
 ```
 
-`test:t24` tự khởi động FE tại 3100 và HTTP fixture tại 18082; cần hai cổng rảnh. Có 28 tình huống, chạy ở desktop và viewport mobile 390×844. Đây là test UI xử lý phản hồi, không chứng minh transaction SQL Server.
+`test:t24` tự khởi động FE tại 3100 và HTTP fixture tại 18082; cần hai cổng rảnh. Có 29 tình huống, chạy ở desktop và viewport mobile 390×844. Đây là test UI xử lý phản hồi, không chứng minh transaction SQL Server.
 
 ### FE + SQL Server thật
 
@@ -68,4 +68,4 @@ npm run test:t24:live --prefix src/frontend
 
 `DEMO_PASSWORD` phải đã được export đúng giá trị seed. Suite yêu cầu health.databaseName chính xác `mini_ong_vang_test`, fail nếu thiếu cấu hình; tự chạy FE tại 3101. Bốn ca gồm: hotline FE tạo đơn và đọc lại hàng đợi/nhật ký SQL Server; gán/đọc chi tiết/hủy; hai session tranh cùng đơn; hai đơn tranh cùng tài xế. Ba ca gán tạo fixture bằng API customer; ca hotline dùng chính form FE. Cleanup hủy các đơn test còn CHO_GAN/DA_GAN, không đổi schema/reset DB trong test.
 
-CI frontend chạy lint/build/56 browser fixture cases. CI backend chạy thêm 4 live cases sau seed/backend readiness, trước các HTTP smoke, đối chiếu invariant rồi reset/seed DB test để giữ nguyên thứ tự tài xế rảnh mà nhóm smoke cũ kỳ vọng. CI cần được xác nhận trên PR; review/merge là bước đóng task.
+CI frontend chạy lint/build/58 browser fixture cases. CI backend chạy thêm 4 live cases sau seed/backend readiness, trước các HTTP smoke, đối chiếu invariant rồi reset/seed DB test để giữ nguyên thứ tự tài xế rảnh mà nhóm smoke cũ kỳ vọng. CI cần được xác nhận trên PR; review/merge là bước đóng task.

@@ -100,7 +100,15 @@ async function mockHotline(page: Page, handler?: Handler) {
   await mock(page, async (route, path) => {
     if (await handler?.(route, path)) return true;
     if (path === "/api/customers") { expect(new URL(route.request().url()).searchParams.get("q")).toBe("0900000001"); await respond(route, pageOf([hotlineCustomer])); return true; }
-    if (path === "/api/quotes") { expect(route.request().headers()["x-csrf-token"]).toBe("test-token"); await respond(route, hotlineQuote()); return true; }
+    if (path === "/api/quotes") {
+      expect(route.request().headers()["x-csrf-token"]).toBe("test-token");
+      const input = route.request().postDataJSON();
+      // Match JsonRequests.textIfPresent: an optional note may be absent or a string, never null.
+      if (input.kienHang.some((parcel: { ghiChuBaoQuan?: unknown }) => parcel.ghiChuBaoQuan !== undefined && typeof parcel.ghiChuBaoQuan !== "string")) {
+        await respond(route, { code: "VALIDATION_ERROR" }, 400); return true;
+      }
+      await respond(route, hotlineQuote()); return true;
+    }
   });
 }
 test("hotline tạo qua backend rồi thấy mã đơn backend trong hàng đợi", async ({ page }) => {
@@ -109,7 +117,7 @@ test("hotline tạo qua backend rồi thấy mã đơn backend trong hàng đợ
   await mockHotline(page, async (route, path) => {
     if (path === "/api/orders" && route.request().method() === "POST") {
       writes++; expect(route.request().headers()["x-csrf-token"]).toBe("test-token"); expect(route.request().headers()["idempotency-key"]).toBeTruthy();
-      expect(route.request().postDataJSON()).toEqual({ maKh: "KH01", diemLayHang: "Quận 1", diemGiaoHang: "Quận 3", maBaoGia: "BG01", sdtNguoiNhan: "0901234567", ghiChuGiaoHang: null, kienHang: [{ loaiHangHoa: "Tài liệu & Hợp đồng", khoiLuongKg: "0.50", ghiChuBaoQuan: null }] });
+      expect(route.request().postDataJSON()).toEqual({ maKh: "KH01", diemLayHang: "Quận 1", diemGiaoHang: "Quận 3", maBaoGia: "BG01", sdtNguoiNhan: "0901234567", kienHang: [{ loaiHangHoa: "Tài liệu & Hợp đồng", khoiLuongKg: "0.50" }] });
       saved = true; await respond(route, result, 201); return true;
     }
     if (path === "/api/orders") { await respond(route, { ...pageOf(saved ? [result] : []), summary: { tongSoDon: saved ? 1 : 0, tongCuoc: saved ? "55000.00" : "0.00" } }); return true; }
@@ -118,6 +126,25 @@ test("hotline tạo qua backend rồi thấy mã đơn backend trong hàng đợ
   await page.getByRole("button", { name: "Tạo đơn & Đưa vào hàng đợi điều phối", exact: true }).dblclick();
   await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
   await expect(page.getByRole("link", { name: "DH-BACKEND-01", exact: true })).toBeVisible(); expect(writes).toBe(1);
+});
+test("hotline có ghi chú gửi chuỗi đã trim cho báo giá và tạo đơn", async ({ page }) => {
+  await mockHotline(page, async (route, path) => {
+    if (path === "/api/quotes" && route.request().postDataJSON().kienHang[0].ghiChuBaoQuan !== undefined) {
+      expect(route.request().postDataJSON().kienHang[0].ghiChuBaoQuan).toBe("Giữ lạnh");
+      await respond(route, hotlineQuote()); return true;
+    }
+    if (path === "/api/orders" && route.request().method() === "POST") {
+      const input = route.request().postDataJSON();
+      expect(input.ghiChuGiaoHang).toBe("Gọi trước"); expect(input.kienHang[0].ghiChuBaoQuan).toBe("Giữ lạnh");
+      await respond(route, order(), 201); return true;
+    }
+  });
+  await fillHotline(page);
+  await page.getByLabel("Ghi chú bảo quản", { exact: true }).fill(" Giữ lạnh ");
+  await page.getByLabel("Ghi chú giao hàng", { exact: true }).fill(" Gọi trước ");
+  await page.getByRole("button", { name: "Lấy báo giá", exact: true }).click();
+  await page.getByRole("button", { name: "Tạo đơn & Đưa vào hàng đợi điều phối", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
 });
 test("hotline mất phản hồi giữ khóa qua reload và lỗi CSRF khi kiểm tra lại", async ({ page }) => {
   const requests: { key: string; body: unknown }[] = [];

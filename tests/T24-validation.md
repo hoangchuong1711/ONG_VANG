@@ -5,9 +5,10 @@ Ngày kiểm tra: 13/10/2026 (Asia/Bangkok). Nhánh `feat/t24-dispatcher-integra
 ## Phạm vi bằng chứng
 
 - Chromium thực tế `/usr/bin/chromium` trong cloud; Playwright, FE Next.js và HTTP fixture chạy tại 3100/18082.
-- **56 browser tests PASS**: 28 tình huống × desktop/mobile 390×844, 0 fail sau khi nối hotline với API và rà luồng điều phối. Lệnh cloud: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:t24 --prefix src/frontend`.
+- **58 browser tests PASS**: 29 tình huống × desktop/mobile 390×844, 0 fail sau khi sửa ghi chú tùy chọn theo parser backend. Lệnh cloud: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:t24 --prefix src/frontend`.
 - `npm run lint`, TypeScript `tsc --noEmit`, `npm run build`: đạt; nguồn runtime được biên dịch, không dùng artifact T19/T20 làm chứng minh T24.
 - Bốn live cases FE/BE/SQL Server: **BLOCKED / NOT RUN trong cloud**. Đã thử tải lại image SQL Server sau sửa hotline, MCR vẫn trả Forbidden. Đã có mã test, lệnh chạy local và gate CI; không ghi PASS cho transaction/DB thật ở đợt T24 này.
+- Nhật ký GitHub Actions run #59 / PR #25 do người dùng cung cấp ghi nhận: LIVE01–03 PASS, LIVE04 FAIL vì không hiện báo giá. Log chưa có SHA để đối chiếu; kết quả đó thuộc lượt CI trước bản sửa ghi chú tùy chọn, chưa chứng minh bản sửa hiện tại đạt SQL Server.
 - Test proxy không intercept request: cookie HttpOnly được cấp/thay qua Next rewrite, CSRF mới sau login và xóa cookie logout được xác nhận với HTTP fixture. Fixture không phải backend SQL Server.
 
 ## Expected / Actual
@@ -42,6 +43,7 @@ Ngày kiểm tra: 13/10/2026 (Asia/Bangkok). Nhánh `feat/t24-dispatcher-integra
 | UI26 Hotline mất phản hồi/reload/CSRF | Giữ cùng body/key, không tự tạo yêu cầu mới | Mất phản hồi khóa form; reload khôi phục; replay gặp 403 giữ khóa; lần replay tiếp theo dùng cùng body/key | PASS ×2 |
 | UI27 Hotline báo giá cũ | Đổi tuyến hoặc đủ 300 giây không được tạo đơn | Nút tạo khóa, thông báo yêu cầu báo giá mới | PASS ×2 |
 | UI28 Hotline QUOTE_CHANGED | Không báo thành công nếu BE từ chối cước cũ | 409 hiện lỗi, báo giá bị bỏ, nút tạo khóa; vẫn ở form, chỉ một POST | PASS ×2 |
+| UI29 Ghi chú tùy chọn | Bỏ trường ghi chú khi trống; có nội dung thì gửi chuỗi đã trim | UI25 kiểm tra request không có null; UI29 kiểm tra cả ghi chú bảo quản/báo giá và ghi chú giao hàng/tạo đơn | PASS ×2 |
 
 ## Ca FE/BE/SQL Server thật còn cần chạy
 
@@ -66,6 +68,7 @@ Sau lượt live, chạy lại `scripts/check-design-v1-invariants.sql` hiện c
 - Bàn điều phối thật đổi sang thẻ tổng quan, bộ lọc và thẻ đơn có tuyến/cước/thao tác; con số đều lấy từ phản hồi backend và ghi rõ phạm vi bộ lọc/trang. Đã xem ảnh desktop/mobile với dữ liệu fixture rỗng. Thay đổi bố cục từng làm UI04 chọn nhầm hai dòng phân trang giống nhau; đổi nhãn ở thẻ tổng quan, chạy lại toàn bộ 48 ca PASS.
 - **T24-001 — form hotline báo thành công nhưng hàng đợi không có đơn:** form cũ tự sinh maDon và ghi demo-store, trong khi hàng đợi đọc SQL Server. Đã bỏ dữ liệu/cước mẫu, thay bằng tìm khách → báo giá → tạo đơn qua API. UI25/27/28 retest PASS; LIVE04 cần xác nhận SQL Server thật.
 - **T24-002 — mất phản hồi rồi reload có thể mất khóa tạo đơn:** giữ body/key trong sessionStorage theo tài khoản trước khi POST; không lưu mật khẩu/token. Reload hoặc lỗi CSRF trong lần replay không sinh khóa mới. UI26 retest PASS. Sau lưu thành công hoặc backend từ chối báo giá, xóa trạng thái chờ phù hợp.
+- **T24-003 — CI hotline không hiện báo giá:** FE gửi `ghiChuBaoQuan: null` khi trống; `JsonRequests.textIfPresent` chỉ chấp nhận chuỗi hoặc trường vắng mặt nên QuoteServlet trả VALIDATION_ERROR. `ghiChuGiaoHang: null` cũng sẽ làm OrderServlet từ chối sau đó. Đã đổi DTO/request FE thành trường tùy chọn và bỏ trường trống khi serialize. Fixture hotline giờ từ chối kiểu ghi chú sai, test live kiểm tra HTTP/code của API quotes trước khi kiểm tra UI để hiện đúng lỗi. Yêu cầu chờ của bản cũ bị backend từ chối VALIDATION_ERROR được giải phóng để người dùng sửa form. Retest SQL Server phải chạy lại CI.
 
 ## Trạng thái bàn giao
 

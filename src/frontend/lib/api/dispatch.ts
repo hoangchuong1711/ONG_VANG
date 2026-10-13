@@ -33,9 +33,9 @@ export interface OrderDetail extends Order { phanCong: Assignment[]; nhatKy: Ord
 export interface OrderPage extends Page<Order> { summary: { tongSoDon: number; tongCuoc: string } }
 export interface Membership { maHang: string; tenHang: string; phanTramGiamGia: string; ngayHetHan: string | null; conHieuLuc: boolean }
 export interface Customer { maKh: string; hoTen: string; soDienThoai: string; email: string | null; diaChiMacDinh: string | null; hangThanhVien: Membership | null }
-export interface QuoteInput { maKh: string; diemLayHang: string; diemGiaoHang: string; kienHang: { loaiHangHoa: string; ghiChuBaoQuan: string | null; khoiLuongKg: string }[] }
+export interface QuoteInput { maKh: string; diemLayHang: string; diemGiaoHang: string; kienHang: { loaiHangHoa: string; ghiChuBaoQuan?: string; khoiLuongKg: string }[] }
 export interface Quote { maBaoGia: string; hetHanLuc: string; loTrinh: { diemLayHang: string; diemGiaoHang: string; quangDuongKm: string; thoiGianDuKienGiay: number; trongPhamVi: boolean; nguon: string }; cuoc: Fare; hangThanhVien: Membership | null }
-export interface CreateOrderInput extends QuoteInput { maBaoGia: string; sdtNguoiNhan: string; ghiChuGiaoHang: string | null }
+export interface CreateOrderInput extends QuoteInput { maBaoGia: string; sdtNguoiNhan: string; ghiChuGiaoHang?: string }
 export class ApiError extends Error {
   constructor(public status: number, public code: string, public traceId?: string) { super(code); }
 }

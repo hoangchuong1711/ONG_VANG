@@ -45,7 +45,7 @@ export default function DispatcherCreateOrderPage() {
   }, []);
 
   const input: QuoteInput = { maKh: customer?.maKh ?? "", diemLayHang: form.origin.trim(), diemGiaoHang: form.destination.trim(),
-    kienHang: [{ loaiHangHoa: form.parcel.trim(), khoiLuongKg: form.weight.trim(), ghiChuBaoQuan: form.care.trim() || null }] };
+    kienHang: [{ loaiHangHoa: form.parcel.trim(), khoiLuongKg: form.weight.trim(), ghiChuBaoQuan: form.care.trim() || undefined }] };
   const signature = JSON.stringify(input);
   const quoteMatches = quoted?.signature === signature;
   const expired = !!quoted && Date.parse(quoted.value.hetHanLuc) <= now;
@@ -84,7 +84,7 @@ export default function DispatcherCreateOrderPage() {
       setError(new ApiError(400, expired ? "QUOTE_EXPIRED" : "VALIDATION_ERROR")); return;
     }
     const attempt = retryAttempt ?? { input: { ...input, maBaoGia: quoted!.value.maBaoGia,
-      sdtNguoiNhan: form.recipient.trim(), ghiChuGiaoHang: form.note.trim() || null }, key: crypto.randomUUID() };
+      sdtNguoiNhan: form.recipient.trim(), ghiChuGiaoHang: form.note.trim() || undefined }, key: crypto.randomUUID() };
     try { window.sessionStorage.setItem(pendingKey, JSON.stringify(attempt)); }
     catch { setError(new ApiError(0, "BROWSER_STORAGE_UNAVAILABLE")); return; }
     lock.current = true; setBusy("create"); setError(undefined);
@@ -99,7 +99,7 @@ export default function DispatcherCreateOrderPage() {
       setError(failure);
       // A lost response may follow a committed order. A manual replay keeps the exact key/body.
       const uncertain = !(failure instanceof ApiError) || failure.status === 0 || failure.status >= 500;
-      const quoteRejected = failure instanceof ApiError && ["QUOTE_EXPIRED", "QUOTE_CHANGED", "RESOURCE_NOT_FOUND"].includes(failure.code);
+      const quoteRejected = failure instanceof ApiError && ["QUOTE_EXPIRED", "QUOTE_CHANGED", "RESOURCE_NOT_FOUND", "VALIDATION_ERROR"].includes(failure.code);
       const unresolved = uncertain || (!!retryAttempt && !quoteRejected);
       setRetryAttempt(unresolved ? attempt : null);
       if (!unresolved) { try { window.sessionStorage.removeItem(pendingKey); } catch { /* Ignore unavailable storage. */ } }
