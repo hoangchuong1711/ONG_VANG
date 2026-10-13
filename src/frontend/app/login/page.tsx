@@ -1,11 +1,10 @@
 "use client";
 
-import React, { Suspense, useRef, useState } from "react";
+import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { isValidPhone } from "@/lib/utils";
-import { dispatchApi, errorMessage as dispatchErrorMessage } from "@/lib/api/dispatch";
 
 function AuthContent() {
   const router = useRouter();
@@ -13,12 +12,9 @@ function AuthContent() {
   const [tab, setTab] = useState<"LOGIN" | "REGISTER">(
     searchParams.get("tab") === "register" ? "REGISTER" : "LOGIN",
   );
-  const [dispatcherMode, setDispatcherMode] = useState(searchParams.get("role") === "dispatcher");
-  const loginLock = useRef(false);
-  const usernameInput = useRef<HTMLInputElement>(null);
 
   // Form states
-  const [phone, setPhone] = useState(searchParams.get("role") === "dispatcher" ? "demo_dispatcher" : "");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -39,30 +35,9 @@ function AuthContent() {
     }, 450);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
-
-    if (dispatcherMode && tab === "LOGIN") {
-      if (loginLock.current) return;
-      loginLock.current = true;
-      setLoadingRole("dispatcher");
-      try {
-        const user = await dispatchApi.login(phone.trim(), password);
-        setPassword("");
-        if (user.vaiTro !== "TONG_DAI") {
-          setErrorMessage("Tài khoản này không có quyền điều phối.");
-          return;
-        }
-        router.push("/dispatcher");
-      } catch (error) {
-        setErrorMessage(dispatchErrorMessage(error));
-      } finally {
-        loginLock.current = false;
-        setLoadingRole(null);
-      }
-      return;
-    }
 
     if (!isValidPhone(phone)) {
       setErrorMessage("Số điện thoại không hợp lệ (cần 10 chữ số, ví dụ 0901234567).");
@@ -79,19 +54,12 @@ function AuthContent() {
       return;
     }
 
-    if (tab === "LOGIN" && phone.startsWith("07")) {
-      setDispatcherMode(true);
-      setPhone("demo_dispatcher");
-      setPassword("");
-      setErrorMessage("Dùng tài khoản tổng đài để đăng nhập và vào bàn điều phối.");
-      usernameInput.current?.focus();
-      return;
-    }
-
     // Determine target portal based on role/phone
     let targetPath = "/customer";
     if (phone.startsWith("08")) {
       targetPath = "/driver";
+    } else if (phone.startsWith("07") || phone.includes("dieuphoi")) {
+      targetPath = "/dispatcher";
     } else if (phone.includes("admin") || phone.includes("chudoi") || phone.startsWith("06") || phone === "0600000001") {
       targetPath = "/admin";
     }
@@ -176,7 +144,7 @@ function AuthContent() {
 
       {/* CỘT PHẢI: FORM ĐĂNG NHẬP / ĐĂNG KÝ (Mobile & Desktop) */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
-        <div className={`max-w-md w-full space-y-6 ${dispatcherMode && tab === "LOGIN" ? "rounded-3xl border border-amber-200 bg-white p-6 sm:p-8 shadow-[0_20px_60px_#92400e18]" : ""}`}>
+        <div className="max-w-md w-full space-y-6">
           {/* Mobile Header (hiển thị logo khi trên điện thoại) */}
           <div className="md:hidden flex items-center gap-3 pb-2">
             <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-stone-900">
@@ -190,13 +158,12 @@ function AuthContent() {
 
           {/* Heading */}
           <div className="space-y-1">
-            {dispatcherMode && tab === "LOGIN" && <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-amber-900"><span className="h-2 w-2 rounded-full bg-amber-500" />Trung tâm điều phối</span>}
             <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">
-              {tab === "LOGIN" ? (dispatcherMode ? "Đăng nhập điều phối viên" : "Đăng nhập tài khoản") : "Đăng ký thành viên mới"}
+              {tab === "LOGIN" ? "Đăng nhập tài khoản" : "Đăng ký thành viên mới"}
             </h1>
             <p className="text-xs sm:text-sm text-stone-500">
               {tab === "LOGIN"
-                ? (dispatcherMode ? "Đăng nhập để theo dõi hàng đợi và phân công tài xế trên dữ liệu thật." : "Chào mừng bạn trở lại với hệ thống giao hàng Mini Ong Vàng.")
+                ? "Chào mừng bạn trở lại với hệ thống giao hàng Mini Ong Vàng."
                 : "Tạo tài khoản ngay bằng số điện thoại để nhận ưu đãi thành viên."}
             </p>
           </div>
@@ -262,25 +229,22 @@ function AuthContent() {
             )}
 
             <div>
-                <label htmlFor="login-username" className="block text-xs font-bold text-stone-700 mb-1">
-                  {dispatcherMode && tab === "LOGIN" ? "Tên đăng nhập tổng đài" : "Số điện thoại (10 chữ số)"} <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-stone-700 mb-1">
+                Số điện thoại (10 chữ số) <span className="text-red-500">*</span>
               </label>
               <input
-                  id="login-username"
-                  type={dispatcherMode && tab === "LOGIN" ? "text" : "tel"}
+                type="tel"
                 required
-                  placeholder={dispatcherMode && tab === "LOGIN" ? "Ví dụ: demo_dispatcher" : "Ví dụ: 0900000001"}
+                placeholder="Ví dụ: 0900000001"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                  ref={usernameInput}
-                  autoComplete="username"
                 className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-stone-900 font-mono focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label htmlFor="login-password" className="text-xs font-bold text-stone-700">
+                <label className="text-xs font-bold text-stone-700">
                   Mật khẩu <span className="text-red-500">*</span>
                 </label>
                 {tab === "LOGIN" && (
@@ -295,7 +259,6 @@ function AuthContent() {
               </div>
               <div className="relative">
                 <input
-                  id="login-password"
                   type={showPassword ? "text" : "password"}
                   required
                   placeholder="••••••••"
@@ -314,15 +277,15 @@ function AuthContent() {
               </div>
             </div>
 
-            <Button variant="primary" size="lg" fullWidth type="submit" disabled={isSuccess || loadingRole === "dispatcher"}>
-              {tab === "LOGIN" ? (loadingRole === "dispatcher" ? "Đang đăng nhập…" : "Đăng nhập vào hệ thống") : "Tạo tài khoản mới"}
+            <Button variant="primary" size="lg" fullWidth type="submit" disabled={isSuccess}>
+              {tab === "LOGIN" ? "Đăng nhập vào hệ thống" : "Tạo tài khoản mới"}
             </Button>
           </form>
 
           {/* Quick Demo Accounts Helper (4 Roles) */}
           <div className="pt-2 border-t border-stone-200 space-y-2.5">
             <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block text-center">
-              Chọn vai trò để vào hệ thống
+              Chọn tài khoản mẫu theo vai trò (1 Click đăng nhập ngay)
             </span>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
@@ -361,32 +324,18 @@ function AuthContent() {
 
               <button
                 type="button"
-                onClick={async () => {
-                  if (loginLock.current) return;
-                  loginLock.current = true;
-                  setLoadingRole("dispatcher");
-                  try {
-                    const user = await dispatchApi.me();
-                    if (user.vaiTro === "TONG_DAI") { router.push("/dispatcher"); return; }
-                  } catch { /* An unauthenticated visitor uses the shared login form below. */ }
-                  finally { loginLock.current = false; setLoadingRole(null); }
-                  setTab("LOGIN");
-                  setDispatcherMode(true);
-                  setPhone("demo_dispatcher");
-                  setPassword("");
-                  setErrorMessage("");
-                  usernameInput.current?.focus();
-                }}
-                aria-label="Điều Phối Viên: vào bàn điều phối T24"
-                title="Vào Bàn Điều phối"
+                onClick={() => handle1ClickLogin("0700000001", "/dispatcher", "dispatcher")}
+                disabled={isSuccess}
+                title="Đăng nhập ngay vào Bàn Điều phối"
                 className="group p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 hover:border-amber-400 text-left transition-all active:scale-95 cursor-pointer disabled:opacity-60 shadow-2xs hover:shadow-xs"
               >
                 <div className="flex items-center justify-between">
                   <div className="font-extrabold text-amber-400">3. Điều Phối Viên</div>
+                  {loadingRole === "dispatcher" && <span className="text-xs animate-spin">⏳</span>}
                 </div>
-                <div className="font-mono text-[11px] text-slate-300">Tài khoản tổng đài</div>
+                <div className="font-mono text-[11px] text-slate-300">0700000001</div>
                 <div className="text-[10px] text-amber-300 font-semibold group-hover:underline">
-                  → Vào Bàn Điều phối
+                  {loadingRole === "dispatcher" ? "Đang vào..." : "→ Vào Bàn Điều phối"}
                 </div>
               </button>
 
