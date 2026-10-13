@@ -54,12 +54,15 @@ function AuthContent() {
       return;
     }
 
+    if (tab === "LOGIN" && phone.startsWith("07")) {
+      router.push("/dispatcher");
+      return;
+    }
+
     // Determine target portal based on role/phone
     let targetPath = "/customer";
     if (phone.startsWith("08")) {
       targetPath = "/driver";
-    } else if (phone.startsWith("07") || phone.includes("dieuphoi")) {
-      targetPath = "/dispatcher";
     } else if (phone.includes("admin") || phone.includes("chudoi") || phone.startsWith("06") || phone === "0600000001") {
       targetPath = "/admin";
     }
@@ -285,7 +288,7 @@ function AuthContent() {
           {/* Quick Demo Accounts Helper (4 Roles) */}
           <div className="pt-2 border-t border-stone-200 space-y-2.5">
             <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block text-center">
-              Chọn tài khoản mẫu theo vai trò (1 Click đăng nhập ngay)
+              Chọn vai trò để vào hệ thống
             </span>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
@@ -322,22 +325,20 @@ function AuthContent() {
                 </div>
               </button>
 
-              <button
-                type="button"
-                onClick={() => handle1ClickLogin("0700000001", "/dispatcher", "dispatcher")}
-                disabled={isSuccess}
-                title="Đăng nhập ngay vào Bàn Điều phối"
+              <Link
+                href="/dispatcher"
+                aria-label="Điều Phối Viên: vào bàn điều phối T24"
+                title="Vào Bàn Điều phối"
                 className="group p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 hover:border-amber-400 text-left transition-all active:scale-95 cursor-pointer disabled:opacity-60 shadow-2xs hover:shadow-xs"
               >
                 <div className="flex items-center justify-between">
                   <div className="font-extrabold text-amber-400">3. Điều Phối Viên</div>
-                  {loadingRole === "dispatcher" && <span className="text-xs animate-spin">⏳</span>}
                 </div>
-                <div className="font-mono text-[11px] text-slate-300">0700000001</div>
+                <div className="font-mono text-[11px] text-slate-300">Tài khoản tổng đài</div>
                 <div className="text-[10px] text-amber-300 font-semibold group-hover:underline">
-                  {loadingRole === "dispatcher" ? "Đang vào..." : "→ Vào Bàn Điều phối"}
+                  → Vào Bàn Điều phối
                 </div>
-              </button>
+              </Link>
 
               <button
                 type="button"
