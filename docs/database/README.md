@@ -22,7 +22,7 @@ Tạo đơn ghi `don_hang`, `cuoc_don_hang`, `chi_tiet_kien_hang`, `phu_thu_don_
 
 ## Seed và DB test
 
-Muốn nạp tài khoản demo, đặt `DEMO_SEED=true` và `DEMO_PASSWORD` trong `.env` rồi recreate backend. Seed `DesignV1DemoSeeder` ghi marker `design-v1`, chạy lại không nhân đôi và không ghi đè đơn mới. Fixture hiện có: KH-DEMO-1 (thường), KH-DEMO-2 (VÀNG), TX-DEMO-1/2 (ONLINE và có xe), `demo_dispatcher`, `demo_admin`, một phiên bản cho mỗi loại chính sách. Không có đơn demo dựng sẵn; smoke tạo đơn qua API. Mật khẩu chỉ lưu dạng hash.
+Muốn nạp tài khoản demo, đặt `DEMO_SEED=true` và `DEMO_PASSWORD` trong `.env` rồi recreate backend. Seed `DesignV1DemoSeeder` ghi marker `design-v1`, chạy lại không nhân đôi và không ghi đè đơn mới. Nếu DB đã có seed cũ, lần chạy tiếp theo bổ sung các hồ sơ TX2 còn thiếu và đồng bộ mật khẩu demo khi biến môi trường thay đổi. Tài khoản đăng nhập: `demo_admin` (chủ đội xe), `demo_dispatcher` (điều phối), `0800000001`–`0800000003` (tài xế có hồ sơ và xe), `0900000001` (khách thường), `0900000002` (hạng VÀNG còn hiệu lực), `0900000003` (hạng VÀNG hết hiệu lực). Tất cả dùng cùng mật khẩu từ `DEMO_PASSWORD`; mật khẩu chỉ lưu dạng bcrypt hash. Không có đơn demo dựng sẵn; smoke tạo đơn qua API.
 
 DB test là `mini_ong_vang_test` ở cổng 15433, độc lập DB dev. `scripts/reset-test-db.sql` từ chối mọi DB khác và xóa dữ liệu theo thứ tự FK; chỉ trong transaction reset nó tạm tắt ba trigger policy rồi bật lại, không xóa schema hay Flyway history. `SeedCommand test` xác minh URL, tên DB thực và `REQUIRE_TEST_DB=true` trước khi nạp lại fixture. CI chạy `clean verify`, reset/seed, rồi HTTP smoke. Trước smoke tiến trình giao hàng, CI reset/seed lần nữa vì smoke điều phối làm tài xế bận.
 

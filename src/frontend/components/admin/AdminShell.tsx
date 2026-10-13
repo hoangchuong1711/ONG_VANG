@@ -18,6 +18,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 import { AdminProvider, useAdmin } from "./AdminProvider";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 const groups = [
   { label: "Điều hành", items: [
@@ -86,6 +87,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 
           <span className="admin-demo-pill">Dữ liệu demo</span>
           <button type="button" className="admin-reset" onClick={() => { if (window.confirm("Đặt lại mọi thay đổi trong cổng quản trị demo?")) resetDemo(); }}>Đặt lại demo</button>
+          <LogoutButton className="admin-reset" />
         </div>
       </header>
       <main className="admin-content">{children}</main>

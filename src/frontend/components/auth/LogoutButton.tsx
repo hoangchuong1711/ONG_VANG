@@ -1,0 +1,19 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { AuthError, logout } from "@/lib/auth";
+
+export function LogoutButton({ className = "" }: { className?: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return <button type="button" className={className} disabled={busy} onClick={async () => {
+    setBusy(true);
+    try { await logout(); router.replace("/login"); router.refresh(); }
+    catch (failure) {
+      if (failure instanceof AuthError && failure.status === 401) { router.replace("/login"); router.refresh(); return; }
+      setBusy(false);
+      alert("Không thể đăng xuất. Vui lòng thử lại.");
+    }
+  }}>{busy ? "Đang đăng xuất..." : "Đăng xuất"}</button>;
+}
