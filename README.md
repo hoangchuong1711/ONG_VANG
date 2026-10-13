@@ -20,6 +20,7 @@ T17: [báo cáo doanh thu và xuất Excel](docs/T17-revenue-reports.md).
 
 T18: [đối chiếu tài liệu và phạm vi hoãn tới khi deploy](docs/T18-sandbox-api.md).
 T19: [báo cáo hồi quy backend trên designV1](tests/T19-validation.md).
+T24: [giao diện điều phối với API thật và hướng dẫn chạy/test](docs/T24-dispatcher.md).
 T20: [đối chiếu mốc nghiệm thu backend](tests/T20-acceptance.md).
 
 Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).

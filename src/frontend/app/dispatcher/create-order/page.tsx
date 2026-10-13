@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
+import { DispatchShell } from "@/components/dispatcher/Views";
 import { Button } from "@/components/ui/Button";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
@@ -109,10 +109,10 @@ export default function DispatcherCreateOrderPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] font-sans">
-      <DispatcherNavbar />
+    <DispatchShell>
 
-      <main className="flex-1 max-w-[1100px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="max-w-[1100px] w-full mx-auto space-y-6">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-4" role="status">Đây là bản xem trước form tạo đơn. Đơn thử tại đây được lưu trên trình duyệt và chưa xuất hiện trong bàn điều phối.</p>
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-200">
           <div className="shrink-0">
@@ -123,7 +123,7 @@ export default function DispatcherCreateOrderPage() {
               Tiếp Nhận Cuộc Gọi Tạo Đơn Nhanh
             </h1>
             <p className="text-xs sm:text-sm text-stone-500 mt-1">
-              Tra cứu hồ sơ khách hàng theo SĐT, tự động tính cước snapshot và đẩy vào hàng đợi tác chiến
+              Thử nhập thông tin khách hàng và xem bố cục báo giá trước khi tạo đơn.
             </p>
           </div>
 
@@ -397,7 +397,7 @@ export default function DispatcherCreateOrderPage() {
             </Button>
           </div>
         </form>
-      </main>
-    </div>
+      </div>
+    </DispatchShell>
   );
 }

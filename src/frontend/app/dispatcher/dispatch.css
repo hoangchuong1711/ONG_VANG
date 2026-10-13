@@ -1,0 +1,15 @@
+.dispatch-page { max-width:1200px; width:100%; margin:0 auto; padding:24px 16px 80px; }
+.dispatch-panel { background:white; border:1px solid #e7e5e4; border-radius:16px; padding:20px; }
+.dispatch-button { background:#f59e0b; color:#1c1917; border:1px solid #d97706; border-radius:8px; padding:9px 14px; font-weight:700; cursor:pointer; }
+.dispatch-button.secondary { background:white; border-color:#d6d3d1; }
+.dispatch-button.danger { background:#fff1f2; border-color:#fda4af; color:#9f1239; }
+.dispatch-button:disabled { opacity:.45; cursor:not-allowed; }
+.dispatch-input { border:1px solid #a8a29e; border-radius:8px; padding:9px 12px; background:white; width:100%; }
+.dispatch-page :is(button,a,input,select,textarea):focus-visible { outline:3px solid #b45309; outline-offset:3px; }
+.dispatch-table { width:100%; border-collapse:collapse; text-align:left; font-size:14px; }
+.dispatch-table th { font-weight:700; background:#fafaf9; }
+.dispatch-table :is(th,td) { padding:12px; border-bottom:1px solid #e7e5e4; vertical-align:top; }
+.dispatch-error { padding:14px; border:1px solid #fda4af; border-radius:10px; background:#fff1f2; color:#9f1239; }
+.dispatch-notice { padding:14px; border:1px solid #a7f3d0; border-radius:10px; background:#ecfdf5; color:#065f46; }
+.dispatch-dialog { position:fixed; inset:0; z-index:60; background:#1c191799; display:flex; align-items:center; justify-content:center; padding:16px; }
+.dispatch-dialog > section { width:100%; max-width:650px; max-height:90dvh; overflow:auto; background:white; border-radius:16px; padding:24px; }
