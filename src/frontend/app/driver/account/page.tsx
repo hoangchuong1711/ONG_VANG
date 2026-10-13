@@ -151,7 +151,7 @@ export default function DriverProfilePage() {
           </h3>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-            <Link href="/" className="w-full sm:w-auto">
+            <Link href="/customer" className="w-full sm:w-auto">
               <Button variant="outline" size="sm" fullWidth>
                 ← Chuyển sang Cổng Khách hàng
               </Button>

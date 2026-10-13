@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface DriverNavbarProps {
   isOnline: boolean;
@@ -9,6 +10,8 @@ interface DriverNavbarProps {
 }
 
 export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
+  const pathname = usePathname();
+
   return (
     <header className="sticky top-0 z-40 w-full bg-stone-900 text-white border-b border-stone-800 shadow-md">
       <div className="max-w-[1024px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -52,10 +55,22 @@ export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
             <span>{isOnline ? "ĐANG TRỰC TUYẾN" : "TẠM NGHỈ (OFFLINE)"}</span>
           </button>
 
+          <Link
+            href="/driver/account"
+            aria-current={pathname === "/driver/account" ? "page" : undefined}
+            className={`hidden md:inline-flex min-h-10 items-center rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+              pathname === "/driver/account"
+                ? "border-amber-400 bg-amber-400 text-stone-950"
+                : "border-stone-600 text-white hover:border-amber-400 hover:text-amber-400"
+            }`}
+          >
+            Tài khoản
+          </Link>
+
           {/* Quick links to Dispatcher & Customer portals */}
           <Link
             href="/dispatcher"
-            className="hidden sm:inline-flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors px-2 py-1 rounded-lg border border-slate-700 bg-slate-900"
+            className="hidden lg:inline-flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors px-2 py-1 rounded-lg border border-slate-700 bg-slate-900"
             title="Chuyển sang Cổng Điều phối viên"
           >
             <span>⚡ Điều phối</span>
@@ -70,8 +85,8 @@ export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
           </Link>
 
           <Link
-            href="/"
-            className="hidden sm:inline-flex items-center gap-1 text-xs text-stone-400 hover:text-amber-400 transition-colors px-2 py-1 rounded-lg border border-stone-800 hover:border-stone-700"
+            href="/customer"
+            className="hidden lg:inline-flex items-center gap-1 text-xs text-stone-400 hover:text-amber-400 transition-colors px-2 py-1 rounded-lg border border-stone-800 hover:border-stone-700"
             title="Chuyển sang Cổng Khách hàng"
           >
             <span>Khách hàng →</span>
