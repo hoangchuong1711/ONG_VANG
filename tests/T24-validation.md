@@ -45,7 +45,7 @@ Ngày kiểm tra: 13/10/2026 (Asia/Bangkok). Nhánh `feat/t24-dispatcher-integra
 
 ## Ca FE/BE/SQL Server thật còn cần chạy
 
-Nguồn: `src/frontend/tests/t24-live/dispatch-live.spec.ts`; lệnh trong [T24-dispatcher.md](../docs/T24-dispatcher.md).
+Nguồn: `src/frontend/tests/t24-live/dispatch-live.spec.ts`; lệnh trong [T24-testing.md](../docs/T24-testing.md).
 
 | Ca | Expected / dữ liệu đối chiếu | Actual cloud | Kết quả |
 | --- | --- | --- | --- |
