@@ -6,6 +6,8 @@
 
 **Phiên bản 1.0  •  Ngày 10 tháng 10 năm 2026**
 
+> **Baseline hiện hành:** tài liệu này mô tả designV1 đã triển khai. [designTX](designTX.md) là phần thiết kế **đích, chưa triển khai** từ TX1 ngày 14/10/2026, bổ sung thanh toán tại điểm lấy/giao, kg, vị trí tài xế demo, đối soát COD và chia 20/80. Các quy tắc cũ như “chỉ thanh toán sau hoàn tất” vẫn đúng với BE hiện tại; khi làm TX3–TX7 phải dùng designTX cho phần thay đổi và thêm migration mới, không sửa lại lịch sử V1–V4.
+
 Tài liệu xác định mô hình dữ liệu đích cho 12 use case của Mini Ong Vàng. Nhóm sử dụng danh sách bảng và cột ở phần 4 để dựng ERD, dùng phần 8 để sửa Class Diagram, và dùng phần 9 để cập nhật các task backend đã làm đến T12 cũng như các task tiếp theo.
 Mô hình chốt 19 bảng ứng dụng và kỹ thuật. Quyết định chính là dùng enum cho mã hạng, gộp hồ sơ VIP vào khách hàng, lấy phân công làm nguồn tài xế của đơn, dùng chính sách có phiên bản bất biến và không lưu tổng cước suy diễn. Báo giá 300 giây và cơ chế chống tạo đơn lặp 24 giờ được giữ. Thanh toán chỉ diễn ra sau hoàn tất.
 Đặc tả này độc lập hệ quản trị. Kiểu dữ liệu dưới đây là kiểu logic; không bao gồm DDL, function, view, trigger hay cấu hình vận hành. Không cần giữ tên lớp/bảng cũ nếu khác mô hình đích. Các thay đổi nghiệp vụ so với T12 được nêu rõ để cập nhật test và API cùng lúc.

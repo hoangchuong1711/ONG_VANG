@@ -2,6 +2,8 @@
 
 Các quy ước API hiện tại được đối chiếu với [designV1](../database/designV1.md). Nghiệp vụ T06–T17 và `listCustomers` của T20 đã có implementation. Cấu hình/kiểm tra VNPay Sandbox dùng chung được hoãn tới khi deploy theo [phạm vi T18](../T18-sandbox-api.md) và [biên bản T20](../../tests/T20-acceptance.md).
 
+> Các thay đổi tương lai về quyền tạo payment, mốc thu và hợp đồng COD/20–80 đã được thiết kế trong [TX1-contract](TX1-contract.md). Quy tắc “chỉ thu sau HOAN_TAT” bên dưới vẫn mô tả **API 0.5.0 đang chạy**, chưa phải hành vi TX.
+
 ## HTTP, DTO, validation
 
 - Prefix `/api`; JSON UTF-8; tên field tiếng Việt không dấu camelCase tương ứng SQL snake_case. DTO độc lập Entity Hibernate.

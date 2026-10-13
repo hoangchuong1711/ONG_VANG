@@ -2,6 +2,8 @@ Kế hoạch triển khai dự án báo cáo môn Công nghệ Phần mềm SOEN
 
 Mục tiêu: hoàn thành 12 Use Case theo đề Hệ thống đặt xe / giao hàng Mini Ong Vàng, bảo đảm kiến trúc 3 tầng và truy vết từ yêu cầu đến thiết kế, code và test. Triển khai backend trước; chỉ bắt đầu thiết kế và lập trình frontend nghiệp vụ sau khi backend đạt mốc nghiệm thu. Khởi tạo khung cả hai ngay từ đầu.
 
+> **Bổ sung TX1 ngày 14/10/2026:** các mục T01–T32 và designV1 bên dưới ghi kế hoạch/baseline đã xây dựng, trong đó có quy tắc cũ “thu cước sau hoàn tất” và biểu phí chưa theo kg. Yêu cầu mới của nhóm cho các luồng tạo đơn, điều phối, giao hàng, thu cước và đối soát được chốt tại [backlog TX](TX-change-tasks.md), [thiết kế nghiệp vụ–ERD–Class–Sequence đích](database/designTX.md) và [API contract đích](api/TX1-contract.md). Khi hai quy tắc khác nhau, các task TX triển khai theo thiết kế đích; không suy ra BE/FE hiện tại đã có hành vi mới. `openapi.json` tiếp tục mô tả API đang chạy và sẽ được cập nhật từng phần cùng code/test của TX3–TX7.
+
 ## 1. Phạm vi và cơ sở lập kế hoạch
 
 * Nguồn yêu cầu: Yeu_cau_Cuoi_ky_He_thong_Giao_hang_Mini_Ong_Vang.docx do giảng viên cung cấp. Giữ nguyên 12 UC, các actor, màn hình và quy tắc nghiệp vụ liên quan.
