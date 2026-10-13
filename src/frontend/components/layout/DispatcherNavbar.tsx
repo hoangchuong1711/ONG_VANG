@@ -113,27 +113,7 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
             </Link>
           )}
 
-          {/* Role Switchers */}
-          <div className="hidden xl:flex items-center gap-1 pl-2 border-l border-stone-200 shrink-0">
-            <Link
-              href="/driver"
-              className="px-2 py-1 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 hover:text-stone-900 text-xs font-medium transition-colors whitespace-nowrap"
-            >
-              Cổng Tài xế
-            </Link>
-            <Link
-              href="/admin"
-              className="px-2 py-1 rounded-lg border border-blue-200 bg-blue-50/50 hover:bg-blue-100 text-blue-900 text-xs font-semibold transition-colors whitespace-nowrap"
-            >
-              Cổng Quản trị
-            </Link>
-            <Link
-              href="/"
-              className="px-2 py-1 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 hover:text-stone-900 text-xs font-medium transition-colors whitespace-nowrap"
-            >
-              Cổng Khách
-            </Link>
-          </div>
+
 
           {/* Operator Profile */}
           <div className="flex items-center gap-2 pl-1 sm:pl-2 shrink-0">

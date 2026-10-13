@@ -98,28 +98,7 @@ export function Navbar() {
             <span>Tạo đơn mới</span>
           </Link>
 
-          {/* Driver, Dispatcher & Admin Portal Switchers */}
-          <Link
-            href="/driver"
-            className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700 font-semibold text-xs transition-colors"
-            title="Chuyển sang Cổng Tài xế"
-          >
-            <span>🏍️ Tài xế</span>
-          </Link>
-          <Link
-            href="/dispatcher"
-            className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs transition-colors"
-            title="Chuyển sang Cổng Điều phối viên"
-          >
-            <span>⚡ Điều phối</span>
-          </Link>
-          <Link
-            href="/admin"
-            className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold text-xs transition-colors"
-            title="Chuyển sang Cổng Quản trị viên"
-          >
-            <span>🛡️ Quản trị viên</span>
-          </Link>
+
 
           {/* User Profile Pill */}
           <Link
@@ -173,30 +152,7 @@ export function Navbar() {
               </Link>
             );
           })}
-          {/* Additional mobile links */}
-          <Link
-            href="/driver"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold text-amber-900 bg-amber-100/70 hover:bg-amber-100 border border-amber-200"
-          >
-            <span>🏍️ Chuyển sang Cổng Tài xế</span>
-          </Link>
 
-          <Link
-            href="/dispatcher"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold text-amber-400 bg-slate-900 hover:bg-slate-800 border border-slate-800"
-          >
-            <span>⚡ Chuyển sang Cổng Điều phối viên</span>
-          </Link>
-
-          <Link
-            href="/admin"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200"
-          >
-            <span>🛡️ Chuyển sang Cổng Quản trị viên</span>
-          </Link>
 
           <Link
             href="/account"
