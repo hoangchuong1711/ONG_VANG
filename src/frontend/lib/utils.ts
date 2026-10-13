@@ -4,7 +4,7 @@ export function formatVND(amount: number): string {
 
 export function isValidPhone(phone: string): boolean {
   const cleaned = phone.replace(/[\s.-]/g, "");
-  return /^0[3|5|7|8|9][0-9]{8}$/.test(cleaned);
+  return /^0[356789][0-9]{8}$/.test(cleaned);
 }
 
 export function getCancelRemainingSeconds(createdTimestamp: number): number {

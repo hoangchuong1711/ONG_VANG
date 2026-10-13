@@ -20,12 +20,19 @@ function AuthContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [loadingRole, setLoadingRole] = useState<string | null>(null);
 
-  // Auto-fill demo account
-  const handleFillDemo = (demoPhone: string) => {
+  // 1-Click Login for Demo Accounts
+  const handle1ClickLogin = (demoPhone: string, targetPath: string, roleKey: string) => {
+    setTab("LOGIN");
     setPhone(demoPhone);
     setPassword("Demo@123456");
     setErrorMessage("");
+    setLoadingRole(roleKey);
+    setIsSuccess(true);
+    setTimeout(() => {
+      router.push(targetPath);
+    }, 450);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -53,7 +60,7 @@ function AuthContent() {
       targetPath = "/driver";
     } else if (phone.startsWith("07") || phone.includes("dieuphoi")) {
       targetPath = "/dispatcher";
-    } else if (phone.includes("admin") || phone.includes("chudoi") || phone === "0600000001") {
+    } else if (phone.includes("admin") || phone.includes("chudoi") || phone.startsWith("06") || phone === "0600000001") {
       targetPath = "/admin";
     }
 
@@ -61,7 +68,7 @@ function AuthContent() {
     setIsSuccess(true);
     setTimeout(() => {
       router.push(targetPath);
-    }, 1200);
+    }, 500);
   };
 
   return (
@@ -277,48 +284,76 @@ function AuthContent() {
 
           {/* Quick Demo Accounts Helper (4 Roles) */}
           <div className="pt-2 border-t border-stone-200 space-y-2.5">
-            <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider block text-center">
-              Chọn tài khoản mẫu theo vai trò (1 Click)
+            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block text-center">
+              Chọn tài khoản mẫu theo vai trò (1 Click đăng nhập ngay)
             </span>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
-                onClick={() => handleFillDemo("0900000001")}
-                className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200 hover:border-amber-400 text-left transition-colors"
+                onClick={() => handle1ClickLogin("0900000001", "/customer", "customer")}
+                disabled={isSuccess}
+                title="Đăng nhập ngay vào Cổng Khách hàng"
+                className="group p-2.5 rounded-xl bg-amber-50/70 hover:bg-amber-100/90 border border-amber-200 hover:border-amber-400 text-left transition-all active:scale-95 cursor-pointer disabled:opacity-60 shadow-2xs hover:shadow-xs"
               >
-                <div className="font-extrabold text-amber-950">1. Khách Hàng VIP</div>
+                <div className="flex items-center justify-between">
+                  <div className="font-extrabold text-amber-950">1. Khách Hàng VIP</div>
+                  {loadingRole === "customer" && <span className="text-xs animate-spin">⏳</span>}
+                </div>
                 <div className="font-mono text-[11px] text-amber-700">0900000001</div>
-                <div className="text-[10px] text-stone-500">→ Vào Cổng Khách hàng</div>
+                <div className="text-[10px] text-amber-800 font-semibold group-hover:underline">
+                  {loadingRole === "customer" ? "Đang vào..." : "→ Vào Cổng Khách hàng"}
+                </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleFillDemo("0800000001")}
-                className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 hover:border-amber-400 text-left transition-colors"
+                onClick={() => handle1ClickLogin("0800000001", "/driver", "driver")}
+                disabled={isSuccess}
+                title="Đăng nhập ngay vào Buồng lái Tài xế"
+                className="group p-2.5 rounded-xl bg-stone-50 hover:bg-emerald-50 border border-stone-200 hover:border-emerald-400 text-left transition-all active:scale-95 cursor-pointer disabled:opacity-60 shadow-2xs hover:shadow-xs"
               >
-                <div className="font-extrabold text-stone-900">2. Tài Xế Công Nghệ</div>
+                <div className="flex items-center justify-between">
+                  <div className="font-extrabold text-stone-900">2. Tài Xế Công Nghệ</div>
+                  {loadingRole === "driver" && <span className="text-xs animate-spin">⏳</span>}
+                </div>
                 <div className="font-mono text-[11px] text-emerald-700 font-bold">0800000001</div>
-                <div className="text-[10px] text-stone-500">→ Vào Buồng lái Tài xế</div>
+                <div className="text-[10px] text-emerald-800 font-semibold group-hover:underline">
+                  {loadingRole === "driver" ? "Đang vào..." : "→ Vào Buồng lái Tài xế"}
+                </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleFillDemo("0700000001")}
-                className="p-2.5 rounded-xl bg-slate-900 text-white border border-slate-700 hover:border-amber-400 text-left transition-colors"
+                onClick={() => handle1ClickLogin("0700000001", "/dispatcher", "dispatcher")}
+                disabled={isSuccess}
+                title="Đăng nhập ngay vào Bàn Điều phối"
+                className="group p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 hover:border-amber-400 text-left transition-all active:scale-95 cursor-pointer disabled:opacity-60 shadow-2xs hover:shadow-xs"
               >
-                <div className="font-extrabold text-amber-400">3. Điều Phối Viên</div>
+                <div className="flex items-center justify-between">
+                  <div className="font-extrabold text-amber-400">3. Điều Phối Viên</div>
+                  {loadingRole === "dispatcher" && <span className="text-xs animate-spin">⏳</span>}
+                </div>
                 <div className="font-mono text-[11px] text-slate-300">0700000001</div>
-                <div className="text-[10px] text-slate-400">→ Vào Bàn Điều phối</div>
+                <div className="text-[10px] text-amber-300 font-semibold group-hover:underline">
+                  {loadingRole === "dispatcher" ? "Đang vào..." : "→ Vào Bàn Điều phối"}
+                </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleFillDemo("0600000001")}
-                className="p-2.5 rounded-xl bg-slate-800 text-white border border-slate-700 hover:border-amber-400 text-left transition-colors"
+                onClick={() => handle1ClickLogin("0600000001", "/admin", "admin")}
+                disabled={isSuccess}
+                title="Đăng nhập ngay vào Quản trị & Báo cáo"
+                className="group p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 hover:border-blue-400 text-left transition-all active:scale-95 cursor-pointer disabled:opacity-60 shadow-2xs hover:shadow-xs"
               >
-                <div className="font-extrabold text-blue-400">4. Chủ Đội Xe</div>
+                <div className="flex items-center justify-between">
+                  <div className="font-extrabold text-blue-400">4. Chủ Đội Xe</div>
+                  {loadingRole === "admin" && <span className="text-xs animate-spin">⏳</span>}
+                </div>
                 <div className="font-mono text-[11px] text-slate-300">0600000001</div>
-                <div className="text-[10px] text-slate-400">→ Vào Quản trị & Báo cáo</div>
+                <div className="text-[10px] text-blue-300 font-semibold group-hover:underline">
+                  {loadingRole === "admin" ? "Đang vào..." : "→ Vào Quản trị & Báo cáo"}
+                </div>
               </button>
             </div>
           </div>
