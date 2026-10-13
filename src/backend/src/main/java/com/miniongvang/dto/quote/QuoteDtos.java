@@ -13,7 +13,7 @@ public final class QuoteDtos {
         public record Parcel(String loaiHangHoa, String ghiChuBaoQuan, String khoiLuongKg) {}
 
     public record CreateQuote(String maKh, String diemLayHang, String diemGiaoHang,
-                              List<Parcel> kienHang) {}
+                              List<Parcel> kienHang, String benThanhToan, String phuongThucThanhToan) {}
 
     public record MembershipView(String maHang, String tenHang, String phanTramGiamGia,
                                      String ngayHetHan, boolean conHieuLuc) {}

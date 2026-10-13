@@ -32,6 +32,14 @@ public class CuocDonHang {
 
     @Column(name = "cuoc_goc", nullable = false, precision = 15, scale = 2)
     private BigDecimal cuocGoc;
+    @Column(name = "cuoc_km", nullable = false, precision = 15, scale = 2)
+    private BigDecimal cuocKm;
+    @Column(name = "cuoc_khoi_luong", nullable = false, precision = 15, scale = 2)
+    private BigDecimal cuocKhoiLuong;
+    @Column(name = "tong_khoi_luong_kg", nullable = false, precision = 10, scale = 2)
+    private BigDecimal tongKhoiLuongKg;
+    @Column(name = "phien_ban_bieu_phi", nullable = false)
+    private int phienBanBieuPhi;
     @Column(name = "tien_giam_gia", nullable = false, precision = 15, scale = 2)
     private BigDecimal tienGiamGia;
 
@@ -46,6 +54,14 @@ public class CuocDonHang {
     public void setChinhSachGiam(ChinhSachThanhVien value) { chinhSachGiam = value; }
     public BigDecimal getCuocGoc() { return cuocGoc; }
     public void setCuocGoc(BigDecimal cuocGoc) { this.cuocGoc = cuocGoc; }
+    public BigDecimal getCuocKm() { return cuocKm; }
+    public void setCuocKm(BigDecimal value) { cuocKm = value; }
+    public BigDecimal getCuocKhoiLuong() { return cuocKhoiLuong; }
+    public void setCuocKhoiLuong(BigDecimal value) { cuocKhoiLuong = value; }
+    public BigDecimal getTongKhoiLuongKg() { return tongKhoiLuongKg; }
+    public void setTongKhoiLuongKg(BigDecimal value) { tongKhoiLuongKg = value; }
+    public int getPhienBanBieuPhi() { return phienBanBieuPhi; }
+    public void setPhienBanBieuPhi(int value) { phienBanBieuPhi = value; }
     public BigDecimal getTienGiamGia() { return tienGiamGia; }
     public void setTienGiamGia(BigDecimal tienGiamGia) { this.tienGiamGia = tienGiamGia; }
 }

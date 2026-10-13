@@ -35,6 +35,12 @@ public class DonHang {
     private String diemGiaoHang;
     @Column(name = "sdt_nguoi_nhan", nullable = false, length = 10)
     private String sdtNguoiNhan;
+    @Column(name = "ten_nguoi_nhan", length = 100)
+    private String tenNguoiNhan;
+    @Column(name = "ben_thanh_toan", nullable = false, length = 20)
+    private String benThanhToan = "NGUOI_DAT";
+    @Column(name = "phuong_thuc_thanh_toan", nullable = false, length = 20)
+    private String phuongThucThanhToan = "TIEN_MAT";
     @Column(name = "quang_duong_km", nullable = false, precision = 10, scale = 2)
     private BigDecimal quangDuongKm;
     @Column(name = "thoi_gian_du_kien_giay", nullable = false)
@@ -68,6 +74,12 @@ public class DonHang {
     public void setDiemGiaoHang(String value) { diemGiaoHang = value; }
     public String getSdtNguoiNhan() { return sdtNguoiNhan; }
     public void setSdtNguoiNhan(String value) { sdtNguoiNhan = value; }
+    public String getTenNguoiNhan() { return tenNguoiNhan; }
+    public void setTenNguoiNhan(String value) { tenNguoiNhan = value; }
+    public String getBenThanhToan() { return benThanhToan; }
+    public void setBenThanhToan(String value) { benThanhToan = value; }
+    public String getPhuongThucThanhToan() { return phuongThucThanhToan; }
+    public void setPhuongThucThanhToan(String value) { phuongThucThanhToan = value; }
     public BigDecimal getQuangDuongKm() { return quangDuongKm; }
     public void setQuangDuongKm(BigDecimal value) { quangDuongKm = value; }
     public int getThoiGianDuKienGiay() { return thoiGianDuKienGiay; }
