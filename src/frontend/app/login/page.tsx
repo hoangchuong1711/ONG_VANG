@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { isValidPhone } from "@/lib/utils";
 
-export default function AuthPage() {
+function AuthContent() {
   const router = useRouter();
-  const [tab, setTab] = useState<"LOGIN" | "REGISTER">("LOGIN");
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<"LOGIN" | "REGISTER">(
+    searchParams.get("tab") === "register" ? "REGISTER" : "LOGIN",
+  );
 
   // Form states
   const [phone, setPhone] = useState("");
@@ -45,7 +48,7 @@ export default function AuthPage() {
     }
 
     // Determine target portal based on role/phone
-    let targetPath = "/";
+    let targetPath = "/customer";
     if (phone.startsWith("08")) {
       targetPath = "/driver";
     } else if (phone.startsWith("07") || phone.includes("dieuphoi")) {
@@ -328,5 +331,13 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[100dvh] bg-[#FAFAF9]" />}>
+      <AuthContent />
+    </Suspense>
   );
 }

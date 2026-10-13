@@ -13,7 +13,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Mini Ong Vàng | Giao Hàng Siêu Tốc & Tiện Lợi",
-  description: "Trang chủ khách hàng Mini Ong Vàng - Đặt và theo dõi đơn giao hàng trực tuyến thông minh, minh bạch.",
+  description: "Mini Ong Vàng giúp bạn tạo đơn, xem cước dự kiến và theo dõi tiến độ giao hàng nội thành trên cùng một website.",
 };
 
 export default function RootLayout({

@@ -1,442 +1,191 @@
-"use client";
-
-import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { Navbar } from "@/components/layout/Navbar";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { OrderStatus } from "@/lib/types";
-import { SAMPLE_ORDERS } from "@/lib/sample-data";
-import { formatVND } from "@/lib/utils";
 
-import { useToast } from "@/components/ui/Toast";
-import { OrderCardSkeleton, StatsCardSkeleton } from "@/components/ui/Skeleton";
+const steps = [
+  { number: "01", title: "Tạo đơn", text: "Nhập địa chỉ lấy hàng, nơi giao và thông tin kiện hàng." },
+  { number: "02", title: "Xem cước", text: "Kiểm tra cước dự kiến trước khi xác nhận đơn." },
+  { number: "03", title: "Theo dõi", text: "Xem trạng thái đơn và hành trình giao hàng trong tài khoản." },
+];
 
-export default function CustomerDashboardKH01() {
-  const { showToast } = useToast();
-  const [statusFilter, setStatusFilter] = useState<"ALL" | OrderStatus>("ALL");
-  const [isEmptyView, setIsEmptyView] = useState<boolean>(false);
-  const [isLoadingView, setIsLoadingView] = useState<boolean>(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showPaymentSuccess, setShowPaymentSuccess] = useState<boolean>(false);
+const questions = [
+  {
+    question: "Tôi có thể biết cước trước khi đặt đơn không?",
+    answer: "Có. Sau khi nhập thông tin giao hàng, bạn có thể xem báo giá trước khi xác nhận tạo đơn.",
+  },
+  {
+    question: "Làm sao để theo dõi đơn hàng?",
+    answer: "Mở mục Đơn của tôi trong tài khoản, chọn đơn cần xem để theo dõi trạng thái và các mốc giao hàng.",
+  },
+  {
+    question: "Tôi có thể thanh toán bằng cách nào?",
+    answer: "Trang thanh toán của đơn hiển thị các lựa chọn hiện có, gồm tiền mặt và VNPay tùy theo trạng thái đơn.",
+  },
+  {
+    question: "Nếu cần hỗ trợ về đơn hàng thì sao?",
+    answer: "Bạn có thể mở chi tiết đơn để xem thông tin hiện tại và dùng mục hỗ trợ trên website khi cần trao đổi thêm.",
+  },
+];
 
-  const handleCopyId = (id: string) => {
-    navigator.clipboard?.writeText(id);
-    setCopiedId(id);
-    showToast(`Đã sao chép mã đơn ${id} vào bộ nhớ tạm!`, "success");
-    setTimeout(() => setCopiedId(null), 2000);
-  };
+const primaryButton =
+  "inline-flex min-h-12 items-center justify-center rounded-xl bg-stone-950 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-stone-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-950";
+const lightButton =
+  "inline-flex min-h-12 items-center justify-center rounded-xl border border-stone-300 bg-white px-6 py-3 text-sm font-bold text-stone-900 transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-950";
 
-  const handleSimulateLoading = () => {
-    setIsLoadingView(true);
-    setTimeout(() => {
-      setIsLoadingView(false);
-      showToast("Đã tải xong dữ liệu đơn hàng!", "info");
-    }, 1200);
-  };
-
-  const orders = isEmptyView ? [] : SAMPLE_ORDERS;
-
-  // Filter orders
-  const filteredOrders = orders.filter((order) => {
-    if (statusFilter === "ALL") return true;
-    return order.status === statusFilter;
-  });
-
-  // Calculate statistics
-  const countDelivering = orders.filter((o) => o.status === "DANG_GIAO").length;
-  const countWaiting = orders.filter((o) => o.status === "CHO_GAN").length;
-  const countCompleted = orders.filter((o) => o.status === "HOAN_TAT" || o.status === "CHUA_THANH_TOAN").length;
-  const unpaidOrder = orders.find((o) => !o.paid && (o.status === "CHUA_THANH_TOAN" || o.status === "HOAN_TAT"));
-
+function Brand() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] antialiased">
-      {/* 1. TOP NAVBAR */}
-      <Navbar />
+    <Link href="/" aria-label="Mini Ong Vàng, về trang chủ" className="inline-flex items-center gap-3 font-extrabold tracking-tight text-stone-950">
+      <span className="flex size-10 items-center justify-center rounded-xl bg-amber-500 text-stone-900 shadow-sm" aria-hidden="true">
+        <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="7" className="fill-amber-400/80 stroke-stone-900" />
+          <path d="M12 5v14" className="stroke-stone-900 stroke-[2.5]" />
+          <path d="M8 8.5h8" className="stroke-stone-900 stroke-[2]" />
+          <path d="M8 15.5h8" className="stroke-stone-900 stroke-[2]" />
+          <path d="M7 6.5C5 4.5 4 6 5 8" className="stroke-stone-800" />
+          <path d="M17 6.5C19 4.5 20 6 19 8" className="stroke-stone-800" />
+          <circle cx="10" cy="11" r="0.8" className="fill-stone-900" />
+          <circle cx="14" cy="11" r="0.8" className="fill-stone-900" />
+        </svg>
+      </span>
+      <span className="text-lg sm:text-xl">Mini Ong Vàng</span>
+    </Link>
+  );
+}
 
-      {/* 2. MAIN CONTAINER (Responsive, max-width 1360px centered) */}
-      <main className="flex-1 max-w-[1360px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6">
-        
-        {/* HERO SECTION: Greeting & Big Mobile-Friendly CTA */}
-        <section className="bg-gradient-to-br from-amber-50/90 via-white to-stone-50 border border-amber-200/80 rounded-2xl p-5 sm:p-7 shadow-2xs relative overflow-hidden">
-          {/* Subtle honey-comb geometric decoration */}
-          <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 pointer-events-none hidden sm:block">
-            <svg viewBox="0 0 100 100" className="w-full h-full fill-amber-500">
-              <polygon points="50,15 90,38 90,83 50,105 10,83 10,38" />
-              <polygon points="90,38 130,60 130,105 90,127 50,105 50,60" />
-            </svg>
+export default function HomePage() {
+  return (
+    <div className="min-h-[100dvh] bg-[#FAFAF9] text-stone-950">
+      <header className="relative z-20 border-b border-stone-200 bg-[#FAFAF9]/95">
+        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
+          <Brand />
+          <nav aria-label="Điều hướng chính" className="hidden items-center gap-8 text-sm font-semibold text-stone-700 md:flex">
+            <a href="#dich-vu" className="hover:text-stone-950">Dịch vụ</a>
+            <a href="#cach-gui-hang" className="hover:text-stone-950">Cách gửi hàng</a>
+            <a href="#hoi-dap" className="hover:text-stone-950">Hỏi đáp</a>
+          </nav>
+          <div className="hidden items-center gap-3 md:flex">
+            <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-bold text-stone-800 hover:bg-stone-100">Đăng nhập</Link>
+            <Link href="/login?tab=register" className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-extrabold text-stone-950 transition-colors hover:bg-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950">Đăng ký</Link>
           </div>
+          <details className="relative md:hidden">
+            <summary className="cursor-pointer list-none rounded-lg border border-stone-300 px-4 py-2 text-sm font-bold marker:content-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950">Menu</summary>
+            <nav aria-label="Điều hướng di động" className="absolute right-0 top-12 flex w-52 flex-col gap-1 rounded-xl border border-stone-200 bg-white p-2 text-sm font-semibold shadow-xl">
+              <a href="#dich-vu" className="rounded-lg px-3 py-2 hover:bg-stone-100">Dịch vụ</a>
+              <a href="#cach-gui-hang" className="rounded-lg px-3 py-2 hover:bg-stone-100">Cách gửi hàng</a>
+              <a href="#hoi-dap" className="rounded-lg px-3 py-2 hover:bg-stone-100">Hỏi đáp</a>
+              <Link href="/login" className="rounded-lg px-3 py-2 hover:bg-stone-100">Đăng nhập</Link>
+              <Link href="/login?tab=register" className="rounded-lg bg-amber-400 px-3 py-2">Đăng ký</Link>
+            </nav>
+          </details>
+        </div>
+      </header>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
-            <div className="space-y-1.5">
-              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold tracking-tight">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                DỊCH VỤ GIAO HÀNG TRONG NGÀY TP.HCM
-              </div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-stone-900 tracking-tight">
-                Xin chào, Nguyễn Thu Hà!
-              </h1>
-              <p className="text-sm sm:text-base text-stone-600 max-w-xl">
-                Kiểm tra hành trình đơn hàng hiện tại hoặc tạo nhanh đơn mới chỉ trong 60 giây.
-              </p>
+      <main>
+        <section className="mx-auto grid max-w-7xl items-center gap-9 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12 lg:px-8 lg:py-20">
+          <div className="max-w-xl">
+            <p className="mb-6 inline-flex rounded-lg bg-amber-100 px-3 py-2 text-xs font-extrabold text-amber-900">Giao hàng nội thành cùng Mini Ong Vàng</p>
+            <h1 className="text-4xl font-extrabold leading-[1.08] tracking-[-0.045em] sm:text-5xl lg:text-[4.2rem]">
+              Gửi hàng dễ dàng. <span className="text-amber-600">Theo dõi rõ ràng.</span>
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-7 text-stone-600 sm:text-lg">
+              Tạo đơn, xem cước dự kiến và theo dõi từng chặng giao hàng ở cùng một nơi.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/create-order" className={primaryButton}>Tạo đơn giao hàng <span className="ml-3" aria-hidden="true">↗</span></Link>
+              <Link href="/orders" className={lightButton}>Xem đơn của tôi</Link>
             </div>
+          </div>
+          <div className="relative overflow-hidden rounded-[1.75rem] bg-amber-100 shadow-[0_24px_70px_-35px_rgba(68,47,14,0.5)]">
+            <Image
+              src="/images/giao-hang-noi-thanh.png"
+              alt="Nhân viên giao hàng mặc áo vàng di chuyển trên xe máy trong thành phố"
+              width={1536}
+              height={1024}
+              priority
+              sizes="(max-width: 1024px) 100vw, 55vw"
+              className="aspect-[4/3] w-full object-cover object-[58%_center] lg:aspect-[5/4]"
+            />
+          </div>
+        </section>
 
-            {/* Primary Action Button (Touch target 48px+ on mobile) & Quick Demo Tools */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-              <button
-                type="button"
-                onClick={handleSimulateLoading}
-                className="px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-                title="Giả lập hiệu ứng Skeleton khi tải dữ liệu từ máy chủ"
-              >
-                <span>⏳</span>
-                <span>Giả lập tải (Skeleton)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsEmptyView(!isEmptyView)}
-                className="px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-                title="Chuyển đổi giao diện khi chưa có đơn hàng"
-              >
-                <span>📦</span>
-                <span>{isEmptyView ? "Xem có đơn mẫu" : "Xem Empty State"}</span>
-              </button>
-
-              <Link href="/create-order" className="w-full sm:w-auto">
-                <Button variant="primary" size="lg" fullWidth>
-                  <svg className="w-5 h-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>Tạo đơn mới</span>
-                </Button>
-              </Link>
+        <section id="dich-vu" className="border-y border-stone-200 bg-white scroll-mt-20">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+            <h2 className="max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">Mọi thông tin cần thiết, ngay trong từng đơn hàng.</h2>
+            <div className="mt-11 grid gap-9 md:grid-cols-3 md:gap-12">
+              <div className="border-l-4 border-amber-400 pl-5">
+                <h3 className="text-lg font-extrabold">Biết cước trước khi gửi</h3>
+                <p className="mt-3 leading-7 text-stone-600">Nhập điểm lấy, điểm giao và thông tin kiện hàng để xem báo giá trước khi xác nhận.</p>
+              </div>
+              <div className="border-l-4 border-amber-400 pl-5">
+                <h3 className="text-lg font-extrabold">Nắm tiến độ giao hàng</h3>
+                <p className="mt-3 leading-7 text-stone-600">Xem trạng thái, các mốc vận chuyển và chi tiết của đơn ngay trên website.</p>
+              </div>
+              <div className="border-l-4 border-amber-400 pl-5">
+                <h3 className="text-lg font-extrabold">Quản lý đơn gọn gàng</h3>
+                <p className="mt-3 leading-7 text-stone-600">Truy cập đơn đang giao, đơn đã hoàn tất và thông tin thanh toán tại một nơi.</p>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* UNPAID WARNING BANNER (Nổi bật nếu có đơn hoàn tất nhưng chưa thanh toán) */}
-        {unpaidOrder && !showPaymentSuccess && (
-          <section className="bg-red-50/90 border border-red-200 rounded-xl p-4 sm:p-5 shadow-2xs transition-all duration-200 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
+        <section id="cach-gui-hang" className="scroll-mt-20 bg-amber-50/60">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+            <h2 className="max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">Ba bước để bắt đầu gửi hàng</h2>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {steps.map((step) => (
+                <div key={step.number} className="rounded-2xl border border-amber-200/80 bg-white p-7 shadow-sm">
+                  <span className="text-3xl font-extrabold text-amber-600">{step.number}</span>
+                  <h3 className="mt-8 text-xl font-extrabold">{step.title}</h3>
+                  <p className="mt-3 leading-7 text-stone-600">{step.text}</p>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm sm:text-base font-bold text-red-950">
-                      Đơn hàng đã hoàn tất nhưng chưa thanh toán cước phí
-                    </h3>
-                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-white text-red-700 border border-red-200">
-                      {unpaidOrder.id}
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-red-800 mt-1">
-                    Kiện hàng đã được giao an toàn tới người nhận. Số tiền cần thanh toán:{" "}
-                    <strong className="font-extrabold text-red-950 text-base">{formatVND(unpaidOrder.totalFee)}</strong>.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                <Link href={`/tracking/${unpaidOrder.id}`}>
-                  <Button variant="outline" size="sm" className="bg-white border-red-200 text-red-800">
-                    Xem chi tiết
-                  </Button>
-                </Link>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => {
-                    setShowPaymentSuccess(true);
-                    setTimeout(() => setShowPaymentSuccess(false), 4000);
-                  }}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  <span>Thanh toán VNPay ngay</span>
-                </Button>
-              </div>
+              ))}
             </div>
-          </section>
-        )}
-
-        {/* Payment Success Toast */}
-        {showPaymentSuccess && (
-          <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-emerald-900 text-xs sm:text-sm font-semibold flex items-center gap-2 animate-fadeIn">
-            <span className="text-emerald-600 text-base">✓</span>
-            Giao dịch thanh toán sandbox qua VNPay thành công! Đơn hàng đã được cập nhật trạng thái &quot;Đã thanh toán&quot;.
+            <Link href="/create-order" className={`${primaryButton} mt-9`}>Bắt đầu tạo đơn <span className="ml-3" aria-hidden="true">↗</span></Link>
           </div>
-        )}
-
-        {/* 3 QUICK STATS CARDS: Đang giao, Chờ gán, Hoàn tất */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5" aria-label="Tóm tắt đơn hàng">
-          {isLoadingView ? (
-            <>
-              <StatsCardSkeleton />
-              <StatsCardSkeleton />
-              <StatsCardSkeleton />
-            </>
-          ) : (
-            <>
-              {/* Card 1: Đang giao */}
-              <div className="bg-white border border-stone-200 rounded-xl p-4 sm:p-5 shadow-2xs flex items-center justify-between hover:border-amber-300 transition-colors">
-                <div className="space-y-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                    Đơn đang giao
-                  </span>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-stone-900">
-                    {String(countDelivering).padStart(2, "0")}
-                  </div>
-                  <p className="text-[11px] text-stone-500">Tài xế đang trên đường vận chuyển</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Card 2: Chờ gán tài xế */}
-              <div className="bg-white border border-stone-200 rounded-xl p-4 sm:p-5 shadow-2xs flex items-center justify-between hover:border-amber-300 transition-colors">
-                <div className="space-y-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
-                    Đơn chờ gán
-                  </span>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-amber-600">
-                    {String(countWaiting).padStart(2, "0")}
-                  </div>
-                  <p className="text-[11px] text-stone-500">Đang chờ điều phối viên xếp xe</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Card 3: Đã hoàn tất */}
-              <div className="bg-white border border-stone-200 rounded-xl p-4 sm:p-5 shadow-2xs flex items-center justify-between hover:border-amber-300 transition-colors">
-                <div className="space-y-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                    Đã hoàn tất
-                  </span>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-stone-900">
-                    {String(countCompleted).padStart(2, "0")}
-                  </div>
-                  <p className="text-[11px] text-stone-500">Giao hàng thành công</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              </div>
-            </>
-          )}
         </section>
 
-        {/* 4. RECENT ORDERS SECTION */}
-        <section className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-6 shadow-2xs space-y-5">
-          {/* Section Header & Filters */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 pb-4 border-b border-stone-100">
+        <section className="bg-white">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8 lg:py-20">
             <div>
-              <h2 className="text-lg sm:text-xl font-extrabold text-stone-900 tracking-tight">
-                Danh sách đơn hàng gần đây
-              </h2>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Xem tình trạng bưu kiện, lịch trình vận chuyển và thông tin cước phí
-              </p>
+              <h2 className="max-w-xl text-3xl font-extrabold tracking-tight sm:text-4xl">Tài khoản của bạn, mọi đơn hàng của bạn.</h2>
+              <p className="mt-4 max-w-2xl leading-7 text-stone-600">Đăng ký bằng số điện thoại để tạo đơn và xem lại lịch sử giao hàng thuận tiện hơn.</p>
             </div>
-
-            {/* Filter buttons */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-              {(
-                [
-                  { key: "ALL", label: "Tất cả" },
-                  { key: "DANG_GIAO", label: "Đang giao" },
-                  { key: "CHO_GAN", label: "Chờ gán" },
-                  { key: "CHUA_THANH_TOAN", label: "Chưa trả" },
-                  { key: "HOAN_TAT", label: "Hoàn tất" },
-                ] as const
-              ).map((f) => {
-                const isSelected = statusFilter === f.key;
-                return (
-                  <button
-                    key={f.key}
-                    onClick={() => setStatusFilter(f.key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                      isSelected
-                        ? "bg-stone-900 text-white font-bold"
-                        : "bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                );
-              })}
-            </div>
+            <Link href="/login?tab=register" className={primaryButton}>Đăng ký tài khoản <span className="ml-3" aria-hidden="true">↗</span></Link>
           </div>
-
-          {/* LIST VIEW / SKELETON / EMPTY STATE */}
-          {isLoadingView ? (
-            <div className="space-y-3.5">
-              <OrderCardSkeleton />
-              <OrderCardSkeleton />
-              <OrderCardSkeleton />
-            </div>
-          ) : filteredOrders.length === 0 ? (
-            /* EMPTY STATE VIEW */
-            <div className="py-12 sm:py-16 text-center flex flex-col items-center justify-center space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-amber-100/80 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
-              <div className="space-y-1 max-w-sm">
-                <h3 className="text-base sm:text-lg font-bold text-stone-900">
-                  Chưa có đơn hàng nào
-                </h3>
-                <p className="text-xs sm:text-sm text-stone-500">
-                  {isEmptyView
-                    ? "Bạn chưa tạo đơn hàng nào gần đây. Hãy gửi kiện hàng đầu tiên để trải nghiệm dịch vụ giao siêu tốc của Mini Ong Vàng."
-                    : "Không có đơn hàng nào khớp với bộ lọc đã chọn."}
-                </p>
-              </div>
-              <Link href="/create-order">
-                <Button variant="primary">
-                  Tạo đơn hàng ngay
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            /* LIST OF ORDERS: Mobile Single-Column Card & Desktop Structured Rows */
-            <div className="space-y-3.5">
-              {filteredOrders.map((order) => {
-                const isUnpaid = !order.paid && (order.status === "CHUA_THANH_TOAN" || order.status === "HOAN_TAT");
-
-                return (
-                  <article
-                    key={order.id}
-                    className={`border rounded-xl p-4 sm:p-5 transition-all duration-150 hover:shadow-md ${
-                      isUnpaid
-                        ? "bg-red-50/30 border-red-200 hover:border-red-300"
-                        : "bg-white border-stone-200 hover:border-amber-300"
-                    }`}
-                  >
-                    {/* Top line of Card: Code + Time + Status Badge + Copy Button */}
-                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-stone-100 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-extrabold text-sm sm:text-base text-stone-900">
-                          {order.id}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyId(order.id)}
-                          className="p-1 rounded-md text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors"
-                          title="Sao chép mã đơn"
-                          aria-label={`Sao chép mã đơn ${order.id}`}
-                        >
-                          {copiedId === order.id ? (
-                            <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : (
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          )}
-                        </button>
-                        <span className="text-stone-300">·</span>
-                        <span className="text-xs text-stone-500 font-medium">
-                          {order.createdAt}
-                        </span>
-                      </div>
-
-                      <Badge status={order.status} isUnpaid={isUnpaid} />
-                    </div>
-
-                    {/* Middle: Pickup and Drop-off Route (Timeline Layout) */}
-                    <div className="py-3 sm:py-4 grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-center">
-                      {/* Timeline Route */}
-                      <div className="md:col-span-7 space-y-2.5">
-                        <div className="flex items-start gap-2.5">
-                          <div className="w-5 flex flex-col items-center shrink-0 mt-0.5">
-                            <span className="w-2.5 h-2.5 rounded-full bg-stone-400" />
-                            <span className="w-0.5 h-6 bg-stone-200" />
-                          </div>
-                          <div className="text-xs sm:text-sm">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                              Lấy hàng
-                            </span>
-                            <span className="font-semibold text-stone-900">{order.sender.street}</span>,{" "}
-                            <span className="text-stone-500">{order.sender.district}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-2.5">
-                          <div className="w-5 flex flex-col items-center shrink-0 mt-0.5">
-                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-amber-100" />
-                          </div>
-                          <div className="text-xs sm:text-sm">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">
-                              Giao hàng đến
-                            </span>
-                            <span className="font-semibold text-stone-900">{order.receiver.street}</span>,{" "}
-                            <span className="text-stone-500">{order.receiver.district}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Receiver and Package Type */}
-                      <div className="md:col-span-3 text-xs space-y-1 bg-stone-50/70 p-2.5 rounded-lg border border-stone-100">
-                        <div>
-                          <span className="text-stone-500">Người nhận:</span>{" "}
-                          <strong className="text-stone-800">{order.receiver.name}</strong> ({order.receiver.phone})
-                        </div>
-                        <div>
-                          <span className="text-stone-500">Hàng hóa:</span>{" "}
-                          <span className="font-medium text-stone-700">{order.packageType}</span>
-                        </div>
-                      </div>
-
-                      {/* Fee and Action Button */}
-                      <div className="md:col-span-2 flex md:flex-col items-center md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-stone-100">
-                        <div className="text-left md:text-right">
-                          <span className="text-[10px] font-semibold text-stone-400 block">Cước phí</span>
-                          <span className="text-base sm:text-lg font-black text-stone-900">
-                            {formatVND(order.totalFee)}
-                          </span>
-                        </div>
-
-                        <Link href={`/tracking/${order.id}`}>
-                          <Button variant="outline" size="sm">
-                            Theo dõi tiến độ →
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
         </section>
 
-        {/* 5. FOOTER */}
-        <footer className="pt-4 pb-12 text-center text-xs text-stone-400 space-y-1">
-          <p>
-            Phân hệ Khách hàng <strong>Mini Ong Vàng</strong> · Thiết kế theo chuẩn Figma và kỹ năng Design Taste Frontend.
-          </p>
-          <p className="text-[11px] text-stone-400">
-            Dữ liệu minh họa (Sample Data) · Responsive 320px đến 1920px
-          </p>
-        </footer>
+        <section id="hoi-dap" className="scroll-mt-20 border-t border-stone-200 bg-[#FAFAF9]">
+          <div className="mx-auto grid max-w-7xl gap-9 px-4 py-16 sm:px-6 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20 lg:px-8 lg:py-24">
+            <div>
+              <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Câu hỏi thường gặp</h2>
+              <p className="mt-4 leading-7 text-stone-600">Tìm câu trả lời nhanh trước khi gửi đơn đầu tiên.</p>
+            </div>
+            <div className="space-y-3">
+              {questions.map(({ question, answer }) => (
+                <details key={question} className="group rounded-xl border border-stone-200 bg-white p-5 open:border-amber-300">
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-4 font-bold marker:content-none">
+                    {question}<span className="text-xl leading-5 text-amber-700 group-open:rotate-45" aria-hidden="true">+</span>
+                  </summary>
+                  <p className="mt-4 pr-6 leading-7 text-stone-600">{answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
+
+      <footer className="border-t border-stone-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <div>
+            <Brand />
+            <p className="mt-2 text-sm text-stone-600">Gửi hàng và theo dõi đơn thuận tiện hơn.</p>
+          </div>
+          <nav aria-label="Liên kết cuối trang" className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-stone-700">
+            <Link href="/customer" className="hover:text-stone-950">Tổng quan khách hàng</Link>
+            <Link href="/orders" className="hover:text-stone-950">Đơn của tôi</Link>
+            <Link href="/login" className="hover:text-stone-950">Đăng nhập</Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }

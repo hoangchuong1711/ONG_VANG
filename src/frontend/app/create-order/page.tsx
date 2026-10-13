@@ -338,7 +338,7 @@ export default function BookingWizardPage() {
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-2">
-              <Link href="/">
+              <Link href="/customer">
                 <Button variant="ghost" type="button">
                   Hủy bỏ
                 </Button>
