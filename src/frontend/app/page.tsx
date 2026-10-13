@@ -139,7 +139,10 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-            <Link href="/create-order" className={`${primaryButton} mt-9`}>Bắt đầu tạo đơn <span className="ml-3" aria-hidden="true">↗</span></Link>
+            <div className="mt-8 rounded-2xl border border-amber-200 bg-white px-6 py-5 sm:px-7">
+              <h3 className="text-base font-extrabold text-stone-950">Chuẩn bị trước khi tạo đơn</h3>
+              <p className="mt-2 text-sm leading-6 text-stone-600">Hãy có sẵn địa chỉ lấy hàng, số điện thoại người nhận và thông tin kiện hàng để nhập đơn nhanh hơn.</p>
+            </div>
           </div>
         </section>
 
@@ -173,17 +176,46 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-          <div>
+      <footer className="border-t border-amber-200 bg-white">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.5fr_1fr_1fr_1fr] lg:gap-12 lg:px-8 lg:py-16">
+          <div className="max-w-sm">
             <Brand />
-            <p className="mt-2 text-sm text-stone-600">Gửi hàng và theo dõi đơn thuận tiện hơn.</p>
+            <p className="mt-5 text-sm leading-7 text-stone-600">Tạo đơn, xem cước dự kiến và theo dõi tiến độ giao hàng trên cùng một website.</p>
           </div>
-          <nav aria-label="Liên kết cuối trang" className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-stone-700">
-            <Link href="/customer" className="hover:text-stone-950">Tổng quan khách hàng</Link>
-            <Link href="/orders" className="hover:text-stone-950">Đơn của tôi</Link>
-            <Link href="/login" className="hover:text-stone-950">Đăng nhập</Link>
+
+          <nav aria-label="Tìm hiểu dịch vụ">
+            <h3 className="mb-4 text-sm font-extrabold text-stone-950">Tìm hiểu</h3>
+            <ul className="space-y-3 text-sm text-stone-600">
+              <li><a href="#dich-vu" className="rounded-sm hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Dịch vụ</a></li>
+              <li><a href="#cach-gui-hang" className="rounded-sm hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Cách gửi hàng</a></li>
+              <li><a href="#hoi-dap" className="rounded-sm hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Câu hỏi thường gặp</a></li>
+            </ul>
           </nav>
+
+          <nav aria-label="Quản lý đơn hàng">
+            <h3 className="mb-4 text-sm font-extrabold text-stone-950">Đơn hàng</h3>
+            <ul className="space-y-3 text-sm text-stone-600">
+              <li><Link href="/create-order" className="rounded-sm hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Tạo đơn giao hàng</Link></li>
+              <li><Link href="/orders" className="rounded-sm hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Đơn của tôi</Link></li>
+              <li><Link href="/customer" className="rounded-sm hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Tổng quan khách hàng</Link></li>
+            </ul>
+          </nav>
+
+          <nav aria-label="Tài khoản">
+            <h3 className="mb-4 text-sm font-extrabold text-stone-950">Tài khoản</h3>
+            <ul className="space-y-3 text-sm text-stone-600">
+              <li><Link href="/login?tab=register" className="rounded-sm hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Đăng ký</Link></li>
+              <li><Link href="/login" className="rounded-sm hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Đăng nhập</Link></li>
+              <li><Link href="/account" className="rounded-sm hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Hồ sơ khách hàng</Link></li>
+            </ul>
+          </nav>
+        </div>
+
+        <div className="border-t border-stone-200">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-stone-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+            <span>© Mini Ong Vàng. Giao hàng thuận tiện hơn mỗi ngày.</span>
+            <a href="#hoi-dap" className="w-fit rounded-sm font-semibold text-stone-700 hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Cần hỗ trợ? Xem câu hỏi thường gặp</a>
+          </div>
         </div>
       </footer>
     </div>
