@@ -25,8 +25,7 @@ import tools.jackson.databind.JsonNode;
 
 @WebServlet("/api/quotes")
 public final class QuoteServlet extends HttpServlet {
-    private static final Set<String> FIELDS = Set.of("maKh", "diemLayHang", "diemGiaoHang", "kienHang",
-            "benThanhToan", "phuongThucThanhToan");
+    private static final Set<String> FIELDS = Set.of("maKh", "diemLayHang", "diemGiaoHang", "kienHang");
     private static final Set<String> PARCEL_FIELDS = Set.of("loaiHangHoa", "ghiChuBaoQuan", "khoiLuongKg");
 
     @Override protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -35,8 +34,7 @@ public final class QuoteServlet extends HttpServlet {
         try { body = JsonRequests.object(req); }
         catch (JsonRequests.InvalidJson invalid) { error(resp, 400, "JSON_INVALID"); return; }
         if (!fields(body, FIELDS) || !textIfPresent(body, "maKh") || !textIfPresent(body, "diemLayHang")
-                || !textIfPresent(body, "diemGiaoHang") || !textIfPresent(body, "benThanhToan")
-                || !textIfPresent(body, "phuongThucThanhToan")) {
+                || !textIfPresent(body, "diemGiaoHang")) {
             error(resp, 400, "VALIDATION_ERROR"); return;
         }
         String maKh = value(body, "maKh");
@@ -63,11 +61,8 @@ public final class QuoteServlet extends HttpServlet {
             com.miniongvang.security.ActorContext actor = id == null ? null : new AuthService(persistence.entityManagerFactory()).currentActor(id);
             QuoteService service = new QuoteService(persistence.entityManagerFactory(), routes);
             send(resp, 200, service.create(actor, new CreateQuote(maKh == null ? null : maKh.strip(),
-                    value(body, "diemLayHang"), value(body, "diemGiaoHang"), parcels,
-                    value(body, "benThanhToan") == null ? "NGUOI_DAT" : value(body, "benThanhToan"),
-                    value(body, "phuongThucThanhToan") == null ? "TIEN_MAT" : value(body, "phuongThucThanhToan"))));
-        } catch (FareCalculator.WeightLimitExceededException heavy) { error(resp, 422, "WEIGHT_LIMIT_EXCEEDED"); }
-        catch (IllegalArgumentException invalid) { error(resp, 400, "VALIDATION_ERROR"); }
+                    value(body, "diemLayHang"), value(body, "diemGiaoHang"), parcels)));
+        } catch (IllegalArgumentException invalid) { error(resp, 400, "VALIDATION_ERROR"); }
         catch (SecurityException forbidden) { error(resp, 403, "FORBIDDEN"); }
         catch (NoSuchElementException missing) { error(resp, 404, "RESOURCE_NOT_FOUND"); }
         catch (RouteFailure failure) {

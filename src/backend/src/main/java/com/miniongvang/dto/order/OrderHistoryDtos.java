@@ -12,8 +12,7 @@ public final class OrderHistoryDtos {
     private OrderHistoryDtos() {}
 
     public record FarePolicy(String maBieuPhi, String tenBieuPhi, String cuocCoBan, String donGiaKm,
-                             String kmToiThieu, String kmToiDa, String hieuLucTu, String hieuLucDen,
-                             int phienBan, String kgBaoGom, String donGiaKg, String kgToiDa) {}
+                                 String kmToiThieu, String kmToiDa, String hieuLucTu, String hieuLucDen) {}
 
     public record DiscountPolicy(String maChinhSach, String hang, String tyLeGiam, String hieuLucTu, String hieuLucDen) {}
 
@@ -30,8 +29,6 @@ public final class OrderHistoryDtos {
     public record Detail(String maDon, String thoiGianTao, String diemLayHang, String diemGiaoHang, String sdtNguoiNhan,
                             String quangDuongKm, String ghiChuGiaoHang, String trangThai, String maKh, String maTx, String maTkTao,
                             Fare cuoc, List<Parcel> kienHang, PaymentSummary thanhToan,
-                            String hoanTatLuc, String huyLuc, String tenNguoiNhan, String benThanhToan,
-                            String phuongThucThanhToan, String nguonLoTrinh,
-                            PolicyVersions phienBanChinhSach, List<Assignment> phanCong,
+                            String hoanTatLuc, String huyLuc, PolicyVersions phienBanChinhSach, List<Assignment> phanCong,
                              Confirmation xacNhanThanhToan, List<Event> nhatKy) {}
 }

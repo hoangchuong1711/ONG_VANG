@@ -15,24 +15,11 @@ public final class FareCalculator {
 
     public Fare calculateV1(BigDecimal km, BieuPhi tariff, List<ChinhSachPhuThu> surcharges,
                             BigDecimal discount) {
-        return calculateV1(km, BigDecimal.ZERO, tariff, surcharges, discount);
-    }
-
-    public Fare calculateV1(BigDecimal km, BigDecimal kg, BieuPhi tariff,
-                            List<ChinhSachPhuThu> surcharges, BigDecimal discount) {
         if (km == null || km.signum() <= 0) throw new IllegalArgumentException("Distance must be positive");
-        if (kg == null || kg.signum() < 0) throw new IllegalArgumentException("Invalid weight");
         if (tariff == null || tariff.getCuocCoBan() == null || tariff.getDonGiaKm() == null
-                || tariff.getKgBaoGom() == null || tariff.getDonGiaKg() == null || tariff.getKgToiDa() == null
-                || tariff.getCuocCoBan().signum() < 0 || tariff.getDonGiaKm().signum() < 0
-                || tariff.getKgBaoGom().signum() < 0 || tariff.getDonGiaKg().signum() < 0
-                || tariff.getKgToiDa().compareTo(tariff.getKgBaoGom()) < 0 || tariff.getPhienBan() < 1)
+                || tariff.getCuocCoBan().signum() < 0 || tariff.getDonGiaKm().signum() < 0)
             throw new FareConfigurationException();
-        if (kg.compareTo(tariff.getKgToiDa()) > 0) throw new WeightLimitExceededException();
-        BigDecimal distanceFare = whole(tariff.getCuocCoBan().add(km.multiply(tariff.getDonGiaKm())));
-        BigDecimal weightFare = whole(kg.subtract(tariff.getKgBaoGom()).max(BigDecimal.ZERO)
-                .multiply(tariff.getDonGiaKg()));
-        BigDecimal base = distanceFare.add(weightFare);
+        BigDecimal base = whole(tariff.getCuocCoBan().add(km.multiply(tariff.getDonGiaKm())));
         BigDecimal extras = BigDecimal.ZERO;
         List<Surcharge> lines = new ArrayList<>();
         for (ChinhSachPhuThu item : surcharges) {
@@ -51,8 +38,7 @@ public final class FareCalculator {
         BigDecimal total = subtotal.subtract(appliedDiscount);
         checkAmount(base); checkAmount(extras); checkAmount(appliedDiscount); checkAmount(total);
         return new Fare(money(base), money(extras), money(appliedDiscount), money(total),
-                "VND", List.copyOf(lines), money(distanceFare), money(weightFare),
-                kg.setScale(2, RoundingMode.UNNECESSARY).toPlainString(), tariff.getId(), tariff.getPhienBan());
+                "VND", List.copyOf(lines));
     }
 
     public static BigDecimal whole(BigDecimal value) { return value.setScale(0, RoundingMode.HALF_UP); }
@@ -62,5 +48,4 @@ public final class FareCalculator {
     }
 
     public static final class FareConfigurationException extends RuntimeException {}
-    public static final class WeightLimitExceededException extends IllegalArgumentException {}
 }

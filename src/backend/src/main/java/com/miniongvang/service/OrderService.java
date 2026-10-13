@@ -22,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 public final class OrderService {
     private static final ObjectMapper JSON = new ObjectMapper();
     private final TransactionRunner transactions;
+    private final RouteService routes;
     private final QuoteService quotes;
     private final Clock clock;
 
@@ -30,6 +31,7 @@ public final class OrderService {
     }
     public OrderService(EntityManagerFactory factory, RouteService routes, Clock clock) {
         transactions = new TransactionRunner(factory);
+        this.routes = routes;
         this.clock = clock;
         quotes = new QuoteService(factory, routes, clock);
     }
@@ -52,6 +54,7 @@ public final class OrderService {
         // Replay does not depend on quote expiry, current prices or provider availability.
         Order replay = transactions.run(em -> replay(new YeuCauTaoDonDAO(em).find(requestId), requestJson));
         if (replay != null) return replay;
+        Route route = routes.estimate(request.diemLayHang(), request.diemGiaoHang());
         return transactions.run(em -> {
             var requests = new YeuCauTaoDonDAO(em);
             TaiKhoan account = requests.lockActor(actor.maNguoiDung());
@@ -70,17 +73,10 @@ public final class OrderService {
             Instant now = clock.instant();
             if (!now.isBefore(quote.getHetHanLuc())) throw new Conflict("QUOTE_EXPIRED");
             var frozen = JSON.readValue(quote.getYeuCauJson(), QuoteService.FrozenRequest.class);
-            if (!customerId.equals(frozen.maKh())
-                    || !request.kienHang().equals(frozen.kienHang())
-                    || !request.diemLayHang().equals(frozen.diaChiNhapLay())
-                    || !request.diemGiaoHang().equals(frozen.diaChiNhapGiao())
-                    || !request.benThanhToan().equals(frozen.benThanhToan())
-                    || !request.phuongThucThanhToan().equals(frozen.phuongThucThanhToan()))
-                throw new Conflict("QUOTE_CHANGED");
-            Route route = frozen.loTrinh();
-            if (route == null) throw new Conflict("QUOTE_CHANGED");
+            if (!customerId.equals(frozen.maKh()) || !route.equals(frozen.loTrinh())
+                    || !request.kienHang().equals(frozen.kienHang())) throw new Conflict("QUOTE_CHANGED");
             var old = JSON.readValue(quote.getKetQuaJson(), Quote.class);
-            var evaluated = quotes.evaluateV1(em, customerId, route, request.kienHang(), now);
+            var evaluated = quotes.evaluateV1(em, customerId, route, now);
             if (!quote.getMaBieuPhi().equals(evaluated.tariff().getId())
                     || !old.cuoc().equals(evaluated.fare()) || !Objects.equals(old.hangThanhVien(), evaluated.tier()))
                 throw new Conflict("QUOTE_CHANGED");
@@ -91,9 +87,6 @@ public final class OrderService {
             order.setThoiGianTao(now); order.setTrangThai(OrderStatus.CHO_GAN);
             order.setDiemLayHang(route.diemLayHang()); order.setDiemGiaoHang(route.diemGiaoHang());
             order.setSdtNguoiNhan(request.sdtNguoiNhan()); order.setQuangDuongKm(new BigDecimal(route.quangDuongKm()));
-            order.setTenNguoiNhan(request.tenNguoiNhan());
-            order.setBenThanhToan(request.benThanhToan());
-            order.setPhuongThucThanhToan(request.phuongThucThanhToan());
             if (route.thoiGianDuKienGiay() <= 0 || route.thoiGianDuKienGiay() > Integer.MAX_VALUE)
                 throw new IllegalArgumentException("Invalid route duration");
             order.setThoiGianDuKienGiay((int) route.thoiGianDuKienGiay());
@@ -104,10 +97,6 @@ public final class OrderService {
             priced.setBieuPhi(evaluated.tariff());
             priced.setChinhSachGiam(evaluated.discountPolicy());
             priced.setCuocGoc(new BigDecimal(fare.cuocGoc()));
-            priced.setCuocKm(new BigDecimal(fare.cuocKm()));
-            priced.setCuocKhoiLuong(new BigDecimal(fare.cuocKhoiLuong()));
-            priced.setTongKhoiLuongKg(new BigDecimal(fare.tongKhoiLuongKg()));
-            priced.setPhienBanBieuPhi(fare.phienBanBieuPhi());
             priced.setTienGiamGia(new BigDecimal(fare.tienGiamGia()));
             List<KienHang> parcels = new ArrayList<>();
             for (int i = 0; i < request.kienHang().size(); i++) {
@@ -130,8 +119,7 @@ public final class OrderService {
             Order result = new Order(order.getId(), now.toString(), order.getDiemLayHang(), order.getDiemGiaoHang(),
                     order.getSdtNguoiNhan(), route.quangDuongKm(), order.getGhiChuGiaoHang(), "CHO_GAN",
                     customerId, null, account.getId(), fare, request.kienHang(),
-                    new PaymentSummary(new BigDecimal(fare.tongCuoc()).signum() == 0 ? "MIEN_CUOC" : "CHUA_THANH_TOAN", fare.tongCuoc()),
-                    null, null, request.tenNguoiNhan(), request.benThanhToan(), request.phuongThucThanhToan(), route.nguon());
+                    new PaymentSummary(new BigDecimal(fare.tongCuoc()).signum() == 0 ? "MIEN_CUOC" : "CHUA_THANH_TOAN", fare.tongCuoc()), null, null);
             if (saved == null) { saved = new YeuCauTaoDon(); saved.setRequestId(requestId); }
             saved.setTaiKhoan(account); saved.setDonHang(order); saved.setRequestJson(requestJson);
             saved.setResponseJson(JSON.writeValueAsString(result)); saved.setExpiresAt(now.plusSeconds(86400));
@@ -153,13 +141,8 @@ public final class OrderService {
         if (phone == null) throw new IllegalArgumentException("Invalid recipient phone");
         String note = input.ghiChuGiaoHang() == null ? null : input.ghiChuGiaoHang().strip();
         if (note != null && note.length() > 500) throw new IllegalArgumentException("Delivery note too long");
-        String recipient = input.tenNguoiNhan() == null ? null : input.tenNguoiNhan().strip();
-        if (recipient != null && (recipient.isEmpty() || recipient.length() > 100))
-            throw new IllegalArgumentException("Invalid recipient name");
-        String payer = QuoteService.choice(input.benThanhToan(), "NGUOI_DAT", "NGUOI_NHAN");
-        String method = QuoteService.choice(input.phuongThucThanhToan(), "TIEN_MAT", "VNPAY_QR");
         return new CreateOrder(input.maBaoGia(), customerId, address(input.diemLayHang()), address(input.diemGiaoHang()),
-                phone, note, QuoteService.normalizeParcels(input.kienHang()), recipient, payer, method);
+                phone, note, QuoteService.normalizeParcels(input.kienHang()));
     }
     private static String address(String value) {
         if (value == null) throw new IllegalArgumentException("Address required");

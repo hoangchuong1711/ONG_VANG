@@ -26,8 +26,7 @@ public final class OrderHistoryService {
         var versions = new PolicyVersions(
                 new FarePolicy(policy.getId(), policy.getTenBieuPhi(), money(policy.getCuocCoBan()),
                         money(policy.getDonGiaKm()), money(policy.getKmToiThieu()), money(policy.getKmToiDa()),
-                        time(policy.getHieuLucTu()), time(policy.getHieuLucDen()), policy.getPhienBan(),
-                        money(policy.getKgBaoGom()), money(policy.getDonGiaKg()), money(policy.getKgToiDa())),
+                        time(policy.getHieuLucTu()), time(policy.getHieuLucDen())),
                 discount == null ? null : new DiscountPolicy(discount.getId(), discount.getHang().name(),
                         money(discount.getTyLeGiam()), time(discount.getHieuLucTu()), time(discount.getHieuLucDen())),
                 dao.surcharges(o.maDon()).stream().map(p -> {
@@ -47,7 +46,7 @@ public final class OrderHistoryService {
                 e.getId(), o.maDon(), e.getThuTu(), e.getLoaiSuKien(), e.getTrangThaiTruoc(), e.getTrangThaiSau(),
                 time(e.getThoiGian()), e.getTaiKhoanThucHien().getId(), e.getTaiKhoanThucHien().getHoTen(),
                 e.getGhiChu(), e.getLoaiSuCo())).toList();
-        return new Detail(o.maDon(), o.thoiGianTao(), o.diemLayHang(), o.diemGiaoHang(), o.sdtNguoiNhan(), o.quangDuongKm(), o.ghiChuGiaoHang(), o.trangThai(), o.maKh(), o.maTx(), o.maTkTao(), o.cuoc(), o.kienHang(), o.thanhToan(), o.hoanTatLuc(), o.huyLuc(), o.tenNguoiNhan(), o.benThanhToan(), o.phuongThucThanhToan(), o.nguonLoTrinh(), versions, assignments, confirmation, events);
+        return new Detail(o.maDon(), o.thoiGianTao(), o.diemLayHang(), o.diemGiaoHang(), o.sdtNguoiNhan(), o.quangDuongKm(), o.ghiChuGiaoHang(), o.trangThai(), o.maKh(), o.maTx(), o.maTkTao(), o.cuoc(), o.kienHang(), o.thanhToan(), o.hoanTatLuc(), o.huyLuc(), versions, assignments, confirmation, events);
     }
     private static String money(BigDecimal value) { return value == null ? null : value.setScale(2).toPlainString(); }
     private static String time(Instant value) { return value == null ? null : value.toString(); }
