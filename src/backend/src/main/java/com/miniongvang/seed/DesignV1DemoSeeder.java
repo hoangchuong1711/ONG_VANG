@@ -110,6 +110,10 @@ public final class DesignV1DemoSeeder {
         fare.setTenBieuPhi("Biểu phí giao hàng demo");
         fare.setCuocCoBan(new BigDecimal("20000.00"));
         fare.setDonGiaKm(new BigDecimal("5000.00"));
+        fare.setPhienBan(1);
+        fare.setKgBaoGom(new BigDecimal("1.00"));
+        fare.setDonGiaKg(new BigDecimal("3000.00"));
+        fare.setKgToiDa(new BigDecimal("30.00"));
         fare.setKmToiThieu(new BigDecimal("0.00"));
         fare.setKmToiDa(new BigDecimal("30.00"));
         fare.setHieuLucTu(now.minusSeconds(30 * 86400L));

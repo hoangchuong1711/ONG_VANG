@@ -6,7 +6,6 @@ import com.miniongvang.web.JsonRequests;
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
 import com.miniongvang.config.RouteConfiguration;
-import com.miniongvang.integration.RouteFailure;
 import com.miniongvang.service.AuthService;
 import com.miniongvang.service.FareCalculator;
 import com.miniongvang.service.OrderService;
@@ -25,7 +24,9 @@ import tools.jackson.databind.JsonNode;
 
 @WebServlet("/api/orders")
 public final class OrderServlet extends HttpServlet {
-    private static final Set<String> FIELDS = Set.of("maBaoGia", "maKh", "diemLayHang", "diemGiaoHang", "sdtNguoiNhan", "ghiChuGiaoHang", "kienHang");
+    private static final Set<String> FIELDS = Set.of("maBaoGia", "maKh", "diemLayHang", "diemGiaoHang",
+            "sdtNguoiNhan", "tenNguoiNhan", "ghiChuGiaoHang", "kienHang",
+            "benThanhToan", "phuongThucThanhToan");
     private static final Set<String> PARCEL_FIELDS = Set.of("loaiHangHoa", "ghiChuBaoQuan", "khoiLuongKg");
 
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -39,7 +40,9 @@ public final class OrderServlet extends HttpServlet {
         catch (JsonRequests.InvalidJson invalid) { error(resp, 400, "JSON_INVALID"); return; }
         if (!fields(body, FIELDS) || !textIfPresent(body, "maKh") || !textIfPresent(body, "diemLayHang")
                 || !textIfPresent(body, "diemGiaoHang") || !textIfPresent(body, "maBaoGia")
-                || !textIfPresent(body, "sdtNguoiNhan") || !textIfPresent(body, "ghiChuGiaoHang")) {
+                || !textIfPresent(body, "sdtNguoiNhan") || !textIfPresent(body, "ghiChuGiaoHang")
+                || !textIfPresent(body, "tenNguoiNhan") || !textIfPresent(body, "benThanhToan")
+                || !textIfPresent(body, "phuongThucThanhToan")) {
             error(resp, 400, "VALIDATION_ERROR"); return;
         }
         String maKh = value(body, "maKh");
@@ -68,19 +71,15 @@ public final class OrderServlet extends HttpServlet {
             send(resp, 201, service.create(actor, req.getHeader("Idempotency-Key"),
                     new CreateOrder(value(body, "maBaoGia"), maKh == null ? null : maKh.strip(),
                             value(body, "diemLayHang"), value(body, "diemGiaoHang"), value(body, "sdtNguoiNhan"),
-                            value(body, "ghiChuGiaoHang"), parcels)));
-        } catch (IllegalArgumentException invalid) { error(resp, 400, "VALIDATION_ERROR"); }
+                            value(body, "ghiChuGiaoHang"), parcels, value(body, "tenNguoiNhan"),
+                            value(body, "benThanhToan") == null ? "NGUOI_DAT" : value(body, "benThanhToan"),
+                            value(body, "phuongThucThanhToan") == null ? "TIEN_MAT" : value(body, "phuongThucThanhToan"))));
+        } catch (FareCalculator.WeightLimitExceededException heavy) { error(resp, 422, "WEIGHT_LIMIT_EXCEEDED"); }
+        catch (IllegalArgumentException invalid) { error(resp, 400, "VALIDATION_ERROR"); }
         catch (OrderService.Conflict conflict) { error(resp, 409, conflict.getMessage()); }
         catch (SecurityException forbidden) { error(resp, 403, "FORBIDDEN"); }
         catch (NoSuchElementException missing) { error(resp, 404, "RESOURCE_NOT_FOUND"); }
-        catch (RouteFailure failure) {
-            int status = switch (failure.kind()) {
-                case ADDRESS_NOT_FOUND, OUT_OF_SERVICE_AREA, DISTANCE_INVALID -> 422;
-                case ROUTE_PROVIDER_ERROR -> 502;
-                case ROUTE_PROVIDER_TIMEOUT -> 504;
-            };
-            error(resp, status, failure.kind().name());
-        } catch (com.miniongvang.service.FareCalculator.FareConfigurationException missing) { error(resp, 503, "FARE_CONFIG_MISSING"); }
+        catch (com.miniongvang.service.FareCalculator.FareConfigurationException missing) { error(resp, 503, "FARE_CONFIG_MISSING"); }
         catch (RuntimeException failure) {
             getServletContext().log("Order creation failed", failure);
             if (!resp.isCommitted()) error(resp, 500, "INTERNAL_ERROR");
