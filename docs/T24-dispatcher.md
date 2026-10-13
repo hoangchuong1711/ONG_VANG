@@ -83,7 +83,7 @@ export API_PROXY_TARGET=http://127.0.0.1:8081
 npm run dev
 ```
 
-Nếu BE test đang chạy tại 18081, đổi `API_PROXY_TARGET=http://127.0.0.1:18081` trước `npm run dev`. Khi đổi biến này cần dừng FE bằng Ctrl+C và chạy lại. Từ trang chủ chọn **Đăng nhập** → **Điều Phối Viên**. Nếu trình duyệt đã có phiên tổng đài, bàn điều phối T24 dữ liệu thật hiển thị ngay. Nếu chưa có phiên, một lần bấm mở bàn điều phối **bản xem thử** tại `/dispatcher/preview` với dữ liệu mẫu; không gửi lệnh gán/hủy tới backend. Tại đó chọn **Đăng nhập tổng đài để điều phối thật** để dùng form đăng nhập chung và chuyển vào T24. Với seed test: username `demo_dispatcher`, mật khẩu là `DEMO_PASSWORD` đã dùng khi seed. Các vai trò demo khác trên `/login` chưa cấp session backend.
+Nếu BE test đang chạy tại 18081, đổi `API_PROXY_TARGET=http://127.0.0.1:18081` trước `npm run dev`. Khi đổi biến này cần dừng FE bằng Ctrl+C và chạy lại. Từ trang chủ chọn **Đăng nhập** → **Điều Phối Viên**. Nếu trình duyệt đã có phiên tổng đài, bàn điều phối T24 dữ liệu thật hiển thị ngay. Nếu chưa có phiên, form đăng nhập chung chuyển sang chế độ tổng đài; đăng nhập thành công sẽ mở bàn điều phối T24. Với seed test: username `demo_dispatcher`, mật khẩu là `DEMO_PASSWORD` đã dùng khi seed. Không có bàn điều phối dữ liệu mẫu. Các vai trò demo khác trên `/login` chưa cấp session backend.
 
 Compose dev dùng proxy nội bộ `http://backend:8080`. Browser luôn gọi `/api` cùng origin FE để giữ cookie/session; không cần cấu hình URL backend trong browser.
 
@@ -100,7 +100,7 @@ npm run build
 npm run test:t24
 ```
 
-`test:t24` tự khởi động FE tại 3100 và HTTP fixture tại 18082; cần hai cổng rảnh. Có 23 tình huống, chạy ở desktop và viewport mobile 390×844. Đây là test UI xử lý phản hồi, không chứng minh transaction SQL Server.
+`test:t24` tự khởi động FE tại 3100 và HTTP fixture tại 18082; cần hai cổng rảnh. Có 24 tình huống, chạy ở desktop và viewport mobile 390×844. Đây là test UI xử lý phản hồi, không chứng minh transaction SQL Server.
 
 ### FE + SQL Server thật
 
@@ -138,4 +138,4 @@ npm run test:t24:live --prefix src/frontend
 
 `DEMO_PASSWORD` phải đã được export đúng giá trị seed. Suite yêu cầu health.databaseName chính xác `mini_ong_vang_test`, fail nếu thiếu cấu hình; tự chạy FE tại 3101. Ba ca thực hiện gán/hủy và hai cuộc tranh chấp qua hai browser session, đối chiếu phân công/trạng thái/driver qua API backend đọc DB. Các đơn được tạo bằng API customer để độc lập với form T23; cleanup hủy các đơn test còn CHO_GAN/DA_GAN, không đổi schema/reset DB trong test.
 
-CI frontend chạy lint/build/46 browser fixture cases. CI backend chạy thêm 3 live cases sau seed/backend readiness, trước các HTTP smoke, đối chiếu invariant rồi reset/seed DB test để giữ nguyên thứ tự tài xế rảnh mà nhóm smoke cũ kỳ vọng. CI cần được xác nhận trên PR; review/merge là bước đóng task.
+CI frontend chạy lint/build/48 browser fixture cases. CI backend chạy thêm 3 live cases sau seed/backend readiness, trước các HTTP smoke, đối chiếu invariant rồi reset/seed DB test để giữ nguyên thứ tự tài xế rảnh mà nhóm smoke cũ kỳ vọng. CI cần được xác nhận trên PR; review/merge là bước đóng task.

@@ -50,7 +50,7 @@ test("đăng nhập sai hiển thị lỗi và đăng nhập đúng có CSRF", a
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click(); await expect(page.locator("main").getByRole("alert")).toContainText("không đúng");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click(); await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
 });
-test("ô Điều Phối Viên mở bàn điều phối mẫu; phiên thật mở T24", async ({ page }) => {
+test("ô Điều Phối Viên dùng đăng nhập chung rồi mở T24 thật", async ({ page }) => {
   let authenticated = false;
   await mock(page, async (route, path) => {
     if (path === "/api/auth/me" && !authenticated) { await respond(route, { code: "AUTH_REQUIRED" }, 401); return true; }
@@ -63,9 +63,6 @@ test("ô Điều Phối Viên mở bàn điều phối mẫu; phiên thật mở
   });
   await page.goto("/login");
   await page.getByRole("button", { name: "Điều Phối Viên: vào bàn điều phối T24" }).click();
-  await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
-  await expect(page.getByText(/Bản xem thử: dữ liệu mẫu trong trình duyệt/)).toBeVisible();
-  await page.getByRole("link", { name: "Đăng nhập tổng đài để điều phối thật" }).click();
   await expect(page.getByRole("heading", { name: "Đăng nhập điều phối viên" })).toBeVisible();
   await expect(page.getByLabel("Tên đăng nhập tổng đài")).toHaveValue("demo_dispatcher");
   await page.getByLabel("Mật khẩu").fill("matkhau");

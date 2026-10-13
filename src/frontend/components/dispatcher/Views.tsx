@@ -9,13 +9,13 @@ export function DispatchShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
-  return <div className="min-h-screen bg-stone-50">
-    <header className="border-b border-stone-200 bg-white">
-      <div className="max-w-[1200px] mx-auto px-4 py-4 flex flex-wrap gap-4 items-center justify-between">
-        <Link href="/dispatcher" className="font-extrabold text-xl">Mini Ong Vàng <span className="text-amber-700 text-sm">Điều phối</span></Link>
+  return <div className="min-h-screen bg-[#faf9f6]">
+    <header className="border-b border-stone-200 bg-white shadow-sm">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-4 flex flex-wrap gap-4 items-center justify-between">
+        <Link href="/dispatcher" className="flex items-center gap-3 font-extrabold text-xl tracking-tight"><span className="grid place-items-center w-10 h-10 rounded-xl bg-amber-500 text-stone-950 text-sm shadow-sm">OV</span><span>Mini Ong Vàng <small className="block text-[10px] uppercase tracking-[.18em] text-amber-700">Trung tâm điều phối</small></span></Link>
         <nav aria-label="Điều hướng điều phối" className="flex flex-wrap gap-4 text-sm font-semibold">
           {[["/dispatcher", "Bàn điều phối"], ["/dispatcher/fleet", "Tài xế"], ["/dispatcher/create-order", "Tạo đơn tổng đài"], ["/dispatcher/account", "Tài khoản"]].map(([href, text]) =>
-            <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} className={pathname === href ? "text-amber-800 underline underline-offset-8" : "text-stone-600"}>{text}</Link>)}
+            <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} className={pathname === href ? "text-amber-800 border-b-2 border-amber-500 pb-1" : "text-stone-600 hover:text-amber-800"}>{text}</Link>)}
         </nav>
         <div className="flex items-center gap-3 text-sm"><span>{user?.hoTen}</span>
           <button className="dispatch-button secondary" disabled={busy} onClick={async () => {

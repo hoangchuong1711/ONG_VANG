@@ -176,7 +176,7 @@ function AuthContent() {
 
       {/* CỘT PHẢI: FORM ĐĂNG NHẬP / ĐĂNG KÝ (Mobile & Desktop) */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
-        <div className="max-w-md w-full space-y-6">
+        <div className={`max-w-md w-full space-y-6 ${dispatcherMode && tab === "LOGIN" ? "rounded-3xl border border-amber-200 bg-white p-6 sm:p-8 shadow-[0_20px_60px_#92400e18]" : ""}`}>
           {/* Mobile Header (hiển thị logo khi trên điện thoại) */}
           <div className="md:hidden flex items-center gap-3 pb-2">
             <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-stone-900">
@@ -190,12 +190,13 @@ function AuthContent() {
 
           {/* Heading */}
           <div className="space-y-1">
+            {dispatcherMode && tab === "LOGIN" && <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-amber-900"><span className="h-2 w-2 rounded-full bg-amber-500" />Trung tâm điều phối</span>}
             <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">
               {tab === "LOGIN" ? (dispatcherMode ? "Đăng nhập điều phối viên" : "Đăng nhập tài khoản") : "Đăng ký thành viên mới"}
             </h1>
             <p className="text-xs sm:text-sm text-stone-500">
               {tab === "LOGIN"
-                ? "Chào mừng bạn trở lại với hệ thống giao hàng Mini Ong Vàng."
+                ? (dispatcherMode ? "Đăng nhập để theo dõi hàng đợi và phân công tài xế trên dữ liệu thật." : "Chào mừng bạn trở lại với hệ thống giao hàng Mini Ong Vàng.")
                 : "Tạo tài khoản ngay bằng số điện thoại để nhận ưu đãi thành viên."}
             </p>
           </div>
@@ -369,7 +370,12 @@ function AuthContent() {
                     if (user.vaiTro === "TONG_DAI") { router.push("/dispatcher"); return; }
                   } catch { /* An unauthenticated visitor uses the shared login form below. */ }
                   finally { loginLock.current = false; setLoadingRole(null); }
-                  router.push("/dispatcher/preview");
+                  setTab("LOGIN");
+                  setDispatcherMode(true);
+                  setPhone("demo_dispatcher");
+                  setPassword("");
+                  setErrorMessage("");
+                  usernameInput.current?.focus();
                 }}
                 aria-label="Điều Phối Viên: vào bàn điều phối T24"
                 title="Vào Bàn Điều phối"
