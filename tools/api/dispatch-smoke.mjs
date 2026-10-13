@@ -67,7 +67,7 @@ await anon.call('/api/customers', undefined, 401, 'Error', 'AUTH_REQUIRED');
 await customer.call('/api/customers', undefined, 403, 'Error', 'FORBIDDEN');
 await driver1.call('/api/customers', undefined, 403, 'Error', 'FORBIDDEN');
 const customers = await dispatcher.call('/api/customers?size=1', undefined, 200, 'CustomerPage');
-assert(customers.totalElements >= 3); // Two seed customers and the newly registered test customer.
+assert(customers.totalElements >= 4); // Three seed customers and the newly registered test customer.
 assert.equal(customers.totalPages, customers.totalElements);
 assert.equal(customers.items.length, 1);
 const selectedCustomer = await dispatcher.call('/api/customers?q=0900000002', undefined, 200, 'CustomerPage');
@@ -95,9 +95,9 @@ await customer.call(path + '/assignments', { maTx: 'TX-DEMO-1' }, 403, 'Error', 
 await dispatcher.call(path + '/assignments', '{', 400, 'Error', 'JSON_INVALID');
 await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-1', force: true }, 400, 'Error', 'VALIDATION_ERROR');
 const suggestions = await dispatcher.call(path + '/driver-suggestions', undefined, 200, 'DriverPage');
-assert.deepEqual(suggestions.items.map(d => d.maTx), ['TX-DEMO-2', 'TX-DEMO-1']);
+assert.deepEqual(suggestions.items.map(d => d.maTx), ['TX-DEMO-3', 'TX-DEMO-2', 'TX-DEMO-1']);
 const free = await dispatcher.call('/api/drivers?trangThaiHoatDong=ONLINE&dangBanChuyen=false', undefined, 200, 'DriverPage');
-assert.equal(free.totalElements, 2);
+assert.equal(free.totalElements, 3);
 assert(free.items.every(d => !('cccd' in d) && !d.dangBanChuyen));
 await dispatcher.call('/api/orders?size=1', undefined, 200, 'OrderPage');
 await customer.call(path, undefined, 200, 'OrderDetail');
@@ -125,7 +125,7 @@ assert.equal(rejected.trangThai, 'CHO_GAN'); assert.equal(rejected.maTx, null);
 await driver1.call(path, undefined, 404, 'Error', 'RESOURCE_NOT_FOUND');
 await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-1' }, 409, 'Error', 'DRIVER_UNAVAILABLE');
 const next = await dispatcher.call(path + '/driver-suggestions', undefined, 200, 'DriverPage');
-assert.deepEqual(next.items.map(d => d.maTx), ['TX-DEMO-2']);
+assert.deepEqual(next.items.map(d => d.maTx), ['TX-DEMO-3', 'TX-DEMO-2']);
 await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-2' }, 200, 'Order');
 const competitors = []; for (let i = 0; i < 8; i++) competitors.push(await create());
 const races = await Promise.all(competitors.map(o => dispatcher.raw(`/api/orders/${o.maDon}/assignments`, { maTx: 'TX-DEMO-1' })));
@@ -134,6 +134,10 @@ assert.equal(races.filter(r => r.status === 409 && r.body.code === 'DRIVER_UNAVA
 races.forEach(r => { assert(schemas[r.status === 200 ? 'Order' : 'Error'](r.body)); checks++; });
 const busy = await driver1.call('/api/orders?trangThai=DA_GAN', undefined, 200, 'OrderPage');
 assert.equal(busy.items.length, 1); assert.equal(busy.totalElements, 1);
-const none = await dispatcher.call(`/api/orders/${competitors.find(o => o.maDon !== busy.items[0].maDon).maDon}/driver-suggestions`, undefined, 200, 'DriverPage');
+const remaining = competitors.filter(o => o.maDon !== busy.items[0].maDon);
+const thirdDriver = await dispatcher.call(`/api/orders/${remaining[0].maDon}/driver-suggestions`, undefined, 200, 'DriverPage');
+assert.deepEqual(thirdDriver.items.map(d => d.maTx), ['TX-DEMO-3']);
+await dispatcher.call(`/api/orders/${remaining[0].maDon}/assignments`, { maTx: 'TX-DEMO-3' }, 200, 'Order');
+const none = await dispatcher.call(`/api/orders/${remaining[1].maDon}/driver-suggestions`, undefined, 200, 'DriverPage');
 assert.deepEqual(none.items, []); assert.equal(none.totalElements, 0);
 console.log(`PASS: ${checks} T11 HTTP checks; role/session/CSRF, schema, filtering, assignment/rejection and two 8-request races.`);

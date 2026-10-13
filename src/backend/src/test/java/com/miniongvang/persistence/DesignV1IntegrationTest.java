@@ -102,8 +102,8 @@ class DesignV1IntegrationTest {
     @Test void t20DispatcherCanFindCustomersForOrderWithoutLeakingLockedAccounts() {
         var customers = new CustomerService(db.entityManagerFactory());
         var firstPage = customers.search(dispatcher(), 0, 1, null);
-        assertEquals(2, firstPage.totalElements());
-        assertEquals(2, firstPage.totalPages());
+        assertEquals(3, firstPage.totalElements());
+        assertEquals(3, firstPage.totalPages());
         assertEquals(1, firstPage.items().size());
         assertEquals(1, customers.search(dispatcher(), 1, 1, null).items().size());
         var selected = customers.search(dispatcher(), 0, 20, "0900000002");
@@ -111,6 +111,11 @@ class DesignV1IntegrationTest {
         assertEquals("KH-DEMO-2", selected.items().getFirst().maKh());
         assertEquals("VANG", selected.items().getFirst().hangThanhVien().maHang());
         assertTrue(selected.items().getFirst().hangThanhVien().conHieuLuc());
+        var expired = customers.search(dispatcher(), 0, 20, "0900000003");
+        assertEquals(1, expired.totalElements());
+        assertEquals("KH-DEMO-3", expired.items().getFirst().maKh());
+        assertEquals("VANG", expired.items().getFirst().hangThanhVien().maHang());
+        assertFalse(expired.items().getFirst().hangThanhVien().conHieuLuc());
         assertEquals(0, customers.search(dispatcher(), 0, 20, "not-found").totalElements());
         assertThrows(SecurityException.class, () -> customers.search(customer(1), 0, 20, null));
         assertThrows(IllegalArgumentException.class, () -> customers.search(dispatcher(), -1, 20, null));
@@ -121,7 +126,7 @@ class DesignV1IntegrationTest {
                     .setTrangThai(com.miniongvang.entity.enums.AccountStatus.KHOA);
             return null;
         });
-        assertEquals(1, customers.search(dispatcher(), 0, 20, null).totalElements());
+        assertEquals(2, customers.search(dispatcher(), 0, 20, null).totalElements());
     }
 
     @Test void dt09IdempotencyExpiresAtExactlyTwentyFourHoursWithoutDeletingOldOrder() {
