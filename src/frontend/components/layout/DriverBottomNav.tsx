@@ -9,7 +9,7 @@ export function DriverBottomNav() {
 
   const tabs = [
     {
-      href: "/tai-xe",
+      href: "/driver",
       label: "Nhận đơn",
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -18,7 +18,7 @@ export function DriverBottomNav() {
       ),
     },
     {
-      href: "/tai-xe/lich-su",
+      href: "/driver/history",
       label: "Lịch sử",
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -27,7 +27,7 @@ export function DriverBottomNav() {
       ),
     },
     {
-      href: "/tai-xe/vi-tien",
+      href: "/driver/wallet",
       label: "Ví & COD",
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -36,7 +36,7 @@ export function DriverBottomNav() {
       ),
     },
     {
-      href: "/tai-xe/tai-khoan",
+      href: "/driver/account",
       label: "Tài khoản",
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

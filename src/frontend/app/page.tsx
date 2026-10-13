@@ -103,7 +103,7 @@ export default function CustomerDashboardKH01() {
                 <span>{isEmptyView ? "Xem có đơn mẫu" : "Xem Empty State"}</span>
               </button>
 
-              <Link href="/tao-don" className="w-full sm:w-auto">
+              <Link href="/create-order" className="w-full sm:w-auto">
                 <Button variant="primary" size="lg" fullWidth>
                   <svg className="w-5 h-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -142,7 +142,7 @@ export default function CustomerDashboardKH01() {
               </div>
 
               <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                <Link href={`/theo-doi/${unpaidOrder.id}`}>
+                <Link href={`/tracking/${unpaidOrder.id}`}>
                   <Button variant="outline" size="sm" className="bg-white border-red-200 text-red-800">
                     Xem chi tiết
                   </Button>
@@ -307,7 +307,7 @@ export default function CustomerDashboardKH01() {
                     : "Không có đơn hàng nào khớp với bộ lọc đã chọn."}
                 </p>
               </div>
-              <Link href="/tao-don">
+              <Link href="/create-order">
                 <Button variant="primary">
                   Tạo đơn hàng ngay
                 </Button>
@@ -413,7 +413,7 @@ export default function CustomerDashboardKH01() {
                           </span>
                         </div>
 
-                        <Link href={`/theo-doi/${order.id}`}>
+                        <Link href={`/tracking/${order.id}`}>
                           <Button variant="outline" size="sm">
                             Theo dõi tiến độ →
                           </Button>

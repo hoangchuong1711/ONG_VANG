@@ -10,8 +10,8 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/", label: "Tổng quan", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
-    { href: "/tao-don", label: "Tạo đơn", icon: "M12 4v16m8-8H4" },
-    { href: "/don-hang", label: "Đơn của tôi", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
+    { href: "/create-order", label: "Tạo đơn", icon: "M12 4v16m8-8H4" },
+    { href: "/orders", label: "Đơn của tôi", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
   ];
 
   return (
@@ -89,7 +89,7 @@ export function Navbar() {
         {/* Right Header Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
           <Link
-            href="/tao-don"
+            href="/create-order"
             className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-stone-900 font-bold text-sm shadow-xs transition-transform hover:-translate-y-0.5"
           >
             <svg className="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -98,25 +98,32 @@ export function Navbar() {
             <span>Tạo đơn mới</span>
           </Link>
 
-          {/* Driver & Dispatcher Portal Switchers */}
+          {/* Driver, Dispatcher & Admin Portal Switchers */}
           <Link
-            href="/tai-xe"
+            href="/driver"
             className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700 font-semibold text-xs transition-colors"
             title="Chuyển sang Cổng Tài xế"
           >
             <span>🏍️ Tài xế</span>
           </Link>
           <Link
-            href="/dieu-phoi"
+            href="/dispatcher"
             className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs transition-colors"
             title="Chuyển sang Cổng Điều phối viên"
           >
             <span>⚡ Điều phối</span>
           </Link>
+          <Link
+            href="/admin"
+            className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold text-xs transition-colors"
+            title="Chuyển sang Cổng Quản trị viên"
+          >
+            <span>🛡️ Quản trị viên</span>
+          </Link>
 
           {/* User Profile Pill */}
           <Link
-            href="/tai-khoan"
+            href="/account"
             className="flex items-center gap-2.5 pl-2 sm:border-l border-stone-200 hover:opacity-80 transition-opacity"
             title="Xem hồ sơ và hạng thành viên"
           >
@@ -168,7 +175,7 @@ export function Navbar() {
           })}
           {/* Additional mobile links */}
           <Link
-            href="/tai-xe"
+            href="/driver"
             onClick={() => setIsMobileMenuOpen(false)}
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold text-amber-900 bg-amber-100/70 hover:bg-amber-100 border border-amber-200"
           >
@@ -176,7 +183,7 @@ export function Navbar() {
           </Link>
 
           <Link
-            href="/dieu-phoi"
+            href="/dispatcher"
             onClick={() => setIsMobileMenuOpen(false)}
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold text-amber-400 bg-slate-900 hover:bg-slate-800 border border-slate-800"
           >
@@ -184,10 +191,18 @@ export function Navbar() {
           </Link>
 
           <Link
-            href="/tai-khoan"
+            href="/admin"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200"
+          >
+            <span>🛡️ Chuyển sang Cổng Quản trị viên</span>
+          </Link>
+
+          <Link
+            href="/account"
             onClick={() => setIsMobileMenuOpen(false)}
             className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium ${
-              pathname === "/tai-khoan"
+              pathname === "/account"
                 ? "bg-amber-100 text-stone-900 font-bold"
                 : "text-stone-700 hover:bg-stone-50"
             }`}
@@ -196,7 +211,7 @@ export function Navbar() {
           </Link>
 
           <Link
-            href="/dang-nhap"
+            href="/login"
             onClick={() => setIsMobileMenuOpen(false)}
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-stone-500 hover:bg-stone-50"
           >
@@ -205,7 +220,7 @@ export function Navbar() {
 
           <div className="pt-2">
             <Link
-              href="/tao-don"
+              href="/create-order"
               onClick={() => setIsMobileMenuOpen(false)}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 text-stone-900 font-bold text-sm shadow-xs"
             >

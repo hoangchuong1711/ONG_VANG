@@ -13,7 +13,7 @@ export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
     <header className="sticky top-0 z-40 w-full bg-stone-900 text-white border-b border-stone-800 shadow-md">
       <div className="max-w-[1024px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Brand identity */}
-        <Link href="/tai-xe" className="flex items-center gap-2.5 group">
+        <Link href="/driver" className="flex items-center gap-2.5 group">
           <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-stone-950 font-black shadow-sm group-hover:scale-105 transition-transform">
             🏍️
           </div>
@@ -54,11 +54,19 @@ export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
 
           {/* Quick links to Dispatcher & Customer portals */}
           <Link
-            href="/dieu-phoi"
+            href="/dispatcher"
             className="hidden sm:inline-flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors px-2 py-1 rounded-lg border border-slate-700 bg-slate-900"
             title="Chuyển sang Cổng Điều phối viên"
           >
             <span>⚡ Điều phối</span>
+          </Link>
+
+          <Link
+            href="/admin"
+            className="hidden md:inline-flex items-center gap-1 text-xs text-blue-300 hover:text-blue-200 transition-colors px-2 py-1 rounded-lg border border-slate-700 bg-slate-900"
+            title="Chuyển sang Cổng Quản trị viên"
+          >
+            <span>🛡️ Quản trị</span>
           </Link>
 
           <Link

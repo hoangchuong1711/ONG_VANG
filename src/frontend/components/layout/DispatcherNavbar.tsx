@@ -31,10 +31,10 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
   }, []);
 
   const navLinks = [
-    { href: "/dieu-phoi", label: "Bàn điều phối" },
-    { href: "/dieu-phoi/tao-don", label: "Hotline tạo đơn" },
-    { href: "/dieu-phoi/doi-xe", label: "Đội xe & Tài xế" },
-    { href: "/dieu-phoi/bao-cao", label: "Báo cáo & Đối soát" },
+    { href: "/dispatcher", label: "Bàn điều phối" },
+    { href: "/dispatcher/create-order", label: "Hotline tạo đơn" },
+    { href: "/dispatcher/fleet", label: "Đội xe & Tài xế" },
+    { href: "/dispatcher/reports", label: "Báo cáo & Đối soát" },
   ];
 
   return (
@@ -42,7 +42,7 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
       <div className="max-w-[1600px] mx-auto px-3 sm:px-5 lg:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Brand identity */}
         <div className="flex items-center gap-2.5 shrink-0">
-          <Link href="/dieu-phoi" className="flex items-center gap-2 group">
+          <Link href="/dispatcher" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-stone-900 font-extrabold text-sm shadow-sm transition-transform duration-200 group-hover:scale-105 shrink-0">
               OV
             </div>
@@ -92,7 +92,7 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Pending Queue Counter */}
           <Link
-            href="/dieu-phoi"
+            href="/dispatcher"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 text-xs transition-colors whitespace-nowrap shrink-0"
             title="Đơn hàng chờ gán tài xế"
           >
@@ -103,7 +103,7 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
           {/* Active Incident Counter */}
           {incidentCount > 0 && (
             <Link
-              href="/dieu-phoi"
+              href="/dispatcher"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold hover:bg-rose-100 transition-colors whitespace-nowrap shrink-0"
               title="Sự cố đang chờ điều phối can thiệp"
             >
@@ -116,10 +116,16 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
           {/* Role Switchers */}
           <div className="hidden xl:flex items-center gap-1 pl-2 border-l border-stone-200 shrink-0">
             <Link
-              href="/tai-xe"
+              href="/driver"
               className="px-2 py-1 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 hover:text-stone-900 text-xs font-medium transition-colors whitespace-nowrap"
             >
               Cổng Tài xế
+            </Link>
+            <Link
+              href="/admin"
+              className="px-2 py-1 rounded-lg border border-blue-200 bg-blue-50/50 hover:bg-blue-100 text-blue-900 text-xs font-semibold transition-colors whitespace-nowrap"
+            >
+              Cổng Quản trị
             </Link>
             <Link
               href="/"
