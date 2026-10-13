@@ -1,5 +1,7 @@
 # T09 — Báo giá trên designV1
 
+> Công thức km/kg và snapshot đang chạy sau V5 được mô tả tại [TX3](TX3-implementation.md). Nội dung bên dưới là hành vi V1 trước TX3.
+
 `POST /api/quotes` xác thực khách hoặc tổng đài, chuẩn hóa địa chỉ/kiện và lấy lộ trình trước transaction DB. Backend phải tìm **đúng một** `BieuPhi` công bố khớp thời điểm và khoảng km; nếu không hoặc nhiều hơn một thì báo lỗi cấu hình. Phụ thu được lấy từ `ChinhSachPhuThu` công bố còn hiệu lực; hai phiên bản cùng loại khớp thời điểm là lỗi cấu hình.
 
 Cước gốc = `HALF_UP(cuocCoBan + km × donGiaKm)` tới đồng. Tổng = cước gốc + các phụ thu cố định − giảm thành viên, luôn dưới giới hạn DECIMAL(15,2). Quote lưu request chuẩn hóa, route, kết quả, mã biểu phí và `hetHanLuc = taoLuc + 300 giây` vào `bao_gia`. T10 tính lại trước khi chốt; giá, chính sách, route hoặc kiện đổi thì trả `QUOTE_CHANGED`.

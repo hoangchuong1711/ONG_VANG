@@ -46,7 +46,7 @@ await call('/api/orders', { ...input, maKh: 'KH-DEMO-2' }, 403, 'FORBIDDEN', hea
 await call('/api/orders', { ...input, sdtNguoiNhan: 'wrong' }, 400, 'VALIDATION_ERROR', headers);
 await call('/api/orders', { ...input, diemGiaoHang: '' }, 400, 'VALIDATION_ERROR', headers);
 await call('/api/orders', { ...input, kienHang: [{ loaiHangHoa: 'Hoa', khoiLuongKg: 1 }] }, 400, 'VALIDATION_ERROR', headers);
-await call('/api/orders', { ...input, diemGiaoHang: 'Hà Nội' }, 422, 'OUT_OF_SERVICE_AREA', headers);
+await call('/api/orders', { ...input, diemGiaoHang: 'Hà Nội' }, 409, 'QUOTE_CHANGED', headers);
 await call('/api/orders', { ...input, diemGiaoHang: 'Điểm mẫu C' }, 409, 'QUOTE_CHANGED', headers);
 await call('/api/orders', { ...input, maBaoGia: randomUUID() }, 404, 'RESOURCE_NOT_FOUND', headers);
 const created = await call('/api/orders', input, 201, undefined, headers);

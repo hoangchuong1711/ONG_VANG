@@ -120,7 +120,10 @@ public final class DispatchQueryService {
                 .reduce(BigDecimal.ZERO,BigDecimal::add);
         BigDecimal total=priced.getCuocGoc().add(extraTotal).subtract(priced.getTienGiamGia());
         var fare=new Fare(money(priced.getCuocGoc()),money(extraTotal),
-                money(priced.getTienGiamGia()),money(total),"VND",extras);
+                money(priced.getTienGiamGia()),money(total),"VND",extras,
+                money(priced.getCuocKm()), money(priced.getCuocKhoiLuong()),
+                money(priced.getTongKhoiLuongKg()), priced.getBieuPhi().getId(),
+                priced.getPhienBanBieuPhi());
         var parcels=details.parcels().stream().map(p->new Parcel(p.getLoaiHangHoa(),p.getGhiChuBaoQuan(),money(p.getKhoiLuongKg()))).toList();
         var payments=new LanThanhToanDAO(em);
         var attempts=payments.findAttempts(id);
@@ -139,7 +142,8 @@ public final class DispatchQueryService {
                 order.getTrangThai().name(),order.getKhachHang().getId(),assignment==null?null:assignment.getTaiXe().getId(),
                 order.getTaiKhoanTao().getId(),fare,parcels,
                 new PaymentSummary(state,total.signum()==0||paid?"0.00":fare.tongCuoc(),reconcile),
-                order.getThoiGianHoanTat()==null?null:order.getThoiGianHoanTat().toString(),order.getThoiGianHuy()==null?null:order.getThoiGianHuy().toString());
+                order.getThoiGianHoanTat()==null?null:order.getThoiGianHoanTat().toString(),order.getThoiGianHuy()==null?null:order.getThoiGianHuy().toString(),
+                order.getTenNguoiNhan(), order.getBenThanhToan(), order.getPhuongThucThanhToan(), order.getNguonLoTrinh().name());
     }
 
     static DriverPage driverPage(EntityManager em,DispatchDAO.Drivers result,int page,int size) {

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Mini Ong Vàng API",
-    "version": "0.5.0",
-    "description": "Backend operations on designV1 are implemented. T20 customer selection is available; shared VNPay Sandbox setup and live payment validation are deferred until deployment."
+    "version": "0.6.0",
+    "description": "DesignV1 API with TX3 route based ordering, versioned km/kg fares and DB order history. Goong requires a server side key; FAKE routes are finite demo fixtures."
   },
   "x-tx1-target-design": {
     "status": "planned",
@@ -886,7 +886,7 @@
                   "quangDuongKm": "5.00",
                   "thoiGianDuKienGiay": 900,
                   "trongPhamVi": true,
-                  "nguon": "GIA_LAP"
+                  "nguon": "FAKE"
                 }
               }
             }
@@ -1158,7 +1158,7 @@
                     "quangDuongKm": "5.00",
                     "thoiGianDuKienGiay": 900,
                     "trongPhamVi": true,
-                    "nguon": "GIA_LAP"
+                    "nguon": "FAKE"
                   },
                   "cuoc": {
                     "cuocGoc": "45000.00",
@@ -1172,7 +1172,12 @@
                         "tenPhuThu": "Phụ thu demo",
                         "soTienTinh": "5000.00"
                       }
-                    ]
+                    ],
+                    "cuocKm": "45000.00",
+                    "cuocKhoiLuong": "0.00",
+                    "tongKhoiLuongKg": "1.00",
+                    "maBieuPhi": "CUOC-DEMO-1",
+                    "phienBanBieuPhi": 1
                   },
                   "hangThanhVien": {
                     "maHang": "VIP",
@@ -1422,7 +1427,9 @@
                     "ghiChuBaoQuan": "Tránh đè nén",
                     "khoiLuongKg": "1.00"
                   }
-                ]
+                ],
+                "benThanhToan": "NGUOI_DAT",
+                "phuongThucThanhToan": "TIEN_MAT"
               }
             }
           }
@@ -1523,7 +1530,12 @@
                     "tienGiamGia": "5000.00",
                     "tongCuoc": "45000.00",
                     "donViTien": "VND",
-                    "phuThu": []
+                    "phuThu": [],
+                    "cuocKm": "50000.00",
+                    "cuocKhoiLuong": "0.00",
+                    "tongKhoiLuongKg": "1.00",
+                    "maBieuPhi": "CUOC-DEMO-1",
+                    "phienBanBieuPhi": 1
                   },
                   "kienHang": [
                     {
@@ -1538,7 +1550,11 @@
                   },
                   "hoanTatLuc": null,
                   "huyLuc": null,
-                  "maTkTao": "TK-DEMO-KH-1"
+                  "maTkTao": "TK-DEMO-KH-1",
+                  "tenNguoiNhan": "Người nhận demo",
+                  "benThanhToan": "NGUOI_DAT",
+                  "phuongThucThanhToan": "TIEN_MAT",
+                  "nguonLoTrinh": "FAKE"
                 }
               }
             }
@@ -1684,33 +1700,17 @@
             }
           },
           "422": {
-            "description": "ADDRESS_NOT_FOUND, OUT_OF_SERVICE_AREA, DISTANCE_INVALID",
+            "description": "WEIGHT_LIMIT_EXCEEDED when policy changes before order creation",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
                 "examples": {
-                  "ADDRESS_NOT_FOUND": {
+                  "WEIGHT_LIMIT_EXCEEDED": {
                     "value": {
-                      "code": "ADDRESS_NOT_FOUND",
-                      "message": "Không thể thực hiện yêu cầu: ADDRESS_NOT_FOUND",
-                      "fieldErrors": [],
-                      "traceId": "trace-demo-001"
-                    }
-                  },
-                  "OUT_OF_SERVICE_AREA": {
-                    "value": {
-                      "code": "OUT_OF_SERVICE_AREA",
-                      "message": "Không thể thực hiện yêu cầu: OUT_OF_SERVICE_AREA",
-                      "fieldErrors": [],
-                      "traceId": "trace-demo-001"
-                    }
-                  },
-                  "DISTANCE_INVALID": {
-                    "value": {
-                      "code": "DISTANCE_INVALID",
-                      "message": "Không thể thực hiện yêu cầu: DISTANCE_INVALID",
+                      "code": "WEIGHT_LIMIT_EXCEEDED",
+                      "message": "Khối lượng vượt giới hạn biểu phí.",
                       "fieldErrors": [],
                       "traceId": "trace-demo-001"
                     }
@@ -1739,26 +1739,6 @@
               }
             }
           },
-          "502": {
-            "description": "ROUTE_PROVIDER_ERROR",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "examples": {
-                  "ROUTE_PROVIDER_ERROR": {
-                    "value": {
-                      "code": "ROUTE_PROVIDER_ERROR",
-                      "message": "Không thể thực hiện yêu cầu: ROUTE_PROVIDER_ERROR",
-                      "fieldErrors": [],
-                      "traceId": "trace-demo-001"
-                    }
-                  }
-                }
-              }
-            }
-          },
           "503": {
             "description": "FARE_CONFIG_MISSING",
             "content": {
@@ -1771,26 +1751,6 @@
                     "value": {
                       "code": "FARE_CONFIG_MISSING",
                       "message": "Không thể thực hiện yêu cầu: FARE_CONFIG_MISSING",
-                      "fieldErrors": [],
-                      "traceId": "trace-demo-001"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "504": {
-            "description": "ROUTE_PROVIDER_TIMEOUT",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "examples": {
-                  "ROUTE_PROVIDER_TIMEOUT": {
-                    "value": {
-                      "code": "ROUTE_PROVIDER_TIMEOUT",
-                      "message": "Không thể thực hiện yêu cầu: ROUTE_PROVIDER_TIMEOUT",
                       "fieldErrors": [],
                       "traceId": "trace-demo-001"
                     }
@@ -1818,7 +1778,10 @@
                   }
                 ],
                 "maBaoGia": "BG-DEMO-001",
-                "sdtNguoiNhan": "0901234567"
+                "sdtNguoiNhan": "0901234567",
+                "benThanhToan": "NGUOI_DAT",
+                "phuongThucThanhToan": "TIEN_MAT",
+                "tenNguoiNhan": "Người nhận demo"
               }
             }
           }
@@ -1845,21 +1808,13 @@
             "IDEMPOTENCY_CONFLICT"
           ],
           "422": [
-            "OUT_OF_SERVICE_AREA",
-            "ADDRESS_NOT_FOUND",
-            "DISTANCE_INVALID"
+            "WEIGHT_LIMIT_EXCEEDED"
           ],
           "500": [
             "INTERNAL_ERROR"
           ],
-          "502": [
-            "ROUTE_PROVIDER_ERROR"
-          ],
           "503": [
             "FARE_CONFIG_MISSING"
-          ],
-          "504": [
-            "ROUTE_PROVIDER_TIMEOUT"
           ]
         }
       },
@@ -1966,7 +1921,12 @@
                         "tienGiamGia": "5000.00",
                         "tongCuoc": "45000.00",
                         "donViTien": "VND",
-                        "phuThu": []
+                        "phuThu": [],
+                        "cuocKm": "50000.00",
+                        "cuocKhoiLuong": "0.00",
+                        "tongKhoiLuongKg": "1.00",
+                        "maBieuPhi": "CUOC-DEMO-1",
+                        "phienBanBieuPhi": 1
                       },
                       "kienHang": [
                         {
@@ -1981,7 +1941,11 @@
                       },
                       "hoanTatLuc": null,
                       "huyLuc": null,
-                      "maTkTao": "TK-DEMO-KH-1"
+                      "maTkTao": "TK-DEMO-KH-1",
+                      "tenNguoiNhan": "Người nhận demo",
+                      "benThanhToan": "NGUOI_DAT",
+                      "phuongThucThanhToan": "TIEN_MAT",
+                      "nguonLoTrinh": "FAKE"
                     }
                   ],
                   "page": 0,
@@ -2171,7 +2135,12 @@
                     "tienGiamGia": "5000.00",
                     "tongCuoc": "45000.00",
                     "donViTien": "VND",
-                    "phuThu": []
+                    "phuThu": [],
+                    "cuocKm": "50000.00",
+                    "cuocKhoiLuong": "0.00",
+                    "tongKhoiLuongKg": "1.00",
+                    "maBieuPhi": "CUOC-DEMO-1",
+                    "phienBanBieuPhi": 1
                   },
                   "kienHang": [
                     {
@@ -2196,14 +2165,22 @@
                       "kmToiThieu": "0.00",
                       "kmToiDa": null,
                       "hieuLucTu": "2026-01-01T00:00:00Z",
-                      "hieuLucDen": null
+                      "hieuLucDen": null,
+                      "phienBan": 1,
+                      "kgBaoGom": "1.00",
+                      "donGiaKg": "3000.00",
+                      "kgToiDa": "30.00"
                     },
                     "giamGia": null,
                     "phuThu": []
                   },
                   "phanCong": [],
                   "xacNhanThanhToan": null,
-                  "nhatKy": []
+                  "nhatKy": [],
+                  "tenNguoiNhan": "Người nhận demo",
+                  "benThanhToan": "NGUOI_DAT",
+                  "phuongThucThanhToan": "TIEN_MAT",
+                  "nguonLoTrinh": "FAKE"
                 }
               }
             }
@@ -3056,7 +3033,12 @@
                     "tienGiamGia": "5000.00",
                     "tongCuoc": "45000.00",
                     "donViTien": "VND",
-                    "phuThu": []
+                    "phuThu": [],
+                    "cuocKm": "50000.00",
+                    "cuocKhoiLuong": "0.00",
+                    "tongKhoiLuongKg": "1.00",
+                    "maBieuPhi": "CUOC-DEMO-1",
+                    "phienBanBieuPhi": 1
                   },
                   "kienHang": [
                     {
@@ -3071,7 +3053,11 @@
                   },
                   "hoanTatLuc": null,
                   "huyLuc": null,
-                  "maTkTao": "TK-DEMO-KH-1"
+                  "maTkTao": "TK-DEMO-KH-1",
+                  "tenNguoiNhan": "Người nhận demo",
+                  "benThanhToan": "NGUOI_DAT",
+                  "phuongThucThanhToan": "TIEN_MAT",
+                  "nguonLoTrinh": "FAKE"
                 }
               }
             }
@@ -3325,7 +3311,12 @@
                     "tienGiamGia": "5000.00",
                     "tongCuoc": "45000.00",
                     "donViTien": "VND",
-                    "phuThu": []
+                    "phuThu": [],
+                    "cuocKm": "50000.00",
+                    "cuocKhoiLuong": "0.00",
+                    "tongKhoiLuongKg": "1.00",
+                    "maBieuPhi": "CUOC-DEMO-1",
+                    "phienBanBieuPhi": 1
                   },
                   "kienHang": [
                     {
@@ -3340,7 +3331,11 @@
                   },
                   "hoanTatLuc": null,
                   "huyLuc": null,
-                  "maTkTao": "TK-DEMO-KH-1"
+                  "maTkTao": "TK-DEMO-KH-1",
+                  "tenNguoiNhan": "Người nhận demo",
+                  "benThanhToan": "NGUOI_DAT",
+                  "phuongThucThanhToan": "TIEN_MAT",
+                  "nguonLoTrinh": "FAKE"
                 }
               }
             }
@@ -3585,7 +3580,12 @@
                     "tienGiamGia": "5000.00",
                     "tongCuoc": "45000.00",
                     "donViTien": "VND",
-                    "phuThu": []
+                    "phuThu": [],
+                    "cuocKm": "50000.00",
+                    "cuocKhoiLuong": "0.00",
+                    "tongKhoiLuongKg": "1.00",
+                    "maBieuPhi": "CUOC-DEMO-1",
+                    "phienBanBieuPhi": 1
                   },
                   "kienHang": [
                     {
@@ -3600,7 +3600,11 @@
                   },
                   "hoanTatLuc": null,
                   "huyLuc": null,
-                  "maTkTao": "TK-DEMO-KH-1"
+                  "maTkTao": "TK-DEMO-KH-1",
+                  "tenNguoiNhan": "Người nhận demo",
+                  "benThanhToan": "NGUOI_DAT",
+                  "phuongThucThanhToan": "TIEN_MAT",
+                  "nguonLoTrinh": "FAKE"
                 }
               }
             }
@@ -4086,7 +4090,12 @@
                     "tienGiamGia": "5000.00",
                     "tongCuoc": "45000.00",
                     "donViTien": "VND",
-                    "phuThu": []
+                    "phuThu": [],
+                    "cuocKm": "50000.00",
+                    "cuocKhoiLuong": "0.00",
+                    "tongKhoiLuongKg": "1.00",
+                    "maBieuPhi": "CUOC-DEMO-1",
+                    "phienBanBieuPhi": 1
                   },
                   "kienHang": [
                     {
@@ -4101,7 +4110,11 @@
                   },
                   "hoanTatLuc": null,
                   "huyLuc": "2026-10-05T03:04:00Z",
-                  "maTkTao": "TK-DEMO-KH-1"
+                  "maTkTao": "TK-DEMO-KH-1",
+                  "tenNguoiNhan": "Người nhận demo",
+                  "benThanhToan": "NGUOI_DAT",
+                  "phuongThucThanhToan": "TIEN_MAT",
+                  "nguonLoTrinh": "FAKE"
                 }
               }
             }
@@ -6794,7 +6807,7 @@
           },
           "nguon": {
             "enum": [
-              "GIA_LAP",
+              "FAKE",
               "GOONG"
             ]
           }
@@ -6806,7 +6819,7 @@
             "quangDuongKm": "5.00",
             "thoiGianDuKienGiay": 900,
             "trongPhamVi": true,
-            "nguon": "GIA_LAP"
+            "nguon": "FAKE"
           }
         ]
       },
@@ -6870,7 +6883,12 @@
           "tienGiamGia",
           "tongCuoc",
           "donViTien",
-          "phuThu"
+          "phuThu",
+          "cuocKm",
+          "cuocKhoiLuong",
+          "tongKhoiLuongKg",
+          "maBieuPhi",
+          "phienBanBieuPhi"
         ],
         "properties": {
           "cuocGoc": {
@@ -6893,6 +6911,25 @@
             "items": {
               "$ref": "#/components/schemas/Surcharge"
             }
+          },
+          "cuocKm": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "cuocKhoiLuong": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "tongKhoiLuongKg": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "maBieuPhi": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phienBanBieuPhi": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "examples": [
@@ -6902,7 +6939,12 @@
             "tienGiamGia": "5000.00",
             "tongCuoc": "45000.00",
             "donViTien": "VND",
-            "phuThu": []
+            "phuThu": [],
+            "cuocKm": "50000.00",
+            "cuocKhoiLuong": "0.00",
+            "tongKhoiLuongKg": "1.00",
+            "maBieuPhi": "CUOC-DEMO-1",
+            "phienBanBieuPhi": 1
           }
         ]
       },
@@ -6934,6 +6976,22 @@
               "$ref": "#/components/schemas/PackageRequest"
             },
             "minItems": 1
+          },
+          "benThanhToan": {
+            "type": "string",
+            "enum": [
+              "NGUOI_DAT",
+              "NGUOI_NHAN"
+            ],
+            "default": "NGUOI_DAT"
+          },
+          "phuongThucThanhToan": {
+            "type": "string",
+            "enum": [
+              "TIEN_MAT",
+              "VNPAY_QR"
+            ],
+            "default": "TIEN_MAT"
           }
         },
         "examples": [
@@ -6946,7 +7004,9 @@
                 "ghiChuBaoQuan": "Tránh đè nén",
                 "khoiLuongKg": "1.00"
               }
-            ]
+            ],
+            "benThanhToan": "NGUOI_DAT",
+            "phuongThucThanhToan": "TIEN_MAT"
           }
         ]
       },
@@ -6995,7 +7055,7 @@
               "quangDuongKm": "5.00",
               "thoiGianDuKienGiay": 900,
               "trongPhamVi": true,
-              "nguon": "GIA_LAP"
+              "nguon": "FAKE"
             },
             "cuoc": {
               "cuocGoc": "45000.00",
@@ -7009,7 +7069,12 @@
                   "tenPhuThu": "Phụ thu demo",
                   "soTienTinh": "5000.00"
                 }
-              ]
+              ],
+              "cuocKm": "45000.00",
+              "cuocKhoiLuong": "0.00",
+              "tongKhoiLuongKg": "1.00",
+              "maBieuPhi": "CUOC-DEMO-1",
+              "phienBanBieuPhi": 1
             },
             "hangThanhVien": {
               "maHang": "VIP",
@@ -7061,6 +7126,27 @@
               "$ref": "#/components/schemas/PackageRequest"
             },
             "minItems": 1
+          },
+          "benThanhToan": {
+            "type": "string",
+            "enum": [
+              "NGUOI_DAT",
+              "NGUOI_NHAN"
+            ],
+            "default": "NGUOI_DAT"
+          },
+          "phuongThucThanhToan": {
+            "type": "string",
+            "enum": [
+              "TIEN_MAT",
+              "VNPAY_QR"
+            ],
+            "default": "TIEN_MAT"
+          },
+          "tenNguoiNhan": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
           }
         },
         "examples": [
@@ -7075,7 +7161,10 @@
               }
             ],
             "maBaoGia": "BG-DEMO-001",
-            "sdtNguoiNhan": "0901234567"
+            "sdtNguoiNhan": "0901234567",
+            "benThanhToan": "NGUOI_DAT",
+            "phuongThucThanhToan": "TIEN_MAT",
+            "tenNguoiNhan": "Người nhận demo"
           }
         ]
       },
@@ -7130,7 +7219,11 @@
           "kienHang",
           "thanhToan",
           "hoanTatLuc",
-          "huyLuc"
+          "huyLuc",
+          "tenNguoiNhan",
+          "benThanhToan",
+          "phuongThucThanhToan",
+          "nguonLoTrinh"
         ],
         "properties": {
           "maDon": {
@@ -7206,6 +7299,36 @@
           "maTkTao": {
             "$ref": "#/components/schemas/Id",
             "description": "T?i kho?n t?o ??n; t?ng ??i d?ng maNguoiDung c?a m?nh."
+          },
+          "tenNguoiNhan": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "benThanhToan": {
+            "type": "string",
+            "enum": [
+              "NGUOI_DAT",
+              "NGUOI_NHAN"
+            ],
+            "default": "NGUOI_DAT"
+          },
+          "phuongThucThanhToan": {
+            "type": "string",
+            "enum": [
+              "TIEN_MAT",
+              "VNPAY_QR"
+            ],
+            "default": "TIEN_MAT"
+          },
+          "nguonLoTrinh": {
+            "type": "string",
+            "enum": [
+              "FAKE",
+              "GOONG"
+            ]
           }
         },
         "examples": [
@@ -7226,7 +7349,12 @@
               "tienGiamGia": "5000.00",
               "tongCuoc": "45000.00",
               "donViTien": "VND",
-              "phuThu": []
+              "phuThu": [],
+              "cuocKm": "50000.00",
+              "cuocKhoiLuong": "0.00",
+              "tongKhoiLuongKg": "1.00",
+              "maBieuPhi": "CUOC-DEMO-1",
+              "phienBanBieuPhi": 1
             },
             "kienHang": [
               {
@@ -7241,7 +7369,11 @@
             },
             "hoanTatLuc": null,
             "huyLuc": null,
-            "maTkTao": "TK-DEMO-KH-1"
+            "maTkTao": "TK-DEMO-KH-1",
+            "tenNguoiNhan": "Người nhận demo",
+            "benThanhToan": "NGUOI_DAT",
+            "phuongThucThanhToan": "TIEN_MAT",
+            "nguonLoTrinh": "FAKE"
           }
         ]
       },
@@ -8061,7 +8193,12 @@
                   "tienGiamGia": "5000.00",
                   "tongCuoc": "45000.00",
                   "donViTien": "VND",
-                  "phuThu": []
+                  "phuThu": [],
+                  "cuocKm": "50000.00",
+                  "cuocKhoiLuong": "0.00",
+                  "tongKhoiLuongKg": "1.00",
+                  "maBieuPhi": "CUOC-DEMO-1",
+                  "phienBanBieuPhi": 1
                 },
                 "kienHang": [
                   {
@@ -8076,7 +8213,11 @@
                 },
                 "hoanTatLuc": null,
                 "huyLuc": null,
-                "maTkTao": "TK-DEMO-KH-1"
+                "maTkTao": "TK-DEMO-KH-1",
+                "tenNguoiNhan": "Người nhận demo",
+                "benThanhToan": "NGUOI_DAT",
+                "phuongThucThanhToan": "TIEN_MAT",
+                "nguonLoTrinh": "FAKE"
               }
             ],
             "page": 0,
@@ -8276,7 +8417,11 @@
           "kmToiThieu",
           "kmToiDa",
           "hieuLucTu",
-          "hieuLucDen"
+          "hieuLucDen",
+          "phienBan",
+          "kgBaoGom",
+          "donGiaKg",
+          "kgToiDa"
         ],
         "properties": {
           "maBieuPhi": {
@@ -8308,6 +8453,19 @@
               "string",
               "null"
             ]
+          },
+          "phienBan": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kgBaoGom": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "donGiaKg": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "kgToiDa": {
+            "$ref": "#/components/schemas/Decimal"
           }
         }
       },
@@ -8506,7 +8664,11 @@
           "phienBanChinhSach",
           "phanCong",
           "xacNhanThanhToan",
-          "nhatKy"
+          "nhatKy",
+          "tenNguoiNhan",
+          "benThanhToan",
+          "phuongThucThanhToan",
+          "nguonLoTrinh"
         ],
         "properties": {
           "maDon": {
@@ -8607,6 +8769,36 @@
             "items": {
               "$ref": "#/components/schemas/Event"
             }
+          },
+          "tenNguoiNhan": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "benThanhToan": {
+            "type": "string",
+            "enum": [
+              "NGUOI_DAT",
+              "NGUOI_NHAN"
+            ],
+            "default": "NGUOI_DAT"
+          },
+          "phuongThucThanhToan": {
+            "type": "string",
+            "enum": [
+              "TIEN_MAT",
+              "VNPAY_QR"
+            ],
+            "default": "TIEN_MAT"
+          },
+          "nguonLoTrinh": {
+            "type": "string",
+            "enum": [
+              "FAKE",
+              "GOONG"
+            ]
           }
         }
       }

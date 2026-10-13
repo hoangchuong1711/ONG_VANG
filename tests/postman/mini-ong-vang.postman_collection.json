@@ -445,7 +445,7 @@
             "description": "Báo giá và giảm VIP\n\nKhách lấy maKh từ session, không được báo giá cho người khác; tổng đài bắt buộc maKh. VIP hết hạn/không hợp lệ: giảm 0. Cước gốc=cước cơ bản+km×đơn giá; phụ thu demo chung đang bật được cộng; giảm VIP trên tổng trước giảm. Tổng=max(0,gốc+phụ thu-giảm), HALF_UP nguyên VND. Báo giá lưu 300 giây; BE kiểm tra lại khi tạo đơn.\n\nStatus: implemented; UC: UC-03, UC-04, UC-05; roles: KHACH_HANG, TONG_DAI",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\",\n  \"kienHang\": [\n    {\n      \"loaiHangHoa\": \"Hoa\",\n      \"ghiChuBaoQuan\": \"Tránh đè nén\",\n      \"khoiLuongKg\": \"1.00\"\n    }\n  ]\n}",
+              "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\",\n  \"kienHang\": [\n    {\n      \"loaiHangHoa\": \"Hoa\",\n      \"ghiChuBaoQuan\": \"Tránh đè nén\",\n      \"khoiLuongKg\": \"1.00\"\n    }\n  ],\n  \"benThanhToan\": \"NGUOI_DAT\",\n  \"phuongThucThanhToan\": \"TIEN_MAT\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -513,7 +513,7 @@
             "description": "Tạo đơn với cước snapshot\n\nTổng đài bắt buộc maKh; khách chỉ được dùng chính maKh của session. Lưu người tạo, kiện hàng, snapshot, phụ thu và nhật ký cùng transaction. Báo giá phải khớp đầu vào và chưa hết hạn; giá đổi trả 409 để lấy báo giá mới và xác nhận lại. Retry thành công trả lại HTTP 201/body gốc kể cả báo giá hết hạn. Khóa có hiệu lực 24 giờ theo tài khoản; payload được chuẩn hóa trước so sánh. Lỗi không giữ khóa.\n\nStatus: implemented; UC: UC-02; roles: KHACH_HANG, TONG_DAI",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\",\n  \"kienHang\": [\n    {\n      \"loaiHangHoa\": \"Hoa\",\n      \"ghiChuBaoQuan\": \"Tránh đè nén\",\n      \"khoiLuongKg\": \"1.00\"\n    }\n  ],\n  \"maBaoGia\": \"{{quoteId}}\",\n  \"sdtNguoiNhan\": \"{{recipientPhone}}\"\n}",
+              "raw": "{\n  \"diemLayHang\": \"{{pickupAddress}}\",\n  \"diemGiaoHang\": \"{{deliveryAddress}}\",\n  \"kienHang\": [\n    {\n      \"loaiHangHoa\": \"Hoa\",\n      \"ghiChuBaoQuan\": \"Tránh đè nén\",\n      \"khoiLuongKg\": \"1.00\"\n    }\n  ],\n  \"maBaoGia\": \"{{quoteId}}\",\n  \"sdtNguoiNhan\": \"{{recipientPhone}}\",\n  \"benThanhToan\": \"NGUOI_DAT\",\n  \"phuongThucThanhToan\": \"TIEN_MAT\",\n  \"tenNguoiNhan\": \"Người nhận demo\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -556,6 +556,10 @@
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
                   "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
                   "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                  "  pm.test('Response has tenNguoiNhan', () => pm.expect(body).to.have.property('tenNguoiNhan'));",
+                  "  pm.test('Response has benThanhToan', () => pm.expect(body).to.have.property('benThanhToan'));",
+                  "  pm.test('Response has phuongThucThanhToan', () => pm.expect(body).to.have.property('phuongThucThanhToan'));",
+                  "  pm.test('Response has nguonLoTrinh', () => pm.expect(body).to.have.property('nguonLoTrinh'));",
                   "  pm.environment.set('orderId', body.maDon);",
                   "  pm.test('New order waits for assignment', () => pm.expect(body.trangThai).to.eql('CHO_GAN'));",
                   "}"
@@ -697,6 +701,10 @@
                   "  pm.test('Response has phanCong', () => pm.expect(body).to.have.property('phanCong'));",
                   "  pm.test('Response has xacNhanThanhToan', () => pm.expect(body).to.have.property('xacNhanThanhToan'));",
                   "  pm.test('Response has nhatKy', () => pm.expect(body).to.have.property('nhatKy'));",
+                  "  pm.test('Response has tenNguoiNhan', () => pm.expect(body).to.have.property('tenNguoiNhan'));",
+                  "  pm.test('Response has benThanhToan', () => pm.expect(body).to.have.property('benThanhToan'));",
+                  "  pm.test('Response has phuongThucThanhToan', () => pm.expect(body).to.have.property('phuongThucThanhToan'));",
+                  "  pm.test('Response has nguonLoTrinh', () => pm.expect(body).to.have.property('nguonLoTrinh'));",
                   "}"
                 ]
               }
@@ -965,6 +973,10 @@
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
                   "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
                   "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                  "  pm.test('Response has tenNguoiNhan', () => pm.expect(body).to.have.property('tenNguoiNhan'));",
+                  "  pm.test('Response has benThanhToan', () => pm.expect(body).to.have.property('benThanhToan'));",
+                  "  pm.test('Response has phuongThucThanhToan', () => pm.expect(body).to.have.property('phuongThucThanhToan'));",
+                  "  pm.test('Response has nguonLoTrinh', () => pm.expect(body).to.have.property('nguonLoTrinh'));",
                   "  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('DA_GAN'));",
                   "}"
                 ]
@@ -1041,6 +1053,10 @@
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
                   "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
                   "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                  "  pm.test('Response has tenNguoiNhan', () => pm.expect(body).to.have.property('tenNguoiNhan'));",
+                  "  pm.test('Response has benThanhToan', () => pm.expect(body).to.have.property('benThanhToan'));",
+                  "  pm.test('Response has phuongThucThanhToan', () => pm.expect(body).to.have.property('phuongThucThanhToan'));",
+                  "  pm.test('Response has nguonLoTrinh', () => pm.expect(body).to.have.property('nguonLoTrinh'));",
                   "  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('CHO_GAN'));",
                   "}"
                 ]
@@ -1117,6 +1133,10 @@
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
                   "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
                   "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                  "  pm.test('Response has tenNguoiNhan', () => pm.expect(body).to.have.property('tenNguoiNhan'));",
+                  "  pm.test('Response has benThanhToan', () => pm.expect(body).to.have.property('benThanhToan'));",
+                  "  pm.test('Response has phuongThucThanhToan', () => pm.expect(body).to.have.property('phuongThucThanhToan'));",
+                  "  pm.test('Response has nguonLoTrinh', () => pm.expect(body).to.have.property('nguonLoTrinh'));",
                   "  pm.test('Requested state reached', () => pm.expect(body.trangThai).to.eql(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).trangThai));",
                   "}"
                 ]
@@ -1263,6 +1283,10 @@
                   "  pm.test('Response has thanhToan', () => pm.expect(body).to.have.property('thanhToan'));",
                   "  pm.test('Response has hoanTatLuc', () => pm.expect(body).to.have.property('hoanTatLuc'));",
                   "  pm.test('Response has huyLuc', () => pm.expect(body).to.have.property('huyLuc'));",
+                  "  pm.test('Response has tenNguoiNhan', () => pm.expect(body).to.have.property('tenNguoiNhan'));",
+                  "  pm.test('Response has benThanhToan', () => pm.expect(body).to.have.property('benThanhToan'));",
+                  "  pm.test('Response has phuongThucThanhToan', () => pm.expect(body).to.have.property('phuongThucThanhToan'));",
+                  "  pm.test('Response has nguonLoTrinh', () => pm.expect(body).to.have.property('nguonLoTrinh'));",
                   "  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('DA_HUY'));",
                   "}"
                 ]

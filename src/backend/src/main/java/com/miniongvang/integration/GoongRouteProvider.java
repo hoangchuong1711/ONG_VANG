@@ -14,6 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Goong V2 geocoding and directions; API-specific JSON stays behind RouteProvider. */
 public final class GoongRouteProvider implements RouteProvider {
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final java.util.logging.Logger LOG = java.util.logging.Logger.getLogger(GoongRouteProvider.class.getName());
     private final HttpClient client;
     private final URI baseUri;
     private final String apiKey;
@@ -84,8 +85,10 @@ public final class GoongRouteProvider implements RouteProvider {
             HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(pathAndQuery))
                     .timeout(timeout).GET().build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() < 200 || response.statusCode() >= 300)
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                LOG.warning("Goong API returned HTTP " + response.statusCode());
                 throw new RouteFailure(RouteFailure.Kind.ROUTE_PROVIDER_ERROR);
+            }
             try {
                 JsonNode body = JSON.readTree(response.body());
                 if (body == null || !body.isObject()) throw new RouteFailure(RouteFailure.Kind.ROUTE_PROVIDER_ERROR);

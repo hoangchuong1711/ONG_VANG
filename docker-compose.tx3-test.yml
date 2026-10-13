@@ -1,0 +1,18 @@
+# Isolated TX3 integration stack while the develop/TX2 stack is running.
+services:
+  sqlserver:
+    ports: !override
+      - "127.0.0.1:11433:1433"
+  db-init:
+    environment:
+      DATABASE_NAME: mini_ong_vang_test
+  backend:
+    ports: !override
+      - "18081:8080"
+    environment:
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"
+      DEMO_SEED: "true"
+      ROUTE_PROVIDER: ${TX3_ROUTE_PROVIDER:-fake}
+  frontend:
+    ports: !override
+      - "13001:3000"

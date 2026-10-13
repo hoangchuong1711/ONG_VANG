@@ -35,6 +35,36 @@ class FareCalculatorTest {
                         List.of(), BigDecimal.ZERO));
     }
 
+    @Test void pricesWeightBoundariesAndAppliesDiscountAfterSurcharge() {
+        BieuPhi tariff = tariff("20000", "5000");
+        tariff.setId("POLICY-1");
+        tariff.setPhienBan(2);
+        tariff.setKgBaoGom(new BigDecimal("1.00"));
+        tariff.setDonGiaKg(new BigDecimal("3000.00"));
+        tariff.setKgToiDa(new BigDecimal("30.00"));
+        var included = calculator.calculateV1(new BigDecimal("5.00"), new BigDecimal("1.00"),
+                tariff, List.of(extra("5000")), new BigDecimal("5000"));
+        assertEquals("45000.00", included.cuocKm());
+        assertEquals("0.00", included.cuocKhoiLuong());
+        assertEquals("45000.00", included.tongCuoc());
+        var heavy = calculator.calculateV1(new BigDecimal("5.00"), new BigDecimal("1.01"),
+                tariff, List.of(), BigDecimal.ZERO);
+        assertEquals("30.00", heavy.cuocKhoiLuong());
+        assertEquals("POLICY-1", heavy.maBieuPhi());
+        assertEquals(2, heavy.phienBanBieuPhi());
+        assertDoesNotThrow(() -> calculator.calculateV1(BigDecimal.ONE, new BigDecimal("30.00"),
+                tariff, List.of(), BigDecimal.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> calculator.calculateV1(BigDecimal.ONE,
+                new BigDecimal("30.01"), tariff, List.of(), BigDecimal.ZERO));
+    }
+
+    @Test void zeroFareHasNoNegativeBalance() {
+        BieuPhi tariff = tariff("0", "0");
+        tariff.setDonGiaKg(BigDecimal.ZERO);
+        var fare = calculator.calculateV1(BigDecimal.ONE, BigDecimal.ONE, tariff, List.of(), BigDecimal.ZERO);
+        assertEquals("0.00", fare.tongCuoc());
+    }
+
     private static BieuPhi tariff(String base, String perKm) {
         BieuPhi value = new BieuPhi();
         value.setCuocCoBan(new BigDecimal(base)); value.setDonGiaKm(new BigDecimal(perKm));

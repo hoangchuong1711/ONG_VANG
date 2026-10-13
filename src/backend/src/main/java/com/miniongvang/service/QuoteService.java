@@ -51,6 +51,17 @@ public final class QuoteService {
 
     public Quote create(ActorContext actor, String requestedCustomerId, String origin,
                         String destination, List<Parcel> parcels) {
+        return create(actor, new CreateQuote(requestedCustomerId, origin, destination, parcels,
+                "NGUOI_DAT", "TIEN_MAT"));
+    }
+
+    public Quote create(ActorContext actor, CreateQuote request) {
+        String requestedCustomerId = request.maKh();
+        String origin = request.diemLayHang();
+        String destination = request.diemGiaoHang();
+        List<Parcel> parcels = request.kienHang();
+        String payer = choice(request.benThanhToan(), "NGUOI_DAT", "NGUOI_NHAN");
+        String method = choice(request.phuongThucThanhToan(), "TIEN_MAT", "VNPAY_QR");
         if (actor == null) throw new SecurityException("Authentication required");
         String customerId;
         if (actor.vaiTro() == AccountRole.KHACH_HANG) {
@@ -67,7 +78,7 @@ public final class QuoteService {
         Route route = routes.estimate(origin, destination);
         Instant now = clock.instant();
         return transactions.run(em -> {
-            EvaluationV1 evaluated = evaluateV1(em, customerId, route, now);
+            EvaluationV1 evaluated = evaluateV1(em, customerId, route, normalizedParcels, now);
             BieuPhi tariff = evaluated.tariff();
             Fare fare = evaluated.fare();
             MembershipView tier = evaluated.tier();
@@ -76,21 +87,24 @@ public final class QuoteService {
             BaoGia stored = new BaoGia();
             stored.setId(result.maBaoGia()); stored.setMaKh(customerId); stored.setMaBieuPhi(tariff.getId());
             stored.setTaoLuc(now); stored.setHetHanLuc(expiry);
-            stored.setYeuCauJson(JSON.writeValueAsString(new FrozenRequest(customerId, route, normalizedParcels)));
+            stored.setYeuCauJson(JSON.writeValueAsString(new FrozenRequest(customerId, route, normalizedParcels,
+                    payer, method, cleanAddress(origin), cleanAddress(destination))));
             stored.setKetQuaJson(JSON.writeValueAsString(result));
             new BaoGiaDAO(em).persist(stored);
             return result;
         });
     }
 
-    public Quote create(ActorContext actor, CreateQuote request) {
-        return create(actor, request.maKh(), request.diemLayHang(),
-                request.diemGiaoHang(), request.kienHang());
+    EvaluationV1 evaluateV1(jakarta.persistence.EntityManager em, String customerId,
+                            Route route, Instant now) {
+        return evaluateV1(em, customerId, route, List.of(), now);
     }
 
     EvaluationV1 evaluateV1(jakarta.persistence.EntityManager em, String customerId,
-                            Route route, Instant now) {
+                            Route route, List<Parcel> parcels, Instant now) {
         BigDecimal km = new BigDecimal(route.quangDuongKm());
+        BigDecimal kg = parcels.stream().map(p -> new BigDecimal(p.khoiLuongKg()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         var customer = new KhachHangDAO(em).findWithAccount(customerId);
         if (customer == null) throw new NoSuchElementException("Customer not found");
         var matchingTariffs = new BieuPhiDAO(em).findApplicable(now, km);
@@ -101,10 +115,10 @@ public final class QuoteService {
         for (ChinhSachPhuThu item : extras)
             if (!types.add(item.getMaLoaiPhuThu()))
                 throw new com.miniongvang.service.FareCalculator.FareConfigurationException();
-        Fare before = calculator.calculateV1(km, tariff, extras, BigDecimal.ZERO);
+        Fare before = calculator.calculateV1(km, kg, tariff, extras, BigDecimal.ZERO);
         BigDecimal subtotal = new BigDecimal(before.cuocGoc()).add(new BigDecimal(before.tienPhuThu()));
         MembershipPolicyService.Decision decision = membership.evaluate(em, customer, subtotal, now);
-        Fare fare = calculator.calculateV1(km, tariff, extras, decision.discount());
+        Fare fare = calculator.calculateV1(km, kg, tariff, extras, decision.discount());
         ChinhSachThanhVien policy = decision.policy();
         MembershipView tier = customer.getMaHang() == MembershipTier.THUONG ? null
                 : new MembershipView(customer.getMaHang().name(), customer.getMaHang().name(),
@@ -134,5 +148,16 @@ public final class QuoteService {
         return List.copyOf(normalized);
     }
 
-    public record FrozenRequest(String maKh, Route loTrinh, List<Parcel> kienHang) {}
+    static String choice(String value, String first, String second) {
+        if (!first.equals(value) && !second.equals(value)) throw new IllegalArgumentException("Invalid payment choice");
+        return value;
+    }
+
+    static String cleanAddress(String value) {
+        return value == null ? null : value.strip().replaceAll("\\s+", " ");
+    }
+
+    public record FrozenRequest(String maKh, Route loTrinh, List<Parcel> kienHang,
+                                String benThanhToan, String phuongThucThanhToan,
+                                String diaChiNhapLay, String diaChiNhapGiao) {}
 }
