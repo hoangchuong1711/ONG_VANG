@@ -3,13 +3,15 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface DriverNavbarProps {
   isOnline: boolean;
   onToggleOnline: () => void;
+  showStatus?: boolean;
 }
 
-export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
+export function DriverNavbar({ isOnline, onToggleOnline, showStatus = true }: DriverNavbarProps) {
   const pathname = usePathname();
 
   return (
@@ -37,7 +39,7 @@ export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
 
         {/* Online / Offline Status Toggle Button */}
         <div className="flex items-center gap-3">
-          <button
+          {showStatus && <button
             type="button"
             onClick={onToggleOnline}
             className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-bold text-xs transition-all shadow-xs ${
@@ -53,7 +55,7 @@ export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
               }`}
             />
             <span>{isOnline ? "ĐANG TRỰC TUYẾN" : "TẠM NGHỈ (OFFLINE)"}</span>
-          </button>
+          </button>}
 
           <Link
             href="/driver/account"
@@ -67,6 +69,7 @@ export function DriverNavbar({ isOnline, onToggleOnline }: DriverNavbarProps) {
             Tài khoản
           </Link>
 
+          <LogoutButton className="rounded-lg border border-stone-600 px-3 py-2 text-xs font-bold text-white hover:border-amber-400" />
 
         </div>
       </div>

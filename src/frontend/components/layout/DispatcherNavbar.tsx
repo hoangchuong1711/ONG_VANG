@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface DispatcherNavbarProps {
   pendingCount?: number;
@@ -129,10 +130,11 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
             </span>
             <span className="hidden lg:block text-xs font-bold text-stone-700 2xl:hidden">Tài khoản</span>
             <span className="hidden 2xl:flex flex-col text-left text-xs leading-none whitespace-nowrap">
-              <span className="font-bold text-stone-900">Trần Ngọc Huy</span>
+              <span className="font-bold text-stone-900">Điều phối viên</span>
               <span className="text-[10px] text-stone-500 mt-0.5">Tài khoản điều phối</span>
             </span>
           </Link>
+          <LogoutButton className="rounded-lg border border-stone-300 px-3 py-2 text-xs font-bold text-stone-700 hover:bg-stone-50" />
         </div>
       </div>
 

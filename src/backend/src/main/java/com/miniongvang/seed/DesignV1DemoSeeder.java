@@ -41,13 +41,18 @@ public final class DesignV1DemoSeeder {
             Number marked = (Number) em.createNativeQuery(
                     "SELECT count(*) FROM dbo.demo_seed_manifest WHERE seed_key=:key")
                     .setParameter("key", KEY).getSingleResult();
-            if (marked.longValue() != 0) return null;
+            if (marked.longValue() != 0) {
+                installTx2Extras(em, password, clock.instant());
+                syncDemoPasswords(em, password);
+                return null;
+            }
             Number existing = (Number) em.createQuery(
                     "select count(a) from TaiKhoan a where a.id like 'TK-DEMO-%'").getSingleResult();
             if (existing.longValue() != 0)
                 throw new IllegalStateException("Demo accounts exist without designV1 marker");
             Instant now = clock.instant();
             install(em, PasswordHasher.hash(password), now);
+            installTx2Extras(em, password, now);
             em.createNativeQuery("""
                     INSERT INTO dbo.demo_seed_manifest(seed_key,seed_version,seeded_at)
                     VALUES (:key,:version,:now)
@@ -119,6 +124,47 @@ public final class DesignV1DemoSeeder {
         extra.setHieuLucTu(now.minusSeconds(30 * 86400L));
         extra.setTrangThai(PolicyStatus.CONG_BO);
         em.persist(extra);
+    }
+
+    /** Adds TX2 identities to both new and already seeded development databases. */
+    private static void installTx2Extras(EntityManager em, String password, Instant now) {
+        Number customers = (Number) em.createQuery("select count(a) from TaiKhoan a where a.id = 'TK-DEMO-KH-3'").getSingleResult();
+        Number drivers = (Number) em.createQuery("select count(a) from TaiKhoan a where a.id = 'TK-DEMO-TX-3'").getSingleResult();
+        if (customers.longValue() != 0 && drivers.longValue() != 0) return;
+        String hash = PasswordHasher.hash(password);
+        if (customers.longValue() == 0) {
+            TaiKhoan customer = account(em, "TK-DEMO-KH-3", "0900000003", "0900000003",
+                    "Khách ưu đãi hết hạn", AccountRole.KHACH_HANG, hash, now);
+            customer(em, "KH-DEMO-3", customer, MembershipTier.VANG,
+                    now.minusSeconds(60 * 86400L), now.minusSeconds(86400L));
+        }
+        if (drivers.longValue() == 0) {
+            TaiKhoan account = account(em, "TK-DEMO-TX-3", "0800000003", "0800000003",
+                    "Tài xế demo 3", AccountRole.TAI_XE, hash, now);
+            TaiXe driver = new TaiXe();
+            driver.setId("TX-DEMO-3");
+            driver.setTaiKhoan(account);
+            driver.setCccd("700000000003");
+            driver.setSoGiayPhep("GPLX-DEMO-3");
+            driver.setNgayHetHanGplx(LocalDate.ofInstant(now, VIETNAM).plusYears(1));
+            driver.setTrangThai(DriverStatus.ONLINE);
+            driver.setRanhTu(now.minusSeconds(3 * 3600L));
+            em.persist(driver);
+            PhuongTien vehicle = new PhuongTien();
+            vehicle.setId("XE-DEMO-3");
+            vehicle.setTaiXe(driver);
+            vehicle.setBienSoXe("59A00003");
+            vehicle.setLoaiXe("Xe máy");
+            vehicle.setDangHoatDong(true);
+            em.persist(vehicle);
+        }
+    }
+
+    private static void syncDemoPasswords(EntityManager em, String password) {
+        for (TaiKhoan account : em.createQuery("select a from TaiKhoan a where a.id like 'TK-DEMO-%'", TaiKhoan.class).getResultList()) {
+            if (!PasswordHasher.verify(password, account.getMatKhauHash()))
+                account.setMatKhauHash(PasswordHasher.hash(password));
+        }
     }
 
     private static TaiKhoan account(EntityManager em, String id, String username, String phone,

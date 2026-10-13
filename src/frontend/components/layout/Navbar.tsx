@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -115,6 +116,8 @@ export function Navbar() {
             </div>
           </Link>
 
+          <LogoutButton className="hidden sm:inline-flex rounded-lg border border-stone-300 px-3 py-2 text-xs font-bold text-stone-700 hover:bg-stone-50" />
+
           {/* Mobile menu toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -166,13 +169,7 @@ export function Navbar() {
             <span>Hồ sơ tài khoản</span>
           </Link>
 
-          <Link
-            href="/login"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-stone-500 hover:bg-stone-50"
-          >
-            <span>🚪 Đổi tài khoản / Đăng nhập</span>
-          </Link>
+          <LogoutButton className="w-full rounded-xl px-3.5 py-2.5 text-left text-sm font-bold text-stone-700 hover:bg-stone-50" />
 
           <div className="pt-2">
             <Link
