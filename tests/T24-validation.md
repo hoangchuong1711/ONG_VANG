@@ -5,7 +5,7 @@ Ngày kiểm tra: 13/10/2026 (Asia/Bangkok). Nhánh `feat/t24-dispatcher-integra
 ## Phạm vi bằng chứng
 
 - Chromium thực tế `/usr/bin/chromium` trong cloud; Playwright, FE Next.js và HTTP fixture chạy tại 3100/18082.
-- **46 browser tests PASS**: 23 tình huống × desktop/mobile 390×844, 0 fail; lượt rà lại sau chốt khóa gán/hủy. Lệnh cloud: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:t24 --prefix src/frontend`.
+- **48 browser tests PASS**: 24 tình huống × desktop/mobile 390×844, 0 fail; lượt rà lại sau khi nối form đăng nhập chung với T24. Lệnh cloud: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:t24 --prefix src/frontend`.
 - `npm run lint`, TypeScript `tsc --noEmit`, `npm run build`: đạt; nguồn runtime được biên dịch, không dùng artifact T19/T20 làm chứng minh T24.
 - Ba live cases FE/BE/SQL Server: **BLOCKED / NOT RUN trong cloud**, vì `docker pull mcr.microsoft.com/mssql/server:2022-latest` trả Forbidden. Đã có mã test, lệnh chạy local và gate CI; không ghi PASS cho transaction/DB thật ở đợt T24 này.
 - Test proxy không intercept request: cookie HttpOnly được cấp/thay qua Next rewrite, CSRF mới sau login và xóa cookie logout được xác nhận với HTTP fixture. Fixture không phải backend SQL Server.
@@ -36,8 +36,8 @@ Ngày kiểm tra: 13/10/2026 (Asia/Bangkok). Nhánh `feat/t24-dispatcher-integra
 | UI20 Trang gợi ý | Request đúng trang, đổi trang bỏ chọn | TX02 trang 2 hiện, chưa chọn thì không xác nhận | PASS ×2 |
 | UI21 Thời hạn khi modal mở | Đủ 300 giây phải khóa xác nhận | Clock tiến qua mốc, nút hủy khóa và thông báo | PASS ×2 |
 | UI22 CSRF bị từ chối | Không báo thành công/không tự retry | 403 hiện lỗi; một POST, bỏ chọn | PASS ×2 |
-
 | UI23 Gợi ý báo đơn đã đổi trạng thái | Không dùng lựa chọn cũ để gửi gán | GET gợi ý 409 hiện lỗi; nút khóa, không POST | PASS ×2 |
+| UI24 Đường vào từ đăng nhập chung | Chưa có phiên: đăng nhập thật tại form chung rồi mở T24; có phiên: vào T24 ngay | Body đăng nhập `demo_dispatcher`, board hiện; bấm lại với phiên hiện tại mở thẳng board | PASS ×2 |
 
 ## Ca FE/BE/SQL Server thật còn cần chạy
 
@@ -57,6 +57,7 @@ Sau lượt live, chạy lại `scripts/check-design-v1-invariants.sql` hiện c
 - Lượt đầu có 26/36 test đạt: locator alert bắt cả route announcer của Next; fixture 500 chỉ lỗi một lần nên StrictMode đọc tiếp thành công; label select chưa đủ rõ. Sửa locator vào main, fixture giữ lỗi tới retry, thêm aria-label cho bộ lọc. Sau bổ sung UI19–22, retest **44/44 PASS** (lượt trước); lượt rà bổ sung có 46 ca.
 - Đối chiếu DTO đã sửa Parcel theo contract `loaiHangHoa/ghiChuBaoQuan/khoiLuongKg`, không dùng trường demo `moTa/thuTu`.
 - Giữ thông báo lỗi ở page sau refresh khi đơn rời hàng đợi để không mất bằng chứng conflict; UI10 retest đạt.
+- Ô Điều Phối Viên trước đây dẫn đến form riêng vì trang đăng nhập chung chỉ có đăng nhập demo. Đã cho form chung đăng nhập backend thật khi chọn điều phối; logout trở về form chung. UI24 chạy desktop/mobile, toàn bộ 48 ca retest PASS. Không dùng mật khẩu demo cố định ở FE cho tài khoản tổng đài.
 
 ## Trạng thái bàn giao
 

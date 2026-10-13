@@ -50,6 +50,28 @@ test("đăng nhập sai hiển thị lỗi và đăng nhập đúng có CSRF", a
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click(); await expect(page.locator("main").getByRole("alert")).toContainText("không đúng");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click(); await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
 });
+test("ô Điều Phối Viên đăng nhập trên form chung rồi mở T24", async ({ page }) => {
+  let authenticated = false;
+  await mock(page, async (route, path) => {
+    if (path === "/api/auth/me" && !authenticated) { await respond(route, { code: "AUTH_REQUIRED" }, 401); return true; }
+    if (path === "/api/auth/login") {
+      expect(route.request().postDataJSON()).toEqual({ username: "demo_dispatcher", password: "matkhau" });
+      authenticated = true;
+      await respond(route, user);
+      return true;
+    }
+  });
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Điều Phối Viên: vào bàn điều phối T24" }).click();
+  await expect(page.getByRole("heading", { name: "Đăng nhập điều phối viên" })).toBeVisible();
+  await expect(page.getByLabel("Tên đăng nhập tổng đài")).toHaveValue("demo_dispatcher");
+  await page.getByLabel("Mật khẩu").fill("matkhau");
+  await page.getByRole("button", { name: "Đăng nhập vào hệ thống" }).click();
+  await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Điều Phối Viên: vào bàn điều phối T24" }).click();
+  await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible();
+});
 test("lọc đơn và phân trang gửi đúng query; ngày sai không gửi", async ({ page }) => {
   const requests: URL[] = [];
   await mock(page, async (route, path) => { if (path === "/api/orders") { const url = new URL(route.request().url()); requests.push(url); await respond(route, { ...pageOf([order()], Number(url.searchParams.get("page")), 2), totalElements: 11, summary: { tongSoDon: 11, tongCuoc: "605000.00" } }); return true; } });
@@ -148,7 +170,7 @@ test("proxy chuyển cookie HttpOnly, CSRF sau đổi session và logout thật"
   // No route interception: goes through Next rewrites to a local HTTP protocol fixture.
   await page.goto("/dispatcher/sign-in"); await page.getByLabel("Tên đăng nhập").fill("fixture-dispatcher"); await page.getByLabel("Mật khẩu").fill("fixture-password"); await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Bàn điều phối" })).toBeVisible(); const session = (await context.cookies()).find((cookie) => cookie.name === "JSESSIONID"); expect(session?.httpOnly).toBe(true); expect(session?.value).toBe("fixture-auth");
-  await page.getByRole("button", { name: "Đăng xuất", exact: true }).click(); await expect(page.getByRole("heading", { name: "Đăng nhập tổng đài" })).toBeVisible(); expect((await context.cookies()).find((cookie) => cookie.name === "JSESSIONID")).toBeUndefined();
+  await page.getByRole("button", { name: "Đăng xuất", exact: true }).click(); await expect(page.getByRole("heading", { name: "Đăng nhập điều phối viên" })).toBeVisible(); expect((await context.cookies()).find((cookie) => cookie.name === "JSESSIONID")).toBeUndefined();
 });
 test("phản hồi bộ lọc cũ không ghi đè bộ lọc mới", async ({ page }) => {
   await mock(page, async (route, path) => {

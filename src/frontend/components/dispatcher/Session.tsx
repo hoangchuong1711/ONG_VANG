@@ -31,7 +31,7 @@ export function DispatchSession({ children }: { children: React.ReactNode }) {
   }, [retry]);
   async function logout() {
     await dispatchApi.logout();
-    setUser(null); setFailure(undefined); router.replace("/dispatcher/sign-in");
+    setUser(null); setFailure(undefined); router.replace("/login?role=dispatcher");
   }
   const signIn = pathname === "/dispatcher/sign-in";
   const authFailure = failure instanceof ApiError && ["AUTH_REQUIRED", "SESSION_EXPIRED", "FORBIDDEN"].includes(failure.code);
@@ -42,7 +42,7 @@ export function DispatchSession({ children }: { children: React.ReactNode }) {
         <h1 className="text-2xl font-bold">{user || (failure instanceof ApiError && failure.code === "FORBIDDEN") ? "Không có quyền điều phối" : "Đăng nhập điều phối"}</h1>
         <p role="alert">{user ? "Khu vực này dành cho tài khoản tổng đài." : failure ? errorMessage(failure) : "Vui lòng đăng nhập tài khoản tổng đài."}</p>
         {!user && failure && !authFailure ? <button className="dispatch-button" onClick={() => setRetry((value) => value + 1)}>Thử kết nối lại</button> :
-          <Link className="dispatch-button inline-block" href="/dispatcher/sign-in">Đăng nhập tổng đài</Link>}
+          <Link className="dispatch-button inline-block" href="/login?role=dispatcher">Đăng nhập tổng đài</Link>}
       </main>}
   </Context.Provider>;
 }
