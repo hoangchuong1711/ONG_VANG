@@ -1,0 +1,562 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { DriverNavbar } from "@/components/layout/DriverNavbar";
+import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { OrderStatus } from "@/lib/types";
+import { useDemoStore, updateDemoState, toggleDemoDriverOnline } from "@/lib/demo-store";
+import { formatVND } from "@/lib/utils";
+import { useToast } from "@/components/ui/Toast";
+
+const INCIDENT_TYPES = [
+  "Người nhận không nghe máy (đã gọi 3 cuộc)",
+  "Khách hẹn đổi giờ giao sang thời điểm khác",
+  "Sai địa chỉ giao hàng / Không tìm thấy số nhà",
+  "Người nhận từ chối nhận hàng do đổi ý",
+  "Bưu kiện bị rách hoặc có dấu hiệu móp méo",
+];
+
+export default function DriverOrderExecutionPage() {
+  const { showToast } = useToast();
+  const params = useParams();
+  const orderId = params?.id as string;
+  const { state: demo, ready } = useDemoStore();
+  const order = demo.orders.find((item) => item.id === orderId);
+  const currentDriver = demo.drivers.find((item) => item.id === "TX-DEMO-1");
+  const isOnline = currentDriver?.status !== "OFFLINE";
+
+  // Modal Báo sự cố (TX-04 / UC-13)
+  const [isIncidentModalOpen, setIsIncidentModalOpen] = useState<boolean>(false);
+  const [incidentType, setIncidentType] = useState<string>(INCIDENT_TYPES[0]);
+  const [incidentNote, setIncidentNote] = useState<string>("");
+  const incidentLogs = demo.incidents.filter((incident) => incident.orderId === orderId)
+    .map((incident) => incident.type + ": " + incident.note);
+
+  // Modal Thu tiền mặt COD (TX-05 / UC-08)
+  const [isCashCollectModalOpen, setIsCashCollectModalOpen] = useState<boolean>(false);
+  const [collectedAmount, setCollectedAmount] = useState<number>(order?.totalFee ?? 0);
+
+  // Tiến trình chuyển bước (DA_GAN -> DA_LAY_HANG -> DANG_GIAO -> HOAN_TAT)
+  const handleNextStep = () => {
+    if (!order) return;
+    if (order.status === "DA_GAN") {
+      updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
+        item.id === order.id ? { ...item, status: "DA_LAY_HANG", statusText: "Đã lấy hàng từ người gửi" } : item) }));
+      showToast("Xác nhận: Đã lấy hàng thành công từ người gửi!", "success");
+    } else if (order.status === "DA_LAY_HANG") {
+      updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
+        item.id === order.id ? { ...item, status: "DANG_GIAO", statusText: "Đang trên đường giao đến người nhận" } : item) }));
+      showToast("Bắt đầu di chuyển giao kiện hàng cho người nhận!", "info");
+    } else if (order.status === "DANG_GIAO") {
+      if (order.paymentMethod === "TIEN_MAT" && !order.paid) {
+        setCollectedAmount(order.totalFee);
+        setIsCashCollectModalOpen(true);
+      } else {
+        completeOrder();
+      }
+    }
+  };
+
+  const completeOrder = (cashCollected = false) => {
+    if (!order) return;
+    updateDemoState((previous) => ({ ...previous,
+      orders: previous.orders.map((item) => item.id === order.id ? {
+        ...item, status: item.paid || cashCollected ? "HOAN_TAT" : "CHUA_THANH_TOAN",
+        statusText: item.paid || cashCollected ? "Đã giao hàng thành công" : "Hoàn tất - Chờ thanh toán",
+        paid: item.paid || cashCollected, paymentMethod: cashCollected ? "TIEN_MAT" : item.paymentMethod,
+      } : item),
+      drivers: previous.drivers.map((driver) => driver.id === currentDriver?.id ? {
+        ...driver, status: "ONLINE_IDLE",
+        codCashHolding: driver.codCashHolding + (cashCollected ? collectedAmount : 0),
+      } : driver),
+    }));
+    showToast("Chúc mừng! Cuốc xe đã hoàn thành thành công.", "success");
+  };
+
+  const handleConfirmCashCollection = () => {
+    if (!order || collectedAmount !== order.totalFee) {
+      showToast("Số tiền xác nhận cần khớp với cước đơn hàng.", "error");
+      return;
+    }
+    setIsCashCollectModalOpen(false);
+    completeOrder(true);
+    showToast(`Đã xác nhận thu tiền mặt ${formatVND(collectedAmount)} thành công!`, "success");
+  };
+
+  const handleSubmitIncident = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (order) updateDemoState((previous) => ({ ...previous,
+      incidents: [{ id: crypto.randomUUID(), orderId: order.id, driverId: currentDriver?.id ?? "",
+        driverName: currentDriver?.name ?? "", driverPhone: currentDriver?.phone ?? "",
+        type: incidentType, note: incidentNote.trim() || "Đã gọi điện báo tổng đài",
+        reportedAt: new Date().toLocaleString("vi-VN"), status: "CHO_XU_LY", assignee: "", resolution: "" }, ...previous.incidents],
+      orders: previous.orders.map((item) => item.id === order.id ? { ...item,
+        incident: { type: incidentType, note: incidentNote.trim() || "Đã gọi điện báo tổng đài", reportedAt: new Date().toLocaleString("vi-VN") },
+      } : item),
+    }));
+    setIsIncidentModalOpen(false);
+    setIncidentNote("");
+    showToast("Đã gửi báo cáo sự cố về tổng đài điều phối viên!", "error");
+  };
+
+  if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} /><main className="p-6">Đang tải đơn hàng...</main></div>;
+  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} /><main className="p-6"><h1 className="text-xl font-bold">Không tìm thấy đơn hàng</h1><Link href="/driver" className="text-amber-800 underline">Về trang tài xế</Link></main></div>;
+
+  // Xác định bước hiện tại của timeline tài xế (1 -> 4)
+  const getStepNumber = (st: OrderStatus): number => {
+    switch (st) {
+      case "CHO_GAN":
+      case "DA_GAN":
+        return 1;
+      case "DA_LAY_HANG":
+        return 2;
+      case "DANG_GIAO":
+        return 3;
+      case "HOAN_TAT":
+      case "CHUA_THANH_TOAN":
+        return 4;
+      default:
+        return 1;
+    }
+  };
+
+  const currentStep = getStepNumber(order.status);
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
+      <DriverNavbar isOnline={isOnline} onToggleOnline={() => toggleDemoDriverOnline("TX-DEMO-1")} />
+
+      <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
+        {/* Top Header & Breadcrumb */}
+        <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+          <Link
+            href="/driver"
+            className="text-xs font-semibold text-stone-500 hover:text-stone-900 flex items-center gap-1"
+          >
+            ← Quay lại Buồng lái
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-sm font-extrabold text-stone-900">
+              {order.id}
+            </span>
+            <Badge status={order.status} />
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* TIMELINE TIẾN TRÌNH 4 BƯỚC CỦA TÀI XẾ                                     */}
+        {/* ========================================================================= */}
+        <section aria-label="Tiến trình giao hàng" className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between text-xs font-bold text-stone-500">
+            <span>Tiến trình cuốc xe</span>
+            <span className="text-amber-600">Bước {currentStep}/4</span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+            {[
+              { step: 1, label: "Được gán" },
+              { step: 2, label: "Đã lấy hàng" },
+              { step: 3, label: "Đang giao" },
+              { step: 4, label: "Hoàn tất" },
+            ].map((s) => {
+              const isPast = currentStep > s.step;
+              const isCurrent = currentStep === s.step;
+              return (
+                <div key={s.step} className="space-y-1">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      isPast
+                        ? "bg-amber-500"
+                        : isCurrent
+                        ? "bg-amber-500 animate-pulse"
+                        : "bg-stone-200"
+                    }`}
+                  />
+                  <span
+                    className={`block text-[10px] sm:text-xs text-center font-semibold leading-tight ${
+                      isCurrent
+                        ? "text-stone-950 font-extrabold"
+                        : isPast
+                        ? "text-amber-800"
+                        : "text-stone-400"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* THÔNG TIN CHI TIẾT 2 CHẶNG (LẤY HÀNG & GIAO HÀNG) */}
+        <div className="space-y-4">
+          {/* CHẶNG 1: ĐIỂM LẤY HÀNG (NGƯỜI GỬI) */}
+          <section
+            className={`bg-white border rounded-2xl p-5 shadow-2xs space-y-3.5 transition-all ${
+              currentStep === 1
+                ? "border-amber-400 ring-2 ring-amber-200/50 bg-amber-50/10"
+                : "border-stone-200"
+            }`}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-stone-500" />
+                <h3 className="font-extrabold text-stone-900 text-sm uppercase tracking-wide">
+                  Chặng 1: Điểm lấy hàng (Người gửi)
+                </h3>
+              </div>
+              {currentStep === 1 && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
+                  Đang đến lấy
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-extrabold text-stone-900">
+                {order.sender.street}, {order.sender.district}, {order.sender.city}
+              </div>
+              <div className="text-xs text-stone-600">
+                Người gửi: <strong>{order.sender.name}</strong>
+              </div>
+            </div>
+
+            {/* Quick Actions (Call + Open Maps) */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <a
+                href={`tel:${order.sender.phone}`}
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 text-xs font-bold transition-colors"
+              >
+                <span>📞</span>
+                <span>Gọi người gửi</span>
+              </a>
+
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(
+                  order.sender.street + ", " + order.sender.district + ", TP.HCM"
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-800 text-xs font-semibold transition-colors"
+              >
+                <span>🗺️</span>
+                <span>Mở bản đồ Maps</span>
+              </a>
+            </div>
+          </section>
+
+          {/* CHẶNG 2: ĐIỂM GIAO HÀNG (NGƯỜI NHẬN) */}
+          <section
+            className={`bg-white border rounded-2xl p-5 shadow-2xs space-y-3.5 transition-all ${
+              currentStep >= 2 && currentStep < 4
+                ? "border-amber-400 ring-2 ring-amber-200/50 bg-amber-50/10"
+                : "border-stone-200"
+            }`}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-amber-500 ring-2 ring-amber-200" />
+                <h3 className="font-extrabold text-stone-900 text-sm uppercase tracking-wide">
+                  Chặng 2: Điểm giao hàng (Người nhận)
+                </h3>
+              </div>
+              {currentStep === 3 && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px] font-bold">
+                  Đang giao đến
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-extrabold text-stone-900">
+                {order.receiver.street}, {order.receiver.district}, {order.receiver.city}
+              </div>
+              <div className="text-xs text-stone-600">
+                Người nhận: <strong>{order.receiver.name}</strong>
+              </div>
+              <div className="text-xs text-stone-500 bg-stone-50 p-2.5 rounded-xl border border-stone-100">
+                📦 Hàng hóa: <strong>{order.packageType}</strong> ({order.packageWeightKg} kg)
+              </div>
+            </div>
+
+            {/* Quick Actions (Call + Open Maps) */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <a
+                href={`tel:${order.receiver.phone}`}
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 text-xs font-bold transition-colors"
+              >
+                <span>📞</span>
+                <span>Gọi người nhận</span>
+              </a>
+
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(
+                  order.receiver.street + ", " + order.receiver.district + ", TP.HCM"
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-800 text-xs font-semibold transition-colors"
+              >
+                <span>🗺️</span>
+                <span>Mở bản đồ Maps</span>
+              </a>
+            </div>
+          </section>
+
+          {/* CƯỚC PHÍ & PHƯƠNG THỨC THU */}
+          <section className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                Cước phí & Hình thức thu
+              </span>
+              <div className="text-xl sm:text-2xl font-black text-amber-600">
+                {formatVND(order.totalFee)}
+              </div>
+              <span className="text-xs text-stone-600 font-semibold">
+                {order.paymentMethod === "TIEN_MAT"
+                  ? "💵 Thu tiền mặt trực tiếp khi giao (COD)"
+                  : "💳 Khách đã thanh toán VNPay Online"}
+              </span>
+            </div>
+
+            {/* Incident Trigger Button (Only available while delivering) */}
+            {order.status === "DANG_GIAO" && (
+              <button
+                type="button"
+                onClick={() => setIsIncidentModalOpen(true)}
+                className="px-3 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition-colors"
+              >
+                ⚠️ Báo sự cố
+              </button>
+            )}
+          </section>
+
+          {/* INCIDENT LOGS IF ANY */}
+          {incidentLogs.length > 0 && (
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-900 space-y-1">
+              <span className="font-bold block">Nhật ký sự cố đã ghi nhận:</span>
+              {incidentLogs.map((log, idx) => (
+                <div key={idx} className="font-mono text-[11px] text-red-800">
+                  {log}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* BIG BOTTOM COCKPIT ACTION BUTTON (THAO TÁC 1-CHẠM CỠ LỚN >= 56PX)          */}
+        {/* ========================================================================= */}
+        <div className="pt-2">
+          {order.status === "DA_GAN" && (
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleNextStep}
+              className="h-14 sm:h-15 text-base font-extrabold shadow-lg"
+            >
+              1. XÁC NHẬN ĐÃ ĐẾN & LẤY HÀNG ➔
+            </Button>
+          )}
+
+          {order.status === "DA_LAY_HANG" && (
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleNextStep}
+              className="h-14 sm:h-15 text-base font-extrabold bg-amber-500 hover:bg-amber-600 shadow-lg text-stone-950"
+            >
+              2. BẮT ĐẦU ĐI GIAO CHO NGƯỜI NHẬN ➔
+            </Button>
+          )}
+
+          {order.status === "DANG_GIAO" && (
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleNextStep}
+              className="h-14 sm:h-15 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"
+            >
+              3. XÁC NHẬN GIAO THÀNH CÔNG {order.paymentMethod === "TIEN_MAT" ? "& THU TIỀN" : ""} ➔
+            </Button>
+          )}
+
+          {order.status === "HOAN_TAT" && (
+            <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-5 text-center space-y-3 shadow-xs">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center text-xl font-bold">
+                ✓
+              </div>
+              <h3 className="text-base font-black text-emerald-950">
+                Cuốc xe đã hoàn tất thành công!
+              </h3>
+              <p className="text-xs text-emerald-800">
+                Cước phí <strong>{formatVND(order.totalFee)}</strong> đã được ghi nhận vào ví thu nhập của bạn.
+              </p>
+              <div className="pt-1">
+                <Link href="/driver" className="block w-full">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    fullWidth
+                  >
+                    Quay về buồng lái nhận cuốc mới
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* ========================================================================= */}
+      {/* MODAL BÁO CÁO SỰ CỐ GIAO HÀNG (TX-04 / UC-13)                             */}
+      {/* ========================================================================= */}
+      {isIncidentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn">
+          <form
+            onSubmit={handleSubmitIncident}
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 animate-scaleUp"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <h3 className="text-base font-extrabold text-stone-900 flex items-center gap-2">
+                <span>⚠️</span>
+                <span>Báo cáo sự cố giao hàng</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsIncidentModalOpen(false)}
+                className="text-stone-400 hover:text-stone-700 p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-stone-600">
+                Loại sự cố gặp phải:
+              </label>
+              {INCIDENT_TYPES.map((type) => (
+                <label
+                  key={type}
+                  className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition-colors ${
+                    incidentType === type
+                      ? "border-red-400 bg-red-50 text-red-950 font-semibold"
+                      : "border-stone-200 hover:bg-stone-50 text-stone-700"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="incidentType"
+                    checked={incidentType === type}
+                    onChange={() => setIncidentType(type)}
+                    className="mt-0.5 text-red-600 focus:ring-red-500"
+                  />
+                  <span>{type}</span>
+                </label>
+              ))}
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-600 mb-1">
+                Ghi chú bổ sung cho điều phối viên:
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Ví dụ: Gọi 3 cuộc lúc 14:35, 14:40, 14:45 chuông reo không ai nhấc máy..."
+                value={incidentNote}
+                onChange={(e) => setIncidentNote(e.target.value)}
+                maxLength={500}
+                className="w-full p-2.5 rounded-xl border border-stone-200 text-xs focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setIsIncidentModalOpen(false)}
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                type="submit"
+              >
+                Gửi báo cáo sự cố
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL XÁC NHẬN THU TIỀN MẶT COD (TX-05 / UC-08)                           */}
+      {/* ========================================================================= */}
+      {isCashCollectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 animate-scaleUp">
+            <div className="text-center space-y-1">
+              <span className="text-3xl">💵</span>
+              <h3 className="text-lg font-black text-stone-900">
+                Xác nhận thu tiền mặt COD
+              </h3>
+              <p className="text-xs text-stone-500">
+                Vui lòng thu đúng số tiền cước từ người nhận trước khi hoàn tất cuốc xe.
+              </p>
+            </div>
+
+            <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-center space-y-1">
+              <span className="text-xs text-amber-800 font-bold block uppercase tracking-wider">
+                Số tiền cần thu
+              </span>
+              <div className="text-3xl font-black text-amber-950">
+                {formatVND(order.totalFee)}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-600 mb-1">
+                Số tiền thực tế đã nhận (đ):
+              </label>
+              <input
+                type="number"
+                value={collectedAmount}
+                onChange={(e) => setCollectedAmount(Number(e.target.value))}
+                className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-base font-mono font-bold focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setIsCashCollectModalOpen(false)}
+              >
+                Chưa thu được
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleConfirmCashCollection}
+              >
+                ĐÃ THU ĐỦ TIỀN MẶT ✓
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <DriverBottomNav />
+    </div>
+  );
+}

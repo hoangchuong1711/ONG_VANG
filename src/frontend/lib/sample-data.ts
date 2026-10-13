@@ -2,7 +2,7 @@ import { OrderItem, DriverItem, IncidentItem } from "./types";
 
 export const SAMPLE_ORDERS: OrderItem[] = [
   {
-    id: "DH-2025-001235",
+    id: "DH-2026-001235",
     sender: {
       name: "Nguyễn Thu Hà",
       phone: "0900000001",
@@ -45,7 +45,7 @@ export const SAMPLE_ORDERS: OrderItem[] = [
     },
   },
   {
-    id: "DH-2025-001230",
+    id: "DH-2026-001230",
     sender: {
       name: "Nguyễn Thu Hà",
       phone: "0900000001",
@@ -81,7 +81,7 @@ export const SAMPLE_ORDERS: OrderItem[] = [
     },
   },
   {
-    id: "DH-2025-001236",
+    id: "DH-2026-001236",
     sender: {
       name: "Nguyễn Thu Hà",
       phone: "0900000001",
@@ -107,11 +107,11 @@ export const SAMPLE_ORDERS: OrderItem[] = [
     statusText: "Chờ gán tài xế",
     createdAt: "Vừa xong (11:00)",
     createdTimestamp: Date.now() - 2 * 60 * 1000, // 2 phút trước (vẫn trong hạn 300s hủy)
-    paid: true,
+    paid: false,
     paymentMethod: "TIEN_MAT",
   },
   {
-    id: "DH-2025-001228",
+    id: "DH-2026-001228",
     sender: {
       name: "Nguyễn Thu Hà",
       phone: "0900000001",
@@ -148,7 +148,7 @@ export const SAMPLE_ORDERS: OrderItem[] = [
     },
   },
   {
-    id: "DH-2025-001237",
+    id: "DH-2026-001237",
     sender: {
       name: "Phan Thanh Tùng",
       phone: "0934567890",
@@ -255,8 +255,8 @@ export const SAMPLE_DRIVERS: DriverItem[] = [
 
 export const SAMPLE_INCIDENTS: IncidentItem[] = [
   {
-    id: "SC-2025-001",
-    orderId: "DH-2025-001235",
+    id: "SC-2026-001",
+    orderId: "DH-2026-001235",
     driverId: "TX-DEMO-3",
     driverName: "Nguyễn Quốc Bảo",
     driverPhone: "0800000003",

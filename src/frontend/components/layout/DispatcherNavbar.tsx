@@ -31,10 +31,10 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
   }, []);
 
   const navLinks = [
-    { href: "/dieu-phoi", label: "Bàn điều phối" },
-    { href: "/dieu-phoi/tao-don", label: "Hotline tạo đơn" },
-    { href: "/dieu-phoi/doi-xe", label: "Đội xe & Tài xế" },
-    { href: "/dieu-phoi/bao-cao", label: "Báo cáo & Đối soát" },
+    { href: "/dispatcher", label: "Bàn điều phối" },
+    { href: "/dispatcher/create-order", label: "Hotline tạo đơn" },
+    { href: "/dispatcher/fleet", label: "Đội xe & Tài xế" },
+    { href: "/dispatcher/reports", label: "Báo cáo & Đối soát" },
   ];
 
   return (
@@ -42,7 +42,7 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
       <div className="max-w-[1600px] mx-auto px-3 sm:px-5 lg:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Brand identity */}
         <div className="flex items-center gap-2.5 shrink-0">
-          <Link href="/dieu-phoi" className="flex items-center gap-2 group">
+          <Link href="/dispatcher" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-stone-900 font-extrabold text-sm shadow-sm transition-transform duration-200 group-hover:scale-105 shrink-0">
               OV
             </div>
@@ -92,7 +92,7 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Pending Queue Counter */}
           <Link
-            href="/dieu-phoi"
+            href="/dispatcher"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 text-xs transition-colors whitespace-nowrap shrink-0"
             title="Đơn hàng chờ gán tài xế"
           >
@@ -103,7 +103,7 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
           {/* Active Incident Counter */}
           {incidentCount > 0 && (
             <Link
-              href="/dieu-phoi"
+              href="/dispatcher"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold hover:bg-rose-100 transition-colors whitespace-nowrap shrink-0"
               title="Sự cố đang chờ điều phối can thiệp"
             >
@@ -113,38 +113,32 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
             </Link>
           )}
 
-          {/* Role Switchers */}
-          <div className="hidden xl:flex items-center gap-1 pl-2 border-l border-stone-200 shrink-0">
-            <Link
-              href="/tai-xe"
-              className="px-2 py-1 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 hover:text-stone-900 text-xs font-medium transition-colors whitespace-nowrap"
-            >
-              Cổng Tài xế
-            </Link>
-            <Link
-              href="/"
-              className="px-2 py-1 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 hover:text-stone-900 text-xs font-medium transition-colors whitespace-nowrap"
-            >
-              Cổng Khách
-            </Link>
-          </div>
+
 
           {/* Operator Profile */}
-          <div className="flex items-center gap-2 pl-1 sm:pl-2 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-300 flex items-center justify-center text-xs font-extrabold text-amber-900 shrink-0" title="Trần Ngọc Huy - Tổng đài viên">
+          <Link
+            href="/dispatcher/account"
+            aria-label="Mở hồ sơ điều phối viên"
+            aria-current={pathname === "/dispatcher/account" ? "page" : undefined}
+            className={`flex items-center gap-2 rounded-xl border px-1.5 py-1 shrink-0 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 ${
+              pathname === "/dispatcher/account" ? "border-amber-300 bg-amber-50" : "border-transparent hover:border-stone-200 hover:bg-stone-50"
+            }`}
+          >
+            <span className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-300 flex items-center justify-center text-xs font-extrabold text-amber-900 shrink-0">
               ĐP
-            </div>
-            <div className="hidden 2xl:flex flex-col text-left text-xs leading-none whitespace-nowrap">
+            </span>
+            <span className="hidden lg:block text-xs font-bold text-stone-700 2xl:hidden">Tài khoản</span>
+            <span className="hidden 2xl:flex flex-col text-left text-xs leading-none whitespace-nowrap">
               <span className="font-bold text-stone-900">Trần Ngọc Huy</span>
-              <span className="text-[10px] text-stone-500 mt-0.5">Tổng đài viên</span>
-            </div>
-          </div>
+              <span className="text-[10px] text-stone-500 mt-0.5">Tài khoản điều phối</span>
+            </span>
+          </Link>
         </div>
       </div>
 
       {/* Mobile Sub-Navigation */}
       <div className="md:hidden flex items-center justify-around px-2 py-2 bg-stone-50 border-t border-stone-200 text-xs overflow-x-auto">
-        {navLinks.map((link) => {
+        {[...navLinks, { href: "/dispatcher/account", label: "Tài khoản" }].map((link) => {
           const isActive = pathname === link.href;
           return (
             <Link
