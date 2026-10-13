@@ -20,7 +20,6 @@ import com.miniongvang.entity.enums.OrderStatus;
 import com.miniongvang.entity.enums.MembershipTier;
 import com.miniongvang.entity.enums.PolicyStatus;
 import com.miniongvang.integration.FakeRouteProvider;
-import com.miniongvang.integration.RouteFailure;
 import com.miniongvang.seed.DesignV1DemoSeeder;
 import com.miniongvang.service.AuthService;
 import com.miniongvang.service.CustomerService;
@@ -546,7 +545,8 @@ class DesignV1IntegrationTest {
         var replayService = new OrderService(db.entityManagerFactory(), unavailableRoute,
                 Clock.fixed(start.plusSeconds(301), ZoneOffset.UTC));
         assertEquals(created, replayService.create(customer(1), key, request));
-        assertThrows(RouteFailure.class, () -> replayService.create(customer(1), UUID.randomUUID().toString(), request));
+        assertEquals("QUOTE_EXPIRED", assertThrows(OrderService.Conflict.class,
+                () -> replayService.create(customer(1), UUID.randomUUID().toString(), request)).getMessage());
     }
 
     @Test void failedIdempotencyWriteRollsBackWholeOrderAggregate() throws Exception {
