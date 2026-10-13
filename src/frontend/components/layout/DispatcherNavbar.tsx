@@ -116,21 +116,29 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
 
 
           {/* Operator Profile */}
-          <div className="flex items-center gap-2 pl-1 sm:pl-2 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-300 flex items-center justify-center text-xs font-extrabold text-amber-900 shrink-0" title="Trần Ngọc Huy - Tổng đài viên">
+          <Link
+            href="/dispatcher/account"
+            aria-label="Mở hồ sơ điều phối viên"
+            aria-current={pathname === "/dispatcher/account" ? "page" : undefined}
+            className={`flex items-center gap-2 rounded-xl border px-1.5 py-1 shrink-0 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 ${
+              pathname === "/dispatcher/account" ? "border-amber-300 bg-amber-50" : "border-transparent hover:border-stone-200 hover:bg-stone-50"
+            }`}
+          >
+            <span className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-300 flex items-center justify-center text-xs font-extrabold text-amber-900 shrink-0">
               ĐP
-            </div>
-            <div className="hidden 2xl:flex flex-col text-left text-xs leading-none whitespace-nowrap">
+            </span>
+            <span className="hidden lg:block text-xs font-bold text-stone-700 2xl:hidden">Tài khoản</span>
+            <span className="hidden 2xl:flex flex-col text-left text-xs leading-none whitespace-nowrap">
               <span className="font-bold text-stone-900">Trần Ngọc Huy</span>
-              <span className="text-[10px] text-stone-500 mt-0.5">Tổng đài viên</span>
-            </div>
-          </div>
+              <span className="text-[10px] text-stone-500 mt-0.5">Tài khoản điều phối</span>
+            </span>
+          </Link>
         </div>
       </div>
 
       {/* Mobile Sub-Navigation */}
       <div className="md:hidden flex items-center justify-around px-2 py-2 bg-stone-50 border-t border-stone-200 text-xs overflow-x-auto">
-        {navLinks.map((link) => {
+        {[...navLinks, { href: "/dispatcher/account", label: "Tài khoản" }].map((link) => {
           const isActive = pathname === link.href;
           return (
             <Link

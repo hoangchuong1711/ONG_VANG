@@ -3,25 +3,40 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import {
+  ChartBar,
+  CreditCard,
+  GearSix,
+  Motorcycle,
+  Package,
+  SquaresFour,
+  Tag,
+  Truck,
+  UserCircle,
+  Users,
+  UsersThree,
+  WarningCircle,
+} from "@phosphor-icons/react";
 import { AdminProvider, useAdmin } from "./AdminProvider";
 
 const groups = [
   { label: "Điều hành", items: [
-    { label: "Tổng quan", href: "/admin", mark: "01" },
-    { label: "Đơn hàng", href: "/admin/orders", mark: "02" },
-    { label: "Tài xế", href: "/admin/drivers", mark: "03" },
-    { label: "Phương tiện", href: "/admin/vehicles", mark: "04" },
-    { label: "Sự cố", href: "/admin/incidents", mark: "05" },
+    { label: "Tổng quan", href: "/admin", icon: SquaresFour },
+    { label: "Đơn hàng", href: "/admin/orders", icon: Package },
+    { label: "Tài xế", href: "/admin/drivers", icon: Motorcycle },
+    { label: "Phương tiện", href: "/admin/vehicles", icon: Truck },
+    { label: "Sự cố", href: "/admin/incidents", icon: WarningCircle },
   ] },
   { label: "Kinh doanh", items: [
-    { label: "Khách hàng", href: "/admin/customers", mark: "06" },
-    { label: "Thanh toán", href: "/admin/payments", mark: "07" },
-    { label: "Báo cáo", href: "/admin/reports", mark: "08" },
-    { label: "Biểu phí", href: "/admin/pricing", mark: "09" },
+    { label: "Khách hàng", href: "/admin/customers", icon: UsersThree },
+    { label: "Thanh toán", href: "/admin/payments", icon: CreditCard },
+    { label: "Báo cáo", href: "/admin/reports", icon: ChartBar },
+    { label: "Biểu phí", href: "/admin/pricing", icon: Tag },
   ] },
   { label: "Hệ thống", items: [
-    { label: "Nhân sự & quyền", href: "/admin/staff", mark: "10" },
-    { label: "Cài đặt", href: "/admin/settings", mark: "11" },
+    { label: "Nhân sự & quyền", href: "/admin/staff", icon: Users },
+    { label: "Cài đặt", href: "/admin/settings", icon: GearSix },
+    { label: "Tài khoản", href: "/admin/account", icon: UserCircle },
   ] },
 ];
 
@@ -48,17 +63,17 @@ function ShellContent({ children }: { children: React.ReactNode }) {
                 key={item.label} href={item.href} aria-current={active ? "page" : undefined}
                 onClick={() => setMobileOpen(false)}
                 className={`admin-nav-item ${active ? "is-active" : ""}`}
-              ><span className="admin-nav-mark">{item.mark}</span><span>{item.label}</span>
+              ><item.icon className="admin-nav-icon" size={20} weight={active ? "bold" : "regular"} aria-hidden="true" /><span>{item.label}</span>
                 {item.label === "Đơn hàng" && pending > 0 && <span className="admin-nav-count">{pending}</span>}
               </Link> : null;
             })}
           </nav>
         </div>)}
       </div>
-      <div className="admin-sidebar-bottom">
+      <Link href="/admin/account" className="admin-sidebar-bottom" aria-label="Mở hồ sơ quản trị viên" aria-current={pathname === "/admin/account" ? "page" : undefined} onClick={() => setMobileOpen(false)}>
         <span className="admin-avatar">CĐ</span>
         <span><strong>Chủ đội xe</strong><small>Bản xem trước giao diện</small></span>
-      </div>
+      </Link>
     </aside>
     {mobileOpen && <button className="admin-scrim" aria-label="Đóng menu" onClick={() => setMobileOpen(false)} />}
     <div className="admin-workspace">
