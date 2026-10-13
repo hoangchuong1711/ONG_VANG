@@ -34,10 +34,11 @@ export function DispatchSession({ children }: { children: React.ReactNode }) {
     setUser(null); setFailure(undefined); router.replace("/login?role=dispatcher");
   }
   const signIn = pathname === "/dispatcher/sign-in";
+  const preview = pathname === "/dispatcher/preview";
   const authFailure = failure instanceof ApiError && ["AUTH_REQUIRED", "SESSION_EXPIRED", "FORBIDDEN"].includes(failure.code);
   return <Context.Provider value={{ user, setUser, logout }}>
     {!checked ? <p role="status" className="p-8">Đang kiểm tra phiên đăng nhập…</p> :
-      signIn || user?.vaiTro === "TONG_DAI" ? children :
+      signIn || preview || user?.vaiTro === "TONG_DAI" ? children :
       <main className="max-w-xl mx-auto my-12 p-6 rounded-2xl border border-stone-200 bg-white space-y-4">
         <h1 className="text-2xl font-bold">{user || (failure instanceof ApiError && failure.code === "FORBIDDEN") ? "Không có quyền điều phối" : "Đăng nhập điều phối"}</h1>
         <p role="alert">{user ? "Khu vực này dành cho tài khoản tổng đài." : failure ? errorMessage(failure) : "Vui lòng đăng nhập tài khoản tổng đài."}</p>

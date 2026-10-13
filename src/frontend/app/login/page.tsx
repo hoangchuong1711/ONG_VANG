@@ -18,7 +18,7 @@ function AuthContent() {
   const usernameInput = useRef<HTMLInputElement>(null);
 
   // Form states
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(searchParams.get("role") === "dispatcher" ? "demo_dispatcher" : "");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -369,12 +369,7 @@ function AuthContent() {
                     if (user.vaiTro === "TONG_DAI") { router.push("/dispatcher"); return; }
                   } catch { /* An unauthenticated visitor uses the shared login form below. */ }
                   finally { loginLock.current = false; setLoadingRole(null); }
-                  setTab("LOGIN");
-                  setDispatcherMode(true);
-                  setPhone("demo_dispatcher");
-                  setPassword("");
-                  setErrorMessage("");
-                  usernameInput.current?.focus();
+                  router.push("/dispatcher/preview");
                 }}
                 aria-label="Điều Phối Viên: vào bàn điều phối T24"
                 title="Vào Bàn Điều phối"

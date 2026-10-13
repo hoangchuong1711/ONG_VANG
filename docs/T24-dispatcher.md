@@ -83,7 +83,7 @@ export API_PROXY_TARGET=http://127.0.0.1:8081
 npm run dev
 ```
 
-Nếu BE test đang chạy tại 18081, đổi `API_PROXY_TARGET=http://127.0.0.1:18081` trước `npm run dev`. Khi đổi biến này cần dừng FE bằng Ctrl+C và chạy lại. Từ trang chủ chọn **Đăng nhập** → **Điều Phối Viên**. Nếu trình duyệt đã có phiên tổng đài, bàn điều phối T24 hiển thị ngay; nếu chưa có phiên, form đăng nhập chung chuyển sang chế độ tổng đài và sau khi đăng nhập thật sẽ mở bàn điều phối. Dùng tài khoản TONG_DAI của DB đang kết nối. Với seed test: username `demo_dispatcher`, mật khẩu là `DEMO_PASSWORD` đã dùng khi seed. Các vai trò demo khác trên `/login` chưa cấp session backend.
+Nếu BE test đang chạy tại 18081, đổi `API_PROXY_TARGET=http://127.0.0.1:18081` trước `npm run dev`. Khi đổi biến này cần dừng FE bằng Ctrl+C và chạy lại. Từ trang chủ chọn **Đăng nhập** → **Điều Phối Viên**. Nếu trình duyệt đã có phiên tổng đài, bàn điều phối T24 dữ liệu thật hiển thị ngay. Nếu chưa có phiên, một lần bấm mở bàn điều phối **bản xem thử** tại `/dispatcher/preview` với dữ liệu mẫu; không gửi lệnh gán/hủy tới backend. Tại đó chọn **Đăng nhập tổng đài để điều phối thật** để dùng form đăng nhập chung và chuyển vào T24. Với seed test: username `demo_dispatcher`, mật khẩu là `DEMO_PASSWORD` đã dùng khi seed. Các vai trò demo khác trên `/login` chưa cấp session backend.
 
 Compose dev dùng proxy nội bộ `http://backend:8080`. Browser luôn gọi `/api` cùng origin FE để giữ cookie/session; không cần cấu hình URL backend trong browser.
 
