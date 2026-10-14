@@ -1,62 +1,47 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
-import { Button } from "@/components/ui/Button";
 import { formatVND } from "@/lib/utils";
-import { useToast } from "@/components/ui/Toast";
-import { updateDemoState, useDemoStore, toggleDemoDriverOnline } from "@/lib/demo-store";
+import { api, type Driver, type Order } from "@/lib/live-orders";
+import type { DriverEarnings } from "@/lib/finance";
 
 export default function DriverWalletPage() {
-  const { showToast } = useToast();
-  const { state: demo } = useDemoStore();
-  const driver = demo.drivers.find((item) => item.id === "TX-DEMO-1");
-  const isOnline = driver?.status !== "OFFLINE";
-  const balance = driver?.walletBalance ?? 0;
-  const codHold = driver?.codCashHolding ?? 0;
-  const cashOrders = demo.orders.filter((order) => order.driver?.id === driver?.id &&
-    order.paymentMethod === "TIEN_MAT" && order.paid && order.status === "HOAN_TAT");
-
-  // Modal rút tiền
-  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState<boolean>(false);
-  const [withdrawAmount, setWithdrawAmount] = useState<number>(500000);
-
-  // Modal nộp tiền COD
-  const [isPayCodModalOpen, setIsPayCodModalOpen] = useState<boolean>(false);
-
-  const handleWithdraw = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (withdrawAmount > balance) {
-      showToast("Số dư ví không đủ để rút số tiền này!", "error");
-      return;
-    }
-    if (withdrawAmount < 50000) return showToast("Số tiền rút tối thiểu là 50.000đ.", "error");
-    updateDemoState((previous) => ({ ...previous, drivers: previous.drivers.map((item) =>
-      item.id === driver?.id ? { ...item, walletBalance: balance - withdrawAmount } : item) }));
-    setIsWithdrawModalOpen(false);
-    showToast("Đã ghi nhận yêu cầu rút " + formatVND(withdrawAmount) + " trong demo; chưa chuyển tiền thật.", "info");
-  };
-
-  const handlePayCod = () => {
-    updateDemoState((previous) => ({ ...previous, drivers: previous.drivers.map((item) =>
-      item.id === driver?.id ? { ...item, codSettlementRequested: true } : item) }));
-    setIsPayCodModalOpen(false);
-    showToast("Đã gửi yêu cầu nộp tiền mặt. Chờ điều phối xác nhận đã nhận tiền.", "info");
-  };
+  const [driver, setDriver] = useState<Driver | null>(null);
+  const [earnings, setEarnings] = useState<DriverEarnings | null>(null);
+  const [cashOrders, setCashOrders] = useState<Order[]>([]);
+  const [error, setError] = useState("");
+  const refresh = useCallback(async () => {
+    try {
+      const [self, money, orders] = await Promise.all([
+        api<Driver>("/drivers/me"),
+        api<DriverEarnings>("/drivers/me/earnings?tuNgay=2000-01-01&denNgay=2100-01-01"),
+        api<{ items: Order[] }>("/orders?trangThai=HOAN_TAT&size=100"),
+      ]);
+      setDriver(self); setEarnings(money);
+      setCashOrders(orders.items.filter((order) => order.phuongThucThanhToan === "TIEN_MAT" && order.thanhToan.soTienConPhaiThu === "0.00"));
+      setError("");
+    } catch (cause) { setError((cause as Error).message); }
+  }, []);
+  useEffect(() => { const timer = setTimeout(() => { void refresh(); }, 0); return () => clearTimeout(timer); }, [refresh]);
+  const isOnline = driver?.trangThaiHoatDong === "ONLINE";
+  const balance = Number(earnings?.phanTaiXeDuDieuKienChiTra ?? 0);
+  const codHold = Number(earnings?.tienMatDangGiu ?? 0);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
-      <DriverNavbar isOnline={isOnline} onToggleOnline={() => toggleDemoDriverOnline("TX-DEMO-1")} />
+      <DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} />
 
       <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
+        {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
         {/* Header */}
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
             Ví tài xế & đối soát tiền mặt
           </h1>
           <p className="text-xs text-stone-500 mt-0.5">
-            Quản lý thu nhập thực nhận và số tiền COD cần nộp về công ty
+            Theo dõi thu nhập phát sinh, đủ điều kiện chi trả và tiền mặt đang giữ
           </p>
         </div>
 
@@ -65,25 +50,15 @@ export default function DriverWalletPage() {
           {/* Card 1: Số dư thu nhập khả dụng */}
           <div className="bg-stone-900 text-white rounded-2xl p-5 shadow-sm space-y-3 relative overflow-hidden">
             <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
-              Số dư ví mô phỏng
+              Thu nhập đủ điều kiện chi trả
             </span>
             <div className="text-3xl font-black">
               {formatVND(balance)}
             </div>
             <p className="text-[11px] text-stone-400">
-              Chưa kết nối ngân hàng hoặc hệ thống trả thu nhập.
+              Chưa ghi nhận chuyển khoản thực tế về ngân hàng tài xế.
             </p>
-            <div className="pt-2">
-              <Button
-                variant="primary"
-                size="sm"
-                fullWidth
-                disabled={balance === 0}
-                onClick={() => setIsWithdrawModalOpen(true)}
-              >
-                Rút tiền về tài khoản ngân hàng
-              </Button>
-            </div>
+            <p className="text-xs text-amber-300">Phát sinh: {formatVND(Number(earnings?.phanTaiXePhatSinh ?? 0))}</p>
           </div>
 
           {/* Card 2: Tiền COD tạm giữ cần nộp */}
@@ -95,21 +70,9 @@ export default function DriverWalletPage() {
               {formatVND(codHold)}
             </div>
             <p className="text-[11px] text-stone-500">
-              {driver?.codSettlementRequested ? "Đã gửi yêu cầu, đang chờ điều phối xác nhận." : "Tiền thu từ đơn đã giao, đang chờ đối soát."}
+              Tiền cước đã thu hộ và chưa được đối soát nộp COD.
             </p>
-            <p className="text-[11px] text-stone-400">Số dư mẫu ban đầu có thể gồm các đơn ngoài danh sách đang hiển thị.</p>
-            <div className="pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                fullWidth
-                disabled={codHold === 0 || driver?.codSettlementRequested}
-                onClick={() => setIsPayCodModalOpen(true)}
-                className="border-amber-500 text-amber-900 bg-amber-50/50 hover:bg-amber-100 font-bold"
-              >
-                Yêu cầu đối soát tiền mặt
-              </Button>
-            </div>
+            <p className="text-[11px] text-stone-500">Thu nhập đang chờ COD: {formatVND(Number(earnings?.thuNhapDangChoCod ?? 0))}. Điều phối viên thực hiện thanh toán COD qua Sandbox.</p>
           </div>
         </div>
 
@@ -122,119 +85,24 @@ export default function DriverWalletPage() {
           <div className="divide-y divide-stone-100">
             {cashOrders.length === 0 && <p className="py-6 text-center text-sm text-stone-500">Chưa có đơn đã thu tiền mặt.</p>}
             {cashOrders.map((order) => (
-                <div key={order.id} className="py-3 flex items-center justify-between gap-3">
+                <div key={order.maDon} className="py-3 flex items-center justify-between gap-3">
                   <div className="space-y-0.5">
                     <div className="font-bold text-xs sm:text-sm text-stone-900">
-                      Thu tiền mặt đơn {order.id}
+                      Thu tiền mặt đơn {order.maDon}
                     </div>
                     <div className="text-[11px] text-stone-400 font-mono">
-                      {order.createdAt}
+                      {new Date(order.thoiGianTao).toLocaleString("vi-VN")}
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span className="font-black text-sm sm:text-base text-emerald-600">{formatVND(order.totalFee)}</span>
+                    <span className="font-black text-sm sm:text-base text-emerald-600">{formatVND(Number(order.cuoc.tongCuoc))}</span>
                   </div>
                 </div>
             ))}
           </div>
         </section>
       </main>
-
-      {/* MODAL RÚT TIỀN */}
-      {isWithdrawModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn">
-          <form
-            onSubmit={handleWithdraw}
-            className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 sm:p-6 space-y-4 animate-scaleUp"
-          >
-            <h3 className="text-base font-extrabold text-stone-900">
-              Rút tiền thu nhập về ngân hàng
-            </h3>
-
-            <div className="p-3 bg-stone-50 rounded-xl border border-stone-100 text-xs space-y-1">
-              <div>Thao tác mô phỏng. Chưa kết nối tài khoản ngân hàng để chuyển tiền.</div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-stone-600 mb-1">
-                Số tiền muốn rút (đ):
-              </label>
-              <input
-                type="number"
-                min={50000}
-                max={balance}
-                step={10000}
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(Number(e.target.value))}
-                className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-base font-bold focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
-              />
-              <span className="text-[11px] text-stone-400 mt-1 block">
-                Số dư hiện tại: {formatVND(balance)} (Tối thiểu 50.000đ)
-              </span>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => setIsWithdrawModalOpen(false)}
-              >
-                Hủy
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                type="submit"
-              >
-                Xác nhận rút tiền
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* MODAL NỘP TIỀN COD */}
-      {isPayCodModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 sm:p-6 space-y-4 animate-scaleUp">
-            <h3 className="text-base font-extrabold text-stone-900">
-              Yêu cầu nộp tiền mặt
-            </h3>
-
-            <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-center space-y-1">
-              <span className="text-[10px] uppercase font-bold text-amber-800">
-                Tổng tiền COD cần nộp
-              </span>
-              <div className="text-2xl font-black text-amber-950">
-                {formatVND(codHold)}
-              </div>
-            </div>
-
-            <p className="text-xs text-stone-500 text-center">
-              Gửi yêu cầu để điều phối viên kiểm tra và xác nhận tiền đã nộp. Đây là dữ liệu demo, chưa có chuyển khoản thật.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsPayCodModalOpen(false)}
-              >
-                Để sau
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handlePayCod}
-              >
-                Gửi yêu cầu
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <DriverBottomNav />
     </div>
