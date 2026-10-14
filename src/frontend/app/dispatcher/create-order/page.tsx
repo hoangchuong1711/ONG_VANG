@@ -35,16 +35,11 @@ export default function DispatcherCreateOrderPage() {
   const [packageType, setPackageType] = useState(PACKAGE_TYPES[0]);
   const [weightKg, setWeightKg] = useState<number>(0.5);
   const [paymentMethod, setPaymentMethod] = useState<"TIEN_MAT" | "VNPAY">("TIEN_MAT");
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoted, setQuoted] = useState<{ input: string; result: Quote } | null>(null);
   const [creating, setCreating] = useState(false);
   const orderKey = useRef<string | null>(null);
-  const distanceKm = Number(quote?.loTrinh.quangDuongKm ?? 0);
-  const baseFee = Number(quote?.cuoc.cuocGoc ?? 0);
-  const vipDiscount = Number(quote?.cuoc.tienGiamGia ?? 0);
-  const totalFee = Number(quote?.cuoc.tongCuoc ?? 0);
-
   useEffect(() => {
-    if (!/^0\d{9}$/.test(callerPhone)) { setCustomerId(""); setSenderName(""); return; }
+    if (!/^0\d{9}$/.test(callerPhone)) return;
     let active = true;
     const timer = setTimeout(() => {
       api<{ items: Customer[] }>(`/customers?q=${encodeURIComponent(callerPhone)}&size=20`)
@@ -58,28 +53,38 @@ export default function DispatcherCreateOrderPage() {
         }).catch(cause => { if (active) showToast((cause as Error).message, "error"); });
     }, 300);
     return () => { active = false; clearTimeout(timer); };
-  }, [callerPhone]);
+  }, [callerPhone, showToast]);
 
-  const handleLookupCustomer = (phoneInput: string) => setCallerPhone(phoneInput);
+  const handleLookupCustomer = (phoneInput: string) => {
+    if (phoneInput === callerPhone) return;
+    setCallerPhone(phoneInput);
+    setCustomerId("");
+    setSenderName("");
+  };
   const pickup = /TP\.HCM|Hồ Chí Minh/i.test(senderStreet)
     ? senderStreet.trim() : [senderStreet.trim(), senderDistrict, "TP.HCM"].filter(Boolean).join(", ");
   const dropoff = [receiverStreet.trim(), receiverDistrict, "TP.HCM"].filter(Boolean).join(", ");
   const quoteInput = { maKh: customerId, diemLayHang: pickup, diemGiaoHang: dropoff,
     kienHang: [{ loaiHangHoa: packageType, ghiChuBaoQuan: "", khoiLuongKg: weightKg.toFixed(2) }],
     benThanhToan: "NGUOI_DAT", phuongThucThanhToan: paymentMethod === "VNPAY" ? "VNPAY_QR" : "TIEN_MAT" };
+  const quoteRequestBody = JSON.stringify(quoteInput);
+  const quote = quoted?.input === quoteRequestBody ? quoted.result : null;
+  const distanceKm = Number(quote?.loTrinh.quangDuongKm ?? 0);
+  const baseFee = Number(quote?.cuoc.cuocGoc ?? 0);
+  const vipDiscount = Number(quote?.cuoc.tienGiamGia ?? 0);
+  const totalFee = Number(quote?.cuoc.tongCuoc ?? 0);
 
   useEffect(() => {
-    setQuote(null);
     orderKey.current = null;
     if (!customerId || !senderStreet.trim() || !receiverStreet.trim() || weightKg <= 0) return;
     let active = true;
     const timer = setTimeout(() => {
-      api<Quote>("/quotes", { method: "POST", body: JSON.stringify(quoteInput) })
-        .then(result => { if (active) setQuote(result); })
-        .catch(() => { if (active) setQuote(null); });
+      api<Quote>("/quotes", { method: "POST", body: quoteRequestBody })
+        .then(result => { if (active) setQuoted({ input: quoteRequestBody, result }); })
+        .catch(() => { if (active) setQuoted(null); });
     }, 500);
     return () => { active = false; clearTimeout(timer); };
-  }, [customerId, pickup, dropoff, packageType, weightKg, paymentMethod]);
+  }, [customerId, senderStreet, receiverStreet, weightKg, quoteRequestBody]);
 
   const handleCreateOrder = async (event: React.FormEvent) => {
     event.preventDefault();

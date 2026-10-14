@@ -39,7 +39,10 @@ export default function DispatcherOrderDetailPage() {
     finally { setReady(true); }
   }, [orderId]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const initial = setTimeout(() => { void refresh(); }, 0);
+    return () => clearTimeout(initial);
+  }, [refresh]);
   useEffect(() => {
     if (!isReassignModalOpen || !order || order.status !== "CHO_GAN") return;
     api<{ items: Driver[] }>(`/orders/${encodeURIComponent(order.id)}/driver-suggestions?size=100`)

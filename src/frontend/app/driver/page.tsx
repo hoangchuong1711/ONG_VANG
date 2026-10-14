@@ -44,7 +44,11 @@ export default function DriverDashboardPage() {
       setError("");
     } catch (cause) { setError((cause as Error).message); }
   }, []);
-  useEffect(() => { void refresh(); const timer = setInterval(() => { void refresh(); }, 15000); return () => clearInterval(timer); }, [refresh]);
+  useEffect(() => {
+    const initial = setTimeout(() => { void refresh(); }, 0);
+    const timer = setInterval(() => { void refresh(); }, 15000);
+    return () => { clearTimeout(initial); clearInterval(timer); };
+  }, [refresh]);
 
   const handleToggleOnline = () => showToast("Trạng thái trực tuyến hiện được quản lý ở backend.", "info");
   const handleTriggerIncomingOrder = () => {

@@ -49,7 +49,10 @@ export default function DriverOrderExecutionPage() {
     } catch (cause) { setOrder(null); setError((cause as Error).message); }
     finally { setReady(true); }
   }, [orderId]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const initial = setTimeout(() => { void refresh(); }, 0);
+    return () => clearTimeout(initial);
+  }, [refresh]);
 
   const handleNextStep = async () => {
     if (!order) return;

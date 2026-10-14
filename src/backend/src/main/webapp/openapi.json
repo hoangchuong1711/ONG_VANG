@@ -7553,6 +7553,30 @@
                 "type": "null"
               }
             ]
+          },
+          "viTriDemoDiaChi": {
+            "type": ["string", "null"],
+            "description": "Địa chỉ demo cố định trong DB; không phải GPS trực tiếp."
+          },
+          "viTriDemoNguon": {
+            "type": ["string", "null"],
+            "enum": ["DEMO_CO_DINH", null]
+          },
+          "viTriDemoCauHinhLuc": {
+            "type": ["string", "null"],
+            "description": "Thời điểm cấu hình vị trí demo theo giờ địa phương."
+          },
+          "kmDenDiemLay": {
+            "type": ["string", "null"],
+            "description": "Quãng đường từ vị trí demo tài xế đến điểm lấy hàng."
+          },
+          "giayDenDiemLay": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "nguonDinhTuyen": {
+            "type": ["string", "null"],
+            "description": "Nguồn định tuyến hoặc nhãn thứ tự dự phòng."
           }
         },
         "examples": [
@@ -7567,7 +7591,13 @@
               "bienSoXe": "59A1-12345",
               "loaiXe": "XE_MAY",
               "mauXe": null
-            }
+            },
+            "viTriDemoDiaChi": null,
+            "viTriDemoNguon": null,
+            "viTriDemoCauHinhLuc": null,
+            "kmDenDiemLay": null,
+            "giayDenDiemLay": null,
+            "nguonDinhTuyen": null
           }
         ]
       },
@@ -8110,7 +8140,13 @@
                   "bienSoXe": "59A1-12345",
                   "loaiXe": "XE_MAY",
                   "mauXe": null
-                }
+                },
+                "viTriDemoDiaChi": null,
+                "viTriDemoNguon": null,
+                "viTriDemoCauHinhLuc": null,
+                "kmDenDiemLay": null,
+                "giayDenDiemLay": null,
+                "nguonDinhTuyen": null
               }
             ],
             "page": 0,

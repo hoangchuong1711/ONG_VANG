@@ -44,9 +44,9 @@ export default function DispatcherLiveBoardPage() {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    const initial = setTimeout(() => { void refresh(); }, 0);
     const timer = setInterval(() => { void refresh(); }, 15000);
-    return () => clearInterval(timer);
+    return () => { clearTimeout(initial); clearInterval(timer); };
   }, [refresh]);
 
   const pendingOrders = orders.filter(order => order.status === "CHO_GAN");
@@ -83,8 +83,8 @@ export default function DispatcherLiveBoardPage() {
     } finally { setAssigning(false); }
   };
 
-  const handleReassignIncidentOrder = (_orderId: string) => {
-    showToast("Đơn có sự cố cần xử lý trong chi tiết đơn.", "info");
+  const handleReassignIncidentOrder = (orderId: string) => {
+    showToast(`Đơn ${orderId} có sự cố cần xử lý trong chi tiết đơn.`, "info");
   };
   const handleCancelOrder = async (orderId: string, reason: string) => {
     try {

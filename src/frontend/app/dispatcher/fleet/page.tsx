@@ -23,7 +23,10 @@ export default function DispatcherFleetPage() {
     try { const page = await api<{ items: Driver[] }>("/drivers?size=100"); setDrivers(page.items.map(driverForView)); setError(""); }
     catch (cause) { setError((cause as Error).message); }
   }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const initial = setTimeout(() => { void refresh(); }, 0);
+    return () => clearTimeout(initial);
+  }, [refresh]);
 
   const filteredDrivers = drivers.filter(driver =>
     (filter === "ALL" || driver.status === filter) &&
