@@ -8,7 +8,12 @@ public final class ReportDtos {
     private ReportDtos() {}
 
     public record Metrics(String giaTriDonHoanTat,String tienThucThu,String tienThuChuaPhanBo,
-                              String cuocConPhaiThuCuoiKy,long soDonHoanTat,long soDonHuy) {}
+                          String cuocConPhaiThuCuoiKy,long soDonHoanTat,long soDonHuy,
+                          String phanCongTy,String phanTaiXe,String tienMatTaiXeDangGiu,String tienNopCod) {
+        public Metrics(String completed,String received,String unallocated,String due,long count,long cancelled) {
+            this(completed,received,unallocated,due,count,cancelled,"0.00","0.00","0.00","0.00");
+        }
+    }
 
     public record Bucket(String batDau,String ketThuc,Metrics chiTieu) {}
 
