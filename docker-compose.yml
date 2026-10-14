@@ -64,12 +64,15 @@ services:
   frontend:
     build:
       context: ./src/frontend
+      args:
+        NEXT_PUBLIC_GOONG_MAPTILES_KEY: ${GOONG_API_MAPTILES_KEY:-}
 
     ports:
       - "3001:3000"
 
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8081
+      NEXT_PUBLIC_GOONG_MAPTILES_KEY: ${GOONG_API_MAPTILES_KEY:-}
       BACKEND_INTERNAL_URL: http://backend:8080
 
     depends_on:

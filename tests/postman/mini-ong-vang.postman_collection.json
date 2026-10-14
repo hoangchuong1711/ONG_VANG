@@ -2026,6 +2026,111 @@
             }
           ],
           "response": []
+        },
+        {
+          "name": "getDriverRoute",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/driver-route",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}",
+                "driver-route"
+              ],
+              "query": []
+            },
+            "description": "Bản đồ hai chặng cho tài xế được gán\n\nundefined\n\nStatus: implemented; UC: UC-13; roles: TAI_XE"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has taiXe', () => pm.expect(body).to.have.property('taiXe'));",
+                  "  pm.test('Response has diemLay', () => pm.expect(body).to.have.property('diemLay'));",
+                  "  pm.test('Response has diemGiao', () => pm.expect(body).to.have.property('diemGiao'));",
+                  "  pm.test('Response has denDiemLay', () => pm.expect(body).to.have.property('denDiemLay'));",
+                  "  pm.test('Response has denDiemGiao', () => pm.expect(body).to.have.property('denDiemGiao'));",
+                  "  pm.test('Response has nguon', () => pm.expect(body).to.have.property('nguon'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "arriveAtReceiver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/arrival",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}",
+                "arrival"
+              ],
+              "query": []
+            },
+            "description": "Tài xế xác nhận đã đến điểm nhận\n\nundefined\n\nStatus: implemented; UC: UC-13; roles: TAI_XE"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Response has maSuKien', () => pm.expect(body).to.have.property('maSuKien'));",
+                  "  pm.test('Response has maDon', () => pm.expect(body).to.have.property('maDon'));",
+                  "  pm.test('Response has thuTu', () => pm.expect(body).to.have.property('thuTu'));",
+                  "  pm.test('Response has loaiSuKien', () => pm.expect(body).to.have.property('loaiSuKien'));",
+                  "  pm.test('Response has trangThaiTruoc', () => pm.expect(body).to.have.property('trangThaiTruoc'));",
+                  "  pm.test('Response has trangThaiSau', () => pm.expect(body).to.have.property('trangThaiSau'));",
+                  "  pm.test('Response has thoiGian', () => pm.expect(body).to.have.property('thoiGian'));",
+                  "  pm.test('Response has maTkThucHien', () => pm.expect(body).to.have.property('maTkThucHien'));",
+                  "  pm.test('Response has nguoiThucHien', () => pm.expect(body).to.have.property('nguoiThucHien'));",
+                  "  pm.test('Response has ghiChu', () => pm.expect(body).to.have.property('ghiChu'));",
+                  "  pm.test('Response has loaiSuCo', () => pm.expect(body).to.have.property('loaiSuCo'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
         }
       ]
     },
