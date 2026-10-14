@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { api, type DriverRoute } from "@/lib/live-orders";
 
@@ -41,12 +41,13 @@ function decodePolyline(encoded: string): Point[] {
   return points;
 }
 
-export function DriverRouteMap({ orderId }: { orderId: string }) {
+function DriverRouteMapView({ orderId }: { orderId: string }) {
   const [route, setRoute] = useState<DriverRoute | null>(null);
   const [routeError, setRouteError] = useState("");
   const [mapError, setMapError] = useState("");
   const [sdkReady, setSdkReady] = useState(false);
   const container = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapInstance | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -62,14 +63,21 @@ export function DriverRouteMap({ orderId }: { orderId: string }) {
     if (!route || !sdkReady || !maptilesKey || !container.current) return;
     const goong = (window as Window & { goongjs?: GoongSdk }).goongjs;
     if (!goong) return;
+    const mapContainer = container.current;
+    if (mapRef.current) return;
     let map: MapInstance | null = null;
+    let active = true;
     try {
       goong.accessToken = maptilesKey;
       map = new goong.Map({ container: container.current,
         style: "https://tiles.goong.io/assets/goong_map_web.json",
         center: [route.diemLay.lng, route.diemLay.lat], zoom: 11 });
       const currentMap = map;
+      mapRef.current = currentMap;
+      let drawn = false;
       currentMap.on("load", () => {
+        if (!active || drawn) return;
+        drawn = true;
         try {
           const legs = [
             { id: "pickup", data: route.denDiemLay.polyline, color: "#d97706" },
@@ -93,14 +101,20 @@ export function DriverRouteMap({ orderId }: { orderId: string }) {
           const lngs = locations.map(point => point.lng), lats = locations.map(point => point.lat);
           currentMap.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
             { padding: 42, maxZoom: 15 });
-        } catch (cause) { setMapError((cause as Error).message); }
+        } catch (cause) { if (active) setMapError((cause as Error).message); }
       });
-      currentMap.on("error", () => { setMapError("Không tải được nền bản đồ Goong. Kiểm tra Maptiles Key, domain và kết nối mạng."); });
+      currentMap.on("error", () => { if (active) setMapError("Không tải được nền bản đồ Goong. Kiểm tra Maptiles Key, domain và kết nối mạng."); });
     } catch (cause) {
       const message = (cause as Error).message;
-      setTimeout(() => setMapError(message), 0);
+      setTimeout(() => { if (active) setMapError(message); }, 0);
     }
-    return () => map?.remove();
+    return () => {
+      active = false;
+      map?.remove();
+      mapRef.current = null;
+      // The SDK owns everything inside this node; remove remnants before a remount.
+      mapContainer.replaceChildren();
+    };
   }, [route, sdkReady]);
 
   return (
@@ -128,3 +142,5 @@ export function DriverRouteMap({ orderId }: { orderId: string }) {
     </section>
   );
 }
+
+export const DriverRouteMap = memo(DriverRouteMapView);

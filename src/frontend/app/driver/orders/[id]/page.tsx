@@ -203,8 +203,8 @@ export default function DriverOrderExecutionPage() {
           </div>
         </section>}
 
-        {order.status !== "DA_HUY" && <DriverRouteMap key={order.id} orderId={order.id} />}
-        {detail && <FareCollection key={detail.maDon} order={detail} refresh={refresh} />}
+        {order.status !== "DA_HUY" && <DriverRouteMap key={`route-${order.id}`} orderId={order.id} />}
+        {detail && <FareCollection key={`fare-${detail.maDon}`} order={detail} refresh={refresh} />}
 
         {/* THÔNG TIN CHI TIẾT 2 CHẶNG (LẤY HÀNG & GIAO HÀNG) */}
         <div className="space-y-4">
