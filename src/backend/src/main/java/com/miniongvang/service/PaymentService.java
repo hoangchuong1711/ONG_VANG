@@ -261,7 +261,7 @@ public final class PaymentService {
         if (account == null || account.getTrangThai() != AccountStatus.HOAT_DONG
                 || account.getVaiTro() != actor.vaiTro()) throw new SecurityException("Account unavailable");
         String bound = switch (actor.vaiTro()) {
-            case TONG_DAI -> account.getId();
+            case TONG_DAI, CHU_DOI_XE -> account.getId();
             case KHACH_HANG -> { KhachHang p = actor.maKh() == null ? null : em.find(KhachHang.class, actor.maKh());
                 yield p == null ? null : p.getTaiKhoan().getId(); }
             case TAI_XE -> { TaiXe p = actor.maTx() == null ? null : em.find(TaiXe.class, actor.maTx());

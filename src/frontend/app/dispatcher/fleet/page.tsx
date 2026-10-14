@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { api, type Driver } from "@/lib/live-orders";
+import type { CodDriver } from "@/lib/finance";
 import { driverForView, type DispatchDriver } from "@/lib/dispatch-view";
 import type { DriverStatus } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
@@ -20,7 +21,12 @@ export default function DispatcherFleetPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const refresh = useCallback(async () => {
-    try { const page = await api<{ items: Driver[] }>("/drivers?size=100"); setDrivers(page.items.map(driverForView)); setError(""); }
+    try {
+      const [page, cod] = await Promise.all([api<{ items: Driver[] }>("/drivers?size=100"), api<CodDriver[]>("/cod/drivers")]);
+      const holdings = new Map(cod.map((item) => [item.maTx, Number(item.soTienDangGiu)]));
+      setDrivers(page.items.map((item) => ({ ...driverForView(item), codCashHolding: holdings.get(item.maTx) ?? 0 })));
+      setError("");
+    }
     catch (cause) { setError((cause as Error).message); }
   }, []);
   useEffect(() => {

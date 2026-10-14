@@ -1,43 +1,65 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
-import { useDemoStore, updateDemoState } from "@/lib/demo-store";
+import { api } from "@/lib/live-orders";
+import { revenue, type CodBatch, type CodDriver, type RevenueReport } from "@/lib/finance";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 export default function DispatcherReportsPage() {
   const { showToast } = useToast();
-  const { state: demo } = useDemoStore();
-  const { drivers } = demo;
+  const [drivers, setDrivers] = useState<CodDriver[]>([]);
+  const [report, setReport] = useState<RevenueReport | null>(null);
+  const [batch, setBatch] = useState<CodBatch | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const [dateRange, setDateRange] = useState<"TODAY" | "WEEK" | "MONTH">("TODAY");
-  const [asOf] = useState(() => Date.now());
-  const shown = demo.orders.filter((order) => dateRange === "TODAY" ?
-    new Date(order.createdTimestamp).toDateString() === new Date(asOf).toDateString() :
-    dateRange === "WEEK" ? order.createdTimestamp >= asOf - 7 * 86400000 :
-      new Date(order.createdTimestamp).getMonth() === new Date(asOf).getMonth() &&
-      new Date(order.createdTimestamp).getFullYear() === new Date(asOf).getFullYear());
-  const completed = shown.filter((order) => ["HOAN_TAT", "CHUA_THANH_TOAN"].includes(order.status));
-  const exceptionCount = shown.filter((order) => order.status === "DA_HUY" || demo.incidents.some((incident) => incident.orderId === order.id)).length;
+  const refresh = useCallback(async () => {
+    try {
+      const [list, current] = await Promise.all([api<CodDriver[]>("/cod/drivers"), revenue(dateRange)]);
+      setDrivers(list); setReport(current); setError("");
+    } catch (cause) { setError((cause as Error).message); }
+  }, [dateRange]);
+  useEffect(() => {
+    const initial = setTimeout(() => { void refresh(); }, 0);
+    const timer = setInterval(() => { void refresh(); }, 15000);
+    return () => { clearTimeout(initial); clearInterval(timer); };
+  }, [refresh]);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("codBatch");
+    if (!id) return;
+    void api<CodBatch>(`/cod/settlements/${encodeURIComponent(id)}`)
+      .then(setBatch).catch((cause) => setError((cause as Error).message));
+  }, []);
+  const metrics = report?.tong;
+  const completedCount = metrics?.soDonHoanTat ?? 0;
+  const exceptionCount = metrics?.soDonHuy ?? 0;
+  const observed = completedCount + exceptionCount;
 
   // Tổng tiền COD các tài xế đang giữ
-  const totalCodHolding = drivers.reduce((sum, d) => sum + d.codCashHolding, 0);
+  const totalCodHolding = drivers.reduce((sum, d) => sum + Number(d.soTienDangGiu), 0);
 
   // Xác nhận tài xế nộp COD về quỹ (UC-08)
-  const handleSettleCod = (driverId: string, driverName: string, amount: number) => {
-    updateDemoState((previous) => ({ ...previous, drivers: previous.drivers.map((driver) =>
-      driver.id === driverId ? { ...driver, codCashHolding: 0, codSettlementRequested: false } : driver) }));
-    showToast(
-      `Đã đối soát & xác nhận thu ${formatVND(amount)} tiền COD từ tài xế ${driverName} vào quỹ!`,
-      "success"
-    );
+  const handleSettleCod = async (driverId: string) => {
+    setBusy(driverId);
+    try {
+      const result = await api<CodBatch>(`/cod/drivers/${encodeURIComponent(driverId)}/settlements`, {
+        method: "POST", headers: { "Idempotency-Key": crypto.randomUUID() }, body: "{}",
+      });
+      if (!result.paymentUrl) throw new Error("Chưa tạo được đường dẫn VNPay.");
+      window.location.assign(result.paymentUrl);
+    } catch (cause) { showToast((cause as Error).message, "error"); setBusy(null); }
   };
 
   const handleExportCsv = () => {
-    const lines = [["Mã đơn", "Người gửi", "Trạng thái", "Cước (VND)", "Đã thu"],
-      ...shown.map((order) => [order.id, order.sender.name, order.statusText, String(order.totalFee), order.paid ? "Có" : "Chưa"])];
+    const lines = [["Bắt đầu", "Kết thúc", "Cước hoàn tất", "Đã thu", "Còn phải thu", "Công ty 20%", "Tài xế 80%", "COD đang giữ"],
+      ...(report?.items ?? []).map((row) => [row.batDau, row.ketThuc, row.chiTieu.giaTriDonHoanTat,
+        row.chiTieu.tienThucThu, row.chiTieu.cuocConPhaiThuCuoiKy,
+        row.chiTieu.phanCongTy, row.chiTieu.phanTaiXe, row.chiTieu.tienMatTaiXeDangGiu])];
     const csv = "\uFEFF" + lines.map((line) => line.map((cell) => '"' + cell.replaceAll('"', '""') + '"').join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
@@ -85,6 +107,15 @@ export default function DispatcherReportsPage() {
           </div>
         </div>
 
+        {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
+        {batch && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-stone-800">
+          Đợt COD {batch.maDot}: <strong>{batch.trangThai === "THANH_CONG" ? "Đã thanh toán COD trong Sandbox" : "Đang chờ xác minh VNPay"}</strong>
+          {batch.trangThai !== "THANH_CONG" && <button type="button" className="ml-3 underline" onClick={() => {
+            void api<CodBatch>(`/cod/settlements/${batch.maDot}/reconcile`, { method: "POST", body: "{}" })
+              .then((value) => { setBatch(value); void refresh(); }).catch((cause) => setError((cause as Error).message));
+          }}>Kiểm tra kết quả</button>}
+        </div>}
+
         {/* BỘ LỌC KỲ BÁO CÁO */}
         <div className="flex items-center gap-2 text-xs">
           <span className="text-stone-500 font-bold">Kỳ báo cáo:</span>
@@ -115,10 +146,10 @@ export default function DispatcherReportsPage() {
               Tổng cước snapshot
             </span>
             <div className="text-2xl sm:text-3xl font-extrabold text-amber-700">
-              {formatVND(completed.reduce((sum, order) => sum + order.totalFee, 0))}
+              {formatVND(Number(metrics?.giaTriDonHoanTat ?? 0))}
             </div>
             <span className="text-xs text-emerald-700 font-medium block">
-              Theo đơn trong kỳ đang xem
+              Theo thời điểm hoàn tất trong kỳ
             </span>
           </div>
 
@@ -127,10 +158,10 @@ export default function DispatcherReportsPage() {
               Tỷ lệ hoàn tất đơn
             </span>
             <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600">
-              {shown.length ? (completed.length / shown.length * 100).toFixed(1) : "0.0"}%
+              {observed ? (completedCount / observed * 100).toFixed(1) : "0.0"}%
             </div>
             <span className="text-xs text-stone-500 font-medium block">
-              {completed.length}/{shown.length} đơn hoàn tất
+              {completedCount} đơn hoàn tất
             </span>
           </div>
 
@@ -139,10 +170,10 @@ export default function DispatcherReportsPage() {
               Tỷ lệ sự cố / Hủy đơn
             </span>
             <div className="text-2xl sm:text-3xl font-extrabold text-rose-600">
-              {shown.length ? (exceptionCount / shown.length * 100).toFixed(1) : "0.0"}%
+              {observed ? (exceptionCount / observed * 100).toFixed(1) : "0.0"}%
             </div>
             <span className="text-xs text-stone-500 font-medium block">
-              {exceptionCount} đơn có sự cố hoặc bị hủy
+              {exceptionCount} đơn hủy trong kỳ
             </span>
           </div>
 
@@ -159,6 +190,12 @@ export default function DispatcherReportsPage() {
           </div>
         </section>
 
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[["Cước đã thu", metrics?.tienThucThu], ["Còn phải thu", metrics?.cuocConPhaiThuCuoiKy],
+            ["Công ty 20%", metrics?.phanCongTy], ["Tài xế 80% phát sinh", metrics?.phanTaiXe]].map(([label, value]) =>
+            <div key={label} className="rounded-2xl border border-stone-200 bg-white p-4"><span className="text-xs text-stone-500">{label}</span><strong className="mt-2 block text-lg">{formatVND(Number(value ?? 0))}</strong></div>)}
+        </section>
+
         {/* BẢNG ĐỐI SOÁT TIỀN MẶT COD THEO TÀI XẾ (UC-08) */}
         <section className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs space-y-0">
           <div className="p-5 sm:p-6 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3">
@@ -167,7 +204,7 @@ export default function DispatcherReportsPage() {
                 Bàn đối soát thu hồi tiền mặt từ tài xế
               </span>
               <p className="text-xs text-stone-500 mt-1 font-medium">
-                Hạn mức tiền mặt tối đa mỗi tài xế được tạm giữ trong ca là <strong className="text-stone-800">2.000.000đ</strong>
+                Chọn tài xế để xem các đơn tiền mặt cấu thành và thanh toán qua VNPay Sandbox.
               </p>
             </div>
             <div className="text-xs font-bold text-amber-900 bg-amber-100 px-3.5 py-2 rounded-xl border border-amber-300">
@@ -189,20 +226,21 @@ export default function DispatcherReportsPage() {
               </thead>
               <tbody className="divide-y divide-stone-200">
                 {drivers.map((d) => {
-                  const hasCod = d.codCashHolding > 0;
-                  const isNearLimit = d.codCashHolding >= 800000;
+                  const hasCod = Number(d.soTienDangGiu) > 0;
+                  const eligible = Number(d.soTienDuDieuKienNop) > 0;
+                  const isNearLimit = Number(d.soTienDangGiu) >= 800000;
 
                   return (
-                    <tr key={d.id} className="hover:bg-stone-50/70 transition-colors">
+                    <React.Fragment key={d.maTx}><tr className="hover:bg-stone-50/70 transition-colors">
                       <td className="p-4 pl-6">
-                        <strong className="text-stone-900 text-sm sm:text-base block">{d.name}</strong>
-                        <span className="text-stone-500 text-xs font-medium">{d.id}</span>
+                        <strong className="text-stone-900 text-sm sm:text-base block">{d.hoTen}</strong>
+                        <span className="text-stone-500 text-xs font-medium">{d.maTx}</span>
                       </td>
                       <td className="p-4 font-bold text-amber-700">
-                        {d.vehiclePlate}
+                        {d.bienSoXe}
                       </td>
                       <td className="p-4 text-stone-800 font-semibold">
-                        {d.currentDistrict}
+                        {d.khuVuc ?? "—"}
                       </td>
                       <td className="p-4">
                         <span
@@ -210,9 +248,9 @@ export default function DispatcherReportsPage() {
                             hasCod ? "text-amber-800 text-sm" : "text-stone-400"
                           }`}
                         >
-                          {formatVND(d.codCashHolding)}
+                          {formatVND(Number(d.soTienDangGiu))}
                         </span>
-                        {d.codSettlementRequested && <span className="mt-1 block text-[11px] font-bold text-amber-800">Tài xế yêu cầu đối soát</span>}
+                        <span className="mt-1 block text-[11px] text-stone-500">Đủ điều kiện nộp: {formatVND(Number(d.soTienDuDieuKienNop))}</span>
                       </td>
                       <td className="p-4">
                         {isNearLimit ? (
@@ -230,20 +268,24 @@ export default function DispatcherReportsPage() {
                         )}
                       </td>
                       <td className="p-4 pr-6 text-right">
-                        {hasCod ? (
+                        {eligible || d.maDotDangCho ? (
                           <Button
                             variant="primary"
                             size="sm"
-                            onClick={() => handleSettleCod(d.id, d.name, d.codCashHolding)}
+                            onClick={() => void handleSettleCod(d.maTx)}
+                            disabled={busy === d.maTx}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
                           >
-                            Xác nhận đã nhận tiền
+                            {busy === d.maTx ? "Đang mở VNPay…" : "Thanh toán COD qua VNPay Sandbox"}
                           </Button>
                         ) : (
-                          <span className="text-stone-400 text-xs font-medium">Đã thanh toán</span>
+                          <span className="text-stone-400 text-xs font-medium">Chưa có khoản đủ điều kiện</span>
                         )}
+                        <button type="button" className="block ml-auto mt-2 text-amber-800 underline text-xs" onClick={() => setExpanded(expanded === d.maTx ? null : d.maTx)}>Xem {d.soDon} đơn</button>
                       </td>
-                    </tr>
+                    </tr>{expanded === d.maTx && <tr><td colSpan={6} className="bg-stone-50 px-6 py-3 text-xs">
+                      {d.items.length ? d.items.map((item) => <div key={item.maGiaoDich} className="flex justify-between py-1"><span>{item.maDon} · {item.trangThaiDon}</span><strong>{formatVND(Number(item.soTien))}</strong></div>) : "Không có đơn tiền mặt đang giữ."}
+                    </td></tr>}</React.Fragment>
                   );
                 })}
               </tbody>

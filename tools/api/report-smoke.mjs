@@ -45,10 +45,11 @@ await admin.login('demo_admin',process.env.DEMO_PASSWORD);
 await customer.login('0900000001',process.env.DEMO_PASSWORD);
 await dispatcher.login('demo_dispatcher',process.env.DEMO_PASSWORD);
 await driver.login('0800000001',process.env.DEMO_PASSWORD);
-for(const client of [customer,dispatcher,driver]) {
+for(const client of [customer,driver]) {
   await client.call('/api/reports/revenue'+query,undefined,403,'FORBIDDEN');
   await client.call('/api/reports/revenue/export'+query,undefined,403,'FORBIDDEN');
 }
+await dispatcher.call('/api/reports/revenue'+query);
 for(const endpoint of ['/api/reports/revenue','/api/reports/revenue/export']) {
   await admin.call(endpoint,undefined,400,'VALIDATION_ERROR');
   await admin.call(endpoint+'?tuNgay=2026-02-30&denNgay=2026-03-02',undefined,400,'DATE_RANGE_INVALID');

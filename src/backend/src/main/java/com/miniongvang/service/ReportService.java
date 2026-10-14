@@ -21,14 +21,15 @@ public final class ReportService {
     private final TransactionRunner transactions;
     public ReportService(EntityManagerFactory factory) { transactions=new TransactionRunner(factory); }
     public Report revenue(ActorContext actor, LocalDate from, LocalDate to, Group group) {
-        if (actor==null || actor.vaiTro()!=AccountRole.CHU_DOI_XE || actor.maNguoiDung()==null)
-            throw new SecurityException("Administrator required");
+        if (actor==null || actor.maNguoiDung()==null
+                || actor.vaiTro()!=AccountRole.CHU_DOI_XE && actor.vaiTro()!=AccountRole.TONG_DAI)
+            throw new SecurityException("Reports role required");
         if (from==null || to==null || !from.isBefore(to)) throw new DateRangeInvalid();
         if (group==null) throw new IllegalArgumentException("Grouping required");
         return transactions.run(em -> {
             var account=em.find(TaiKhoan.class,actor.maNguoiDung());
-            if (account==null || account.getVaiTro()!=AccountRole.CHU_DOI_XE || account.getTrangThai()!=AccountStatus.HOAT_DONG)
-                throw new SecurityException("Administrator unavailable");
+            if (account==null || account.getVaiTro()!=actor.vaiTro() || account.getTrangThai()!=AccountStatus.HOAT_DONG)
+                throw new SecurityException("Account unavailable");
             var dao=new ReportDAO(em);
             List<Bucket> items=new ArrayList<>();
             for (LocalDate start=from; start.isBefore(to);) {
@@ -52,7 +53,8 @@ public final class ReportService {
         } catch (DateTimeException overflow) { return to; }
     }
     private static Metrics metrics(ReportDAO.Totals t) {
-        return new Metrics(money(t.completed()),money(t.received()),money(t.unallocated()),money(t.receivable()),t.completedCount(),t.cancelledCount());
+        return new Metrics(money(t.completed()),money(t.received()),money(t.unallocated()),money(t.receivable()),t.completedCount(),t.cancelledCount(),
+                money(t.company()),money(t.driver()),money(t.cashHolding()),money(t.codPaid()));
     }
     private static String money(BigDecimal value) { return value.setScale(2).toPlainString(); }
 

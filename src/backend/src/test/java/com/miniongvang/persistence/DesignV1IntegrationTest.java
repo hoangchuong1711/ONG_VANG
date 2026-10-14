@@ -424,7 +424,8 @@ class DesignV1IntegrationTest {
             statement.execute("DISABLE TRIGGER dbo.trg_membership_policy_immutable ON dbo.chinh_sach_thanh_vien");
             statement.execute("DISABLE TRIGGER dbo.trg_fare_policy_immutable ON dbo.cau_hinh_cuoc");
             statement.execute("DISABLE TRIGGER dbo.trg_surcharge_policy_immutable ON dbo.cau_hinh_phu_thu");
-            for (String table : List.of("yeu_cau_tao_don", "bao_gia", "su_kien_thanh_toan",
+            for (String table : List.of("su_kien_nop_cod", "lan_nop_cod", "khoan_cod_trong_dot",
+                    "dot_nop_cod", "phan_chia_cuoc", "yeu_cau_tao_don", "bao_gia", "su_kien_thanh_toan",
                     "xac_nhan_thanh_toan_don_hang", "thanh_toan", "nhat_ky_don_hang",
                     "chi_tiet_kien_hang", "phu_thu_don_hang", "cuoc_don_hang",
                     "phan_cong_don_hang", "don_hang", "phuong_tien", "tai_xe",
@@ -439,7 +440,7 @@ class DesignV1IntegrationTest {
         new DesignV1DemoSeeder(db.entityManagerFactory()).seed("design-v1-test-password");
     }
 
-    @Test void migratedSchemaHasNineteenDomainTablesAndTrustedConstraints() throws Exception {
+    @Test void migratedSchemaHasTwentyFourDomainTablesAndTrustedConstraints() throws Exception {
         try (var connection = db.dataSource().getConnection();
              var statement = connection.createStatement();
              var result = statement.executeQuery("""
@@ -449,7 +450,7 @@ class DesignV1IntegrationTest {
                             (SELECT COUNT(*) FROM sys.check_constraints WHERE is_disabled=1 OR is_not_trusted=1)
                      """)) {
             assertTrue(result.next());
-            assertEquals(19, result.getInt(1));
+            assertEquals(24, result.getInt(1));
             assertEquals(0, result.getInt(2));
             assertEquals(0, result.getInt(3));
         }
@@ -1375,10 +1376,10 @@ class DesignV1IntegrationTest {
         tx.run(em -> { var p=em.find(com.miniongvang.entity.LanThanhToan.class,id);var time=Instant.parse(received);
             p.setTaoLuc(time.minusSeconds(1));p.setGiaiQuyetLuc(time);p.setThuLuc(time);return null; });
     }
-    @Test void t17ReportsRequireActiveAdministratorAndValidDates() {
+    @Test void t17ReportsRequireActiveAuthorizedAccountAndValidDates() {
         var from=java.time.LocalDate.of(2026,10,1); var to=from.plusDays(1);
         assertThrows(SecurityException.class,()->reports().revenue(customer(1),from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
-        assertThrows(SecurityException.class,()->reports().revenue(dispatcher(),from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
+        assertDoesNotThrow(()->reports().revenue(dispatcher(),from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
         assertThrows(SecurityException.class,()->reports().revenue(driver(),from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
         assertThrows(SecurityException.class,()->reports().revenue(null,from,to,com.miniongvang.dto.report.ReportDtos.Group.NGAY));
         assertThrows(com.miniongvang.service.ReportService.DateRangeInvalid.class,()->reports().revenue(admin(),to,from,com.miniongvang.dto.report.ReportDtos.Group.NGAY));

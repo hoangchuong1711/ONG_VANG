@@ -52,6 +52,16 @@ public final class VnpayGateway {
     }
 
     public String paymentUrl(String reference, String orderId, BigDecimal amount, Instant created, String clientIp) {
+        return paymentUrlWithInfo(reference, orderInfo(orderId), amount, created, clientIp);
+    }
+
+    public String codPaymentUrl(String reference, String batchId, BigDecimal amount, Instant created, String clientIp) {
+        return paymentUrlWithInfo(reference, codOrderInfo(batchId), amount, created, clientIp);
+    }
+
+    public static String codOrderInfo(String batchId) { return "Nop COD dot " + batchId.replace("-", ""); }
+
+    private String paymentUrlWithInfo(String reference, String info, BigDecimal amount, Instant created, String clientIp) {
         if (!reference.matches("[A-Za-z0-9]{1,100}") || clientIp==null || !clientIp.matches("[0-9a-fA-F:.]{3,45}"))
             throw new IllegalArgumentException("Invalid VNPay request");
         long cents=amount.movePointRight(2).longValueExact();
@@ -59,7 +69,7 @@ public final class VnpayGateway {
         Map<String,String> params=new TreeMap<>();
         params.put("vnp_Version","2.1.0"); params.put("vnp_Command","pay"); params.put("vnp_TmnCode",tmnCode);
         params.put("vnp_Amount",Long.toString(cents)); params.put("vnp_CurrCode","VND");
-        params.put("vnp_TxnRef",reference); params.put("vnp_OrderInfo",orderInfo(orderId));
+        params.put("vnp_TxnRef",reference); params.put("vnp_OrderInfo",info);
         params.put("vnp_OrderType","other"); params.put("vnp_Locale","vn");
         params.put("vnp_IpAddr",clientIp); params.put("vnp_ReturnUrl",returnUrl);
         params.put("vnp_CreateDate",DATE.format(created));

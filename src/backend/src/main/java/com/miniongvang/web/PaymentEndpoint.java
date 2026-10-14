@@ -8,6 +8,7 @@ import com.miniongvang.config.PersistenceListener;
 import com.miniongvang.service.AuthService;
 import com.miniongvang.service.PaymentService;
 import com.miniongvang.service.VnpayPaymentService;
+import com.miniongvang.service.CodSettlementService;
 import com.miniongvang.integration.VnpayGateway;
 import jakarta.servlet.http.*;
 import java.io.IOException;
@@ -32,6 +33,13 @@ public final class PaymentEndpoint {
             boolean get = "GET".equals(req.getMethod()) || "HEAD".equals(req.getMethod());
             boolean post = "POST".equals(req.getMethod());
             if (path.equals("/api/payments/vnpay/ipn") && "GET".equals(req.getMethod())) {
+                var gateway = VnpayGateway.fromEnvironment();
+                if (isCod(gateway, req.getQueryString())) {
+                    var result = new CodSettlementService(persistence.entityManagerFactory(), gateway)
+                            .callback("VNPAY_IPN", req.getQueryString());
+                    send(resp, 200, new IpnResponse(result.code(), result.code()));
+                    return;
+                }
                 var result = new VnpayPaymentService(persistence.entityManagerFactory(), VnpayGateway.fromEnvironment())
                         .ipn(req.getQueryString());
                 String code = switch (result.result()) {
@@ -43,6 +51,17 @@ public final class PaymentEndpoint {
                 return;
             }
             if (path.equals("/api/payments/vnpay/return") && "GET".equals(req.getMethod())) {
+                var gateway = VnpayGateway.fromEnvironment();
+                if (isCod(gateway, req.getQueryString())) {
+                    var result = new CodSettlementService(persistence.entityManagerFactory(), gateway)
+                            .callback("VNPAY_RETURN", req.getQueryString());
+                    String target = System.getenv("DISPATCHER_RETURN_URL");
+                    if (target == null || target.isBlank()) target = "http://localhost:3001/dispatcher/reports";
+                    if (!target.matches("https?://[^?#]+/dispatcher/reports"))
+                        throw new IllegalStateException("Invalid dispatcher return URL");
+                    resp.sendRedirect(target + (result.maDot() == null ? "" : "?codBatch=" + result.maDot()));
+                    return;
+                }
                 new VnpayPaymentService(persistence.entityManagerFactory(), VnpayGateway.fromEnvironment())
                         .browserReturn(req.getQueryString());
                 resp.setStatus(200);
@@ -104,6 +123,11 @@ public final class PaymentEndpoint {
         if (values == null) return fallback;
         if (values.length != 1) throw new IllegalArgumentException("Invalid pagination");
         return Integer.parseInt(values[0]);
+    }
+
+    private static boolean isCod(VnpayGateway gateway, String raw) {
+        try { return gateway.parseQuery(raw).getOrDefault("vnp_TxnRef", "").startsWith("COD"); }
+        catch (IllegalArgumentException invalid) { return false; }
     }
 
     private static JsonNode body(HttpServletRequest req, String field) throws IOException {

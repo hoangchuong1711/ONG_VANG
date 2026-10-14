@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
-@WebServlet(urlPatterns={"/api/reports/revenue","/api/reports/revenue/export"})
+@WebServlet(urlPatterns={"/api/reports/revenue","/api/reports/revenue/export","/api/reports/drivers"})
 public final class ReportServlet extends HttpServlet {
     @Override protected void doGet(HttpServletRequest req,HttpServletResponse resp) throws IOException {
         resp.setHeader("Cache-Control","no-store");
@@ -20,6 +20,10 @@ public final class ReportServlet extends HttpServlet {
             String id=session==null?null:(String)session.getAttribute("auth.userId");
             var actor=id==null?null:new AuthService(persistence.entityManagerFactory()).currentActor(id);
             LocalDate from=date(req,"tuNgay"),to=date(req,"denNgay");
+            if (req.getServletPath().equals("/api/reports/drivers")) {
+                com.miniongvang.web.WebResponses.json(resp,200,new DriverEarningsService(persistence.entityManagerFactory()).drivers(actor,from,to));
+                return;
+            }
             String group=parameter(req,"nhomTheo",false);
             var report=new ReportService(persistence.entityManagerFactory()).revenue(actor,from,to,
                     group==null?com.miniongvang.dto.report.ReportDtos.Group.NGAY:com.miniongvang.dto.report.ReportDtos.Group.valueOf(group));

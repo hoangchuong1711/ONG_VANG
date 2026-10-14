@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { OrderItem } from "@/lib/types";
 import { api, type Driver, type Order } from "@/lib/live-orders";
+import type { DriverEarnings } from "@/lib/finance";
+import { reportRange } from "@/lib/finance";
 import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
@@ -17,6 +19,7 @@ export default function DriverDashboardPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const [driver, setDriver] = useState<DispatchDriver | null>(null);
+  const [todayFare, setTodayFare] = useState("0.00");
   const [activeOrder, setActiveOrder] = useState<OrderItem | null>(null);
   const [todayTrips, setTodayTrips] = useState<OrderItem[]>([]);
   const [incomingOrder, setIncomingOrder] = useState<OrderItem | null>(null);
@@ -29,13 +32,16 @@ export default function DriverDashboardPage() {
 
   const refresh = useCallback(async () => {
     try {
-      const [self, assigned, picked, delivering, completed] = await Promise.all([
+      const { from, to } = reportRange("TODAY");
+      const [self, assigned, picked, delivering, completed, earnings] = await Promise.all([
         api<Driver>("/drivers/me"),
         api<{ items: Order[] }>("/orders?trangThai=DA_GAN&size=100"),
         api<{ items: Order[] }>("/orders?trangThai=DA_LAY_HANG&size=100"),
         api<{ items: Order[] }>("/orders?trangThai=DANG_GIAO&size=100"),
         api<{ items: Order[] }>("/orders?trangThai=HOAN_TAT&size=100"),
+        api<DriverEarnings>(`/drivers/me/earnings?tuNgay=${from}&denNgay=${to}`),
       ]);
+      setTodayFare(earnings.tongCuocDaHoanTat);
       const roster = [driverForView(self)];
       setDriver(roster[0]);
       const current = [...assigned.items, ...picked.items, ...delivering.items].map(order => orderForView(order, roster));
@@ -139,10 +145,10 @@ export default function DriverDashboardPage() {
               Tổng cước hôm nay
             </span>
             <div className="text-xl sm:text-3xl font-extrabold text-amber-600 mt-1">
-              {formatVND(todayTrips.reduce((sum, item) => sum + item.totalFee, 0))}
+              {formatVND(Number(todayFare))}
             </div>
             <span className="text-[10px] text-stone-500 font-medium hidden sm:inline">
-              Cước vận chuyển, chưa phải thu nhập thực nhận
+              Theo thời điểm hoàn tất, chưa phải thu nhập thực nhận
             </span>
           </div>
 

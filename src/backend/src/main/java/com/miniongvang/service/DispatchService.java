@@ -277,7 +277,9 @@ public final class DispatchService {
                 order.setThoiGianHoanTat(now); driver.setRanhTu(now);
             }
             event(em,order,account,now,previous,null);
-            em.flush(); return view(em,orderId);
+            em.flush();
+            if (target==OrderStatus.HOAN_TAT) RevenueShareService.record(em,order);
+            return view(em,orderId);
         });
     }
     public Event incident(ActorContext actor,String orderId,IncidentType type,String reason) {
