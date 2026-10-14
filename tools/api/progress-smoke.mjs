@@ -95,6 +95,13 @@ await driver.call(path + '/arrival', {}, 409, 'Error', 'ORDER_STATE_CONFLICT');
 await driver.call(path + '/incidents', incident, 409, 'Error', 'ORDER_STATE_CONFLICT');
 let count = (await customer.call(path + '/events', undefined, 200, 'EventPage')).totalElements;
 for (const target of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT']) {
+  if (target === 'DANG_GIAO') {
+    await driver.call(path + '/transitions', { trangThai: target }, 409, 'Error', 'PAYMENT_REQUIRED');
+    const payment = await driver.call(path + '/payments', { phuongThuc: 'TIEN_MAT' }, 201,
+      undefined, undefined, { 'Idempotency-Key': randomUUID() });
+    await driver.call('/api/payments/' + payment.maGiaoDich + '/confirm-cash',
+      { soTienDaThu: payment.soTien });
+  }
   if (target === 'HOAN_TAT') {
     await driver.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 409, 'Error', 'ARRIVAL_REQUIRED');
     for (const type of ['KHONG_LIEN_LAC_DUOC', 'TU_CHOI_NHAN']) {
@@ -118,7 +125,7 @@ for (const target of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT']) {
   assert.equal(events.totalElements, count);
 }
 const done = await driver.call(path, undefined, 200, 'OrderDetail');
-assert(done.hoanTatLuc); assert.equal(done.thanhToan.trangThai, 'CHUA_THANH_TOAN'); assert.deepEqual(done.cuoc, order.cuoc);
+assert(done.hoanTatLuc); assert.equal(done.thanhToan.trangThai, 'DA_THANH_TOAN'); assert.deepEqual(done.cuoc, order.cuoc);
 await other.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 404, 'Error', 'RESOURCE_NOT_FOUND');
 await driver.call(path + '/transitions', { trangThai: 'DA_LAY_HANG' }, 409, 'Error', 'ORDER_STATE_CONFLICT');
 await driver.call(path + '/incidents', incident, 409, 'Error', 'ORDER_STATE_CONFLICT');

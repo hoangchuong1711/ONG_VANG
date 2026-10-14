@@ -124,7 +124,7 @@ IF EXISTS (
     JOIN dbo.don_hang d ON d.ma_don = x.ma_don
     JOIN #t19_fare_totals f ON f.ma_don = x.ma_don
     WHERE p.ma_don <> x.ma_don OR p.trang_thai <> N'THANH_CONG'
-       OR d.trang_thai <> N'HOAN_TAT' OR f.tong_cuoc <= 0
+       OR f.tong_cuoc <= 0
        OR p.so_tien_thuc_nhan IS NULL OR p.so_tien_thuc_nhan <> f.tong_cuoc
 )
     THROW 51010, 'designV1: payment confirmation disagrees with order or amount due', 1;
@@ -140,10 +140,15 @@ IF EXISTS (
     SELECT 1 FROM dbo.thanh_toan p
     JOIN dbo.don_hang d ON d.ma_don = p.ma_don
     JOIN #t19_fare_totals f ON f.ma_don = p.ma_don
-    WHERE d.trang_thai <> N'HOAN_TAT' OR d.thoi_gian_hoan_tat IS NULL
-       OR p.tao_luc < d.thoi_gian_hoan_tat OR f.tong_cuoc <= 0
+    WHERE f.tong_cuoc <= 0 OR p.phuong_thuc <> d.phuong_thuc_thanh_toan
+       OR NOT EXISTS (
+           SELECT 1 FROM dbo.nhat_ky_don_hang e
+           WHERE e.ma_don = d.ma_don AND e.thoi_gian <= p.tao_luc
+             AND ((d.ben_thanh_toan = N'NGUOI_DAT' AND e.trang_thai_sau = N'DA_LAY_HANG')
+               OR (d.ben_thanh_toan = N'NGUOI_NHAN' AND e.loai_su_kien = N'DEN_DIEM_NHAN'))
+       )
 )
-    THROW 51012, 'designV1: payment created before completion or for a free order', 1;
+    THROW 51012, 'designV1: payment created before collection milestone, wrong method or free order', 1;
 
 IF EXISTS (
     SELECT 1 FROM dbo.su_kien_thanh_toan

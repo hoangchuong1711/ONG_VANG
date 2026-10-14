@@ -15,7 +15,8 @@ public final class PaymentDtos {
     public record Payment(String maGiaoDich, String maDon, String soTien, PaymentMethod phuongThuc,
                               PaymentStatus trangThai, String maGiaoDichDoiTac, String taoLuc,
                               String thoiGianThanhToan, String paymentUrl, boolean daXacNhanDu,
-                              String soTienThucNhan, boolean canDoiSoat) {}
+                              String soTienThucNhan, boolean canDoiSoat, String maTkThu,
+                              String soTienGiuHo) {}
 
     public record PaymentPage(List<Payment> items, int page, int size, long totalElements, long totalPages) {}
 }

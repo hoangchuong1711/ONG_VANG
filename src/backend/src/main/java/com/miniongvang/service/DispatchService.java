@@ -265,6 +265,9 @@ public final class DispatchService {
             if (order.getTrangThai()!=required) throw new Conflict("ORDER_STATE_CONFLICT");
             if (target==OrderStatus.HOAN_TAT && new DispatchDAO(em).arrival(orderId)==null)
                 throw new Conflict("ARRIVAL_REQUIRED");
+            if ((target==OrderStatus.HOAN_TAT || target==OrderStatus.DANG_GIAO
+                    && "NGUOI_DAT".equals(order.getBenThanhToan())) && !PaymentService.cleared(em,order))
+                throw new Conflict("PAYMENT_REQUIRED");
             Instant now=clock.instant();
             OrderStatus previous=order.getTrangThai();
             order.setTrangThai(target);

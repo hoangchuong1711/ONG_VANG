@@ -1096,7 +1096,7 @@
               ],
               "query": []
             },
-            "description": "Cập nhật tiến trình\n\nChỉ tài xế được gán: DA_GAN → DA_LAY_HANG → DANG_GIAO → HOAN_TAT. Không nhảy bước; lặp cùng đích đã đạt trả hiện trạng, không ghi nhật ký lần hai. Hoàn tất giải phóng tài xế, không tự tất toán. Replay only when the current status equals the requested target; older targets return 409. Completion keeps maTx for history, closes the active assignment and sets ranhTu atomically.\n\nStatus: implemented; UC: UC-13; roles: TAI_XE",
+            "description": "Cập nhật tiến trình\n\nChỉ tài xế được gán: DA_GAN → DA_LAY_HANG → DANG_GIAO → HOAN_TAT. Không nhảy bước; lặp cùng đích đã đạt trả hiện trạng, không ghi nhật ký lần hai. Hoàn tất giải phóng tài xế, không tự tất toán. Replay only when the current status equals the requested target; older targets return 409. Completion keeps maTx for history, closes the active assignment and sets ranhTu atomically. Sender-paid orders require confirmed collection before DANG_GIAO. All non-free orders require confirmed collection without reconciliation before HOAN_TAT.\n\nStatus: implemented; UC: UC-13; roles: TAI_XE",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"trangThai\": \"DA_LAY_HANG\"\n}",
@@ -1330,7 +1330,7 @@
               ],
               "query": []
             },
-            "description": "Tạo yêu cầu thanh toán\n\nT14/T15: The owner can create cash or VNPay Sandbox attempts only after the order is complete. Free orders create no attempt. VNPay returns a signed paymentUrl; only a verified IPN or signed query can confirm collection.\n\nStatus: implemented; UC: UC-08, UC-10; roles: KHACH_HANG",
+            "description": "Tạo yêu cầu thanh toán\n\nAssigned driver only. Sender pays after DA_LAY_HANG, before DANG_GIAO; recipient pays after arrival during DANG_GIAO, before HOAN_TAT. Method must match the order. Amount comes from locked fare. Free orders create no attempt. Same idempotency key returns the original attempt. For Sandbox demo, an expired 15-minute URL or failed attempt may be replaced with a new link. A valid signed IPN, Return or QueryDR success confirms VNPay.\n\nStatus: implemented; UC: UC-08, UC-10; roles: TAI_XE",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"phuongThuc\": \"TIEN_MAT\"\n}",
@@ -1520,7 +1520,7 @@
               ],
               "query": []
             },
-            "description": "Xác nhận đã thu tiền mặt\n\nChỉ TIEN_MAT, đơn HOAN_TAT; tài xế đã thực hiện đơn hoặc tổng đài. Lặp cùng số tiền trả kết quả cũ. Khoản thực thu sai cước vẫn được lưu để đối soát, trả 422 và không xác nhận đủ.\n\nStatus: implemented; UC: UC-08; roles: TAI_XE, TONG_DAI",
+            "description": "Xác nhận đã thu tiền mặt\n\nAssigned driver only, TIEN_MAT at the collection milestone. Exact total fare required; mismatch returns 409 without recording collection. Stores collector, time and cash held. Same collector and amount replay safely, including after completion.\n\nStatus: implemented; UC: UC-08; roles: TAI_XE",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"soTienDaThu\": \"{{amount}}\"\n}",
@@ -1585,7 +1585,7 @@
               ],
               "query": []
             },
-            "description": "Kiểm tra lại kết quả VNPay\n\nChủ đơn hoặc tổng đài. BE gọi đối soát; không nhận trạng thái thành công từ client. Trước retry/chuyển tiền mặt phải giải quyết attempt chưa xác định.\n\nStatus: implemented; UC: UC-10; roles: KHACH_HANG, TONG_DAI"
+            "description": "Kiểm tra lại kết quả VNPay\n\nAssigned driver, order owner or dispatcher. Server verifies QueryDr; browser/client success is never authoritative. Failed, cancelled, unknown, incorrect or duplicate collections block new attempts and delivery progression.\n\nStatus: implemented; UC: UC-10; roles: KHACH_HANG, TONG_DAI, TAI_XE"
           },
           "event": [
             {
@@ -1826,7 +1826,7 @@
                 }
               ]
             },
-            "description": "Trang quay về từ VNPay\n\nTrả trang HTML tối giản cho test BE trước FE: hiển thị đã nhận kết quả/chờ xác minh, không thay đổi trạng thái thu tiền từ query. Không lộ chi tiết riêng tư khi chưa đăng nhập. Không đòi cookie/CSRF khi cổng redirect.\n\nStatus: implemented; UC: UC-10; roles: PUBLIC"
+            "description": "Trang quay về từ VNPay\n\nTrang quay về từ VNPay Sandbox. BE chỉ cập nhật thu tiền khi phản hồi Return có chữ ký hợp lệ, đúng đơn và đúng số tiền; FE tài xế tự làm mới để mở khóa bước tiếp theo. Không lộ chi tiết riêng tư khi chưa đăng nhập. Không đòi cookie/CSRF khi cổng redirect.\n\nStatus: implemented; UC: UC-10; roles: PUBLIC"
           },
           "event": [
             {

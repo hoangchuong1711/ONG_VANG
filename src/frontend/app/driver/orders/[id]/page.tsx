@@ -13,6 +13,7 @@ import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import { DriverRouteMap } from "@/components/driver/DriverRouteMap";
+import { FareCollection } from "@/components/driver/FareCollection";
 
 const INCIDENT_TYPES = [
   "Người nhận không nghe máy (đã gọi 3 cuộc)",
@@ -27,6 +28,7 @@ export default function DriverOrderExecutionPage() {
   const params = useParams<{ id: string }>();
   const orderId = params.id;
   const [order, setOrder] = useState<OrderItem | null>(null);
+  const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [currentDriver, setCurrentDriver] = useState<DispatchDriver | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
@@ -46,6 +48,7 @@ export default function DriverOrderExecutionPage() {
       const driver = driverForView(self);
       setCurrentDriver(driver);
       setOrder(orderForView(detail, [driver]));
+      setDetail(detail);
       setIncidentLogs((detail.nhatKy ?? []).filter(event => event.loaiSuKien === "SU_CO")
         .map(event => event.ghiChu ?? "Sự cố đã ghi nhận"));
       setArrived((detail.nhatKy ?? []).some(event => event.loaiSuKien === "DEN_DIEM_NHAN"));
@@ -53,6 +56,9 @@ export default function DriverOrderExecutionPage() {
     } catch (cause) { setOrder(null); setError((cause as Error).message); }
     finally { setReady(true); }
   }, [orderId]);
+  const collectionBlocked = !!detail && (detail.thanhToan.canDoiSoat ||
+    !["MIEN_CUOC", "DA_THANH_TOAN"].includes(detail.thanhToan.trangThai)) &&
+    (detail.trangThai === "DANG_GIAO" || detail.trangThai === "DA_LAY_HANG" && detail.benThanhToan === "NGUOI_DAT");
   useEffect(() => {
     const initial = setTimeout(() => { void refresh(); }, 0);
     const timer = setInterval(() => { void refresh(); }, 15000);
@@ -64,7 +70,7 @@ export default function DriverOrderExecutionPage() {
     const next = order.status === "DA_GAN" ? "DA_LAY_HANG" :
       order.status === "DA_LAY_HANG" ? "DANG_GIAO" :
       order.status === "DANG_GIAO" ? "HOAN_TAT" : null;
-    if (!next || saving || (next === "HOAN_TAT" && !arrived)) return;
+    if (!next || saving || collectionBlocked || (next === "HOAN_TAT" && !arrived)) return;
     setSaving(true);
     try {
       await api(`/orders/${encodeURIComponent(order.id)}/transitions`, {
@@ -197,7 +203,8 @@ export default function DriverOrderExecutionPage() {
           </div>
         </section>}
 
-        {order.status !== "DA_HUY" && <DriverRouteMap key={order.id} orderId={order.id} />}
+        {order.status !== "DA_HUY" && <DriverRouteMap key={`route-${order.id}`} orderId={order.id} />}
+        {detail && <FareCollection key={`fare-${detail.maDon}`} order={detail} refresh={refresh} />}
 
         {/* THÔNG TIN CHI TIẾT 2 CHẶNG (LẤY HÀNG & GIAO HÀNG) */}
         <div className="space-y-4">
@@ -382,7 +389,7 @@ export default function DriverOrderExecutionPage() {
               size="lg"
               fullWidth
               onClick={handleNextStep}
-              disabled={saving}
+              disabled={saving || collectionBlocked}
               className="h-14 sm:h-15 text-base font-extrabold bg-amber-500 hover:bg-amber-600 shadow-lg text-stone-950"
             >
               2. BẮT ĐẦU ĐI GIAO CHO NGƯỜI NHẬN ➔
@@ -391,7 +398,7 @@ export default function DriverOrderExecutionPage() {
 
           {order.status === "DANG_GIAO" && (
             arrived ? <Button variant="primary" size="lg" fullWidth onClick={handleNextStep}
-              disabled={saving}
+              disabled={saving || collectionBlocked}
               className="h-14 sm:h-15 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg">
               4. XÁC NHẬN GIAO THÀNH CÔNG ➔
             </Button> : <Button variant="primary" size="lg" fullWidth onClick={handleArrive}

@@ -20,7 +20,7 @@ export type Order = {
   trangThai: string; maKh: string; maTkTao: string; maTx?: string | null; benThanhToan: PaymentChoice;
   nguonLoTrinh: "FAKE" | "GOONG";
   phuongThucThanhToan: PaymentMethod; cuoc: Fare;
-  thanhToan: { trangThai: string; soTienConPhaiThu: string };
+  thanhToan: { trangThai: string; soTienConPhaiThu: string; canDoiSoat: boolean };
   kienHang: Parcel[];
 };
 export type OrderDetail = Order & {
@@ -40,6 +40,12 @@ export type DriverRoute = {
 };
 
 const messages: Record<string, string> = {
+  PAYMENT_REQUIRED: "Cần thu đủ cước và xử lý đối soát trước khi đi tiếp.",
+  PAYMENT_PENDING: "Đã có yêu cầu thu cước. Hãy kiểm tra hoặc đối soát yêu cầu hiện tại.",
+  PAYMENT_MILESTONE_REQUIRED: "Chưa đến mốc thu cước đã chọn trên đơn.",
+  PAYMENT_METHOD_CONFLICT: "Phương thức thu phải khớp với lựa chọn trên đơn.",
+  PAYMENT_AMOUNT_MISMATCH: "Chỉ xác nhận tiền mặt khi đã nhận đúng tổng cước.",
+  VNPAY_CONFIG_MISSING: "VNPay Sandbox chưa được cấu hình trên máy chủ.",
   ADDRESS_NOT_FOUND: "Không tìm thấy địa chỉ. Hãy nhập địa chỉ đầy đủ và thử lại.",
   OUT_OF_SERVICE_AREA: "Địa chỉ hoặc quãng đường nằm ngoài vùng phục vụ.",
   DISTANCE_INVALID: "Không tính được tuyến đường giữa hai địa chỉ này.",
