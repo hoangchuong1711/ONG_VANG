@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +15,7 @@ import { useToast } from "@/components/ui/Toast";
 
 export default function DriverDashboardPage() {
   const { showToast } = useToast();
+  const router = useRouter();
   const [driver, setDriver] = useState<DispatchDriver | null>(null);
   const [activeOrder, setActiveOrder] = useState<OrderItem | null>(null);
   const [todayTrips, setTodayTrips] = useState<OrderItem[]>([]);
@@ -38,6 +40,9 @@ export default function DriverDashboardPage() {
       setDriver(roster[0]);
       const current = [...assigned.items, ...picked.items, ...delivering.items].map(order => orderForView(order, roster));
       setActiveOrder(current[0] ?? null);
+      setIncomingOrder(previous => previous && current[0]?.id === previous.id && current[0].status === "DA_GAN"
+        ? current[0] : null);
+      if (current[0]?.status !== "DA_GAN") setIsRejectModalOpen(false);
       const today = new Date().toDateString();
       setTodayTrips(completed.items.map(order => orderForView(order, roster))
         .filter(order => new Date(order.createdTimestamp).toDateString() === today));
@@ -55,7 +60,12 @@ export default function DriverDashboardPage() {
     if (activeOrder?.status === "DA_GAN") setIncomingOrder(activeOrder);
     else showToast("Chưa có đơn mới được phân công cho bạn.", "info");
   };
-  const handleAcceptOrder = () => { setIncomingOrder(null); showToast("Đã mở đơn được phân công.", "success"); };
+  const handleOpenAssignedOrder = () => {
+    if (!incomingOrder) return;
+    const id = incomingOrder.id;
+    setIncomingOrder(null);
+    router.push(`/driver/orders/${encodeURIComponent(id)}`);
+  };
   const handleRejectOrder = async () => {
     if (!incomingOrder) return;
     try {
@@ -64,7 +74,7 @@ export default function DriverDashboardPage() {
       });
       setIsRejectModalOpen(false); setIncomingOrder(null); await refresh();
       showToast("Đã từ chối đơn; đơn trở về hàng đợi điều phối.", "info");
-    } catch (cause) { showToast((cause as Error).message, "error"); }
+    } catch (cause) { await refresh(); showToast((cause as Error).message, "error"); }
   };
 
   return (
@@ -346,10 +356,10 @@ export default function DriverDashboardPage() {
               <Button
                 variant="primary"
                 size="lg"
-                onClick={handleAcceptOrder}
+                onClick={handleOpenAssignedOrder}
                 className="h-13 text-sm font-bold shadow-md"
               >
-                NHẬN CUỐC NGAY
+                XEM CHI TIẾT ĐƠN
               </Button>
             </div>
           </div>

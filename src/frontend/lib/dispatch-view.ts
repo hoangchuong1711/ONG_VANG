@@ -37,6 +37,7 @@ export function orderForView(order: ApiOrder, drivers: DispatchDriver[]): OrderI
     createdAt: Number.isFinite(created) ? new Date(created).toLocaleString("vi-VN") : order.thoiGianTao,
     createdTimestamp: created,
     paid: order.thanhToan.trangThai === "DA_THANH_TOAN" || order.thanhToan.trangThai === "MIEN_CUOC",
+    paymentStatus: order.thanhToan.trangThai,
     paymentMethod: order.phuongThucThanhToan === "TIEN_MAT" ? "TIEN_MAT" : "VNPAY",
     driver: driver ? { id: driver.id, name: driver.name, phone: driver.phone,
       vehiclePlate: driver.vehiclePlate, vehicleType: driver.vehicleType } : undefined,

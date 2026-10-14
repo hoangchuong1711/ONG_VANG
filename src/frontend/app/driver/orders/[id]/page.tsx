@@ -12,6 +12,7 @@ import { api, type Driver, type OrderDetail } from "@/lib/live-orders";
 import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { DriverRouteMap } from "@/components/driver/DriverRouteMap";
 
 const INCIDENT_TYPES = [
   "Người nhận không nghe máy (đã gọi 3 cuộc)",
@@ -33,6 +34,8 @@ export default function DriverOrderExecutionPage() {
   const [incidentType, setIncidentType] = useState(INCIDENT_TYPES[0]);
   const [incidentNote, setIncidentNote] = useState("");
   const [incidentLogs, setIncidentLogs] = useState<string[]>([]);
+  const [arrived, setArrived] = useState(false);
+  const [saving, setSaving] = useState(false);
   const isOnline = currentDriver?.status === "ONLINE_IDLE" || currentDriver?.status === "ONLINE_BUSY";
 
   const refresh = useCallback(async () => {
@@ -45,13 +48,15 @@ export default function DriverOrderExecutionPage() {
       setOrder(orderForView(detail, [driver]));
       setIncidentLogs((detail.nhatKy ?? []).filter(event => event.loaiSuKien === "SU_CO")
         .map(event => event.ghiChu ?? "Sự cố đã ghi nhận"));
+      setArrived((detail.nhatKy ?? []).some(event => event.loaiSuKien === "DEN_DIEM_NHAN"));
       setError("");
     } catch (cause) { setOrder(null); setError((cause as Error).message); }
     finally { setReady(true); }
   }, [orderId]);
   useEffect(() => {
     const initial = setTimeout(() => { void refresh(); }, 0);
-    return () => clearTimeout(initial);
+    const timer = setInterval(() => { void refresh(); }, 15000);
+    return () => { clearTimeout(initial); clearInterval(timer); };
   }, [refresh]);
 
   const handleNextStep = async () => {
@@ -59,13 +64,26 @@ export default function DriverOrderExecutionPage() {
     const next = order.status === "DA_GAN" ? "DA_LAY_HANG" :
       order.status === "DA_LAY_HANG" ? "DANG_GIAO" :
       order.status === "DANG_GIAO" ? "HOAN_TAT" : null;
-    if (!next) return;
+    if (!next || saving || (next === "HOAN_TAT" && !arrived)) return;
+    setSaving(true);
     try {
       await api(`/orders/${encodeURIComponent(order.id)}/transitions`, {
         method: "POST", body: JSON.stringify({ trangThai: next }),
       });
       await refresh(); showToast("Đã cập nhật tiến trình đơn hàng.", "success");
-    } catch (cause) { showToast((cause as Error).message, "error"); }
+    } catch (cause) { await refresh(); showToast((cause as Error).message, "error"); }
+    finally { setSaving(false); }
+  };
+
+  const handleArrive = async () => {
+    if (!order || order.status !== "DANG_GIAO" || arrived || saving) return;
+    setSaving(true);
+    try {
+      await api(`/orders/${encodeURIComponent(order.id)}/arrival`, { method: "POST" });
+      await refresh();
+      showToast("Đã ghi nhận đến điểm nhận.", "success");
+    } catch (cause) { await refresh(); showToast((cause as Error).message, "error"); }
+    finally { setSaving(false); }
   };
 
   const handleSubmitIncident = async (event: React.FormEvent) => {
@@ -127,10 +145,16 @@ export default function DriverOrderExecutionPage() {
           </div>
         </div>
 
+        {order.status === "DA_HUY" && (
+          <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">
+            Đơn đã bị hủy. Không còn thao tác giao hàng cho đơn này.
+          </p>
+        )}
+
         {/* ========================================================================= */}
         {/* TIMELINE TIẾN TRÌNH 4 BƯỚC CỦA TÀI XẾ                                     */}
         {/* ========================================================================= */}
-        <section aria-label="Tiến trình giao hàng" className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
+        {order.status !== "DA_HUY" && <section aria-label="Tiến trình giao hàng" className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
           <div className="flex items-center justify-between text-xs font-bold text-stone-500">
             <span>Tiến trình cuốc xe</span>
             <span className="text-amber-600">Bước {currentStep}/4</span>
@@ -171,7 +195,9 @@ export default function DriverOrderExecutionPage() {
               );
             })}
           </div>
-        </section>
+        </section>}
+
+        {order.status !== "DA_HUY" && <DriverRouteMap key={order.id} orderId={order.id} />}
 
         {/* THÔNG TIN CHI TIẾT 2 CHẶNG (LẤY HÀNG & GIAO HÀNG) */}
         <div className="space-y-4">
@@ -302,6 +328,10 @@ export default function DriverOrderExecutionPage() {
                   ? "💵 Thu tiền mặt trực tiếp khi giao (COD)"
                   : "💳 Thanh toán qua VNPay QR"}
               </span>
+              <span className="block text-[11px] text-stone-500">
+                {order.paymentStatus === "MIEN_CUOC" ? "BE xác nhận miễn cước" :
+                  order.paid ? "BE đã xác nhận thanh toán" : "BE chưa xác nhận thanh toán"}
+              </span>
             </div>
 
             {/* Incident Trigger Button (Only available while delivering) */}
@@ -339,6 +369,7 @@ export default function DriverOrderExecutionPage() {
               size="lg"
               fullWidth
               onClick={handleNextStep}
+              disabled={saving}
               className="h-14 sm:h-15 text-base font-extrabold shadow-lg"
             >
               1. XÁC NHẬN ĐÃ ĐẾN & LẤY HÀNG ➔
@@ -351,6 +382,7 @@ export default function DriverOrderExecutionPage() {
               size="lg"
               fullWidth
               onClick={handleNextStep}
+              disabled={saving}
               className="h-14 sm:h-15 text-base font-extrabold bg-amber-500 hover:bg-amber-600 shadow-lg text-stone-950"
             >
               2. BẮT ĐẦU ĐI GIAO CHO NGƯỜI NHẬN ➔
@@ -358,14 +390,14 @@ export default function DriverOrderExecutionPage() {
           )}
 
           {order.status === "DANG_GIAO" && (
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={handleNextStep}
-              className="h-14 sm:h-15 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"
-            >
-              3. XÁC NHẬN GIAO THÀNH CÔNG ➔
+            arrived ? <Button variant="primary" size="lg" fullWidth onClick={handleNextStep}
+              disabled={saving}
+              className="h-14 sm:h-15 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg">
+              4. XÁC NHẬN GIAO THÀNH CÔNG ➔
+            </Button> : <Button variant="primary" size="lg" fullWidth onClick={handleArrive}
+              disabled={saving}
+              className="h-14 sm:h-15 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg">
+              3. XÁC NHẬN ĐÃ ĐẾN ĐIỂM NHẬN ➔
             </Button>
           )}
 
