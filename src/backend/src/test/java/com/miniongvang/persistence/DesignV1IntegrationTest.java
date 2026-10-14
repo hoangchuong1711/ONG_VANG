@@ -1154,19 +1154,25 @@ class DesignV1IntegrationTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings={"24","02"})
-    void failedOrCancelledVnpayBlocksNewAttemptAndLateSuccessCanSettle(String status) {
+    void failedOrCancelledVnpayCanRetryAndLateDuplicateNeedsReview(String status) {
         String id=collectionOrder("VNPAY_QR");
         var p=requestCollection(driver(),id,"VNPAY_QR","late");
         var vnp=new VnpayPaymentService(db.entityManagerFactory(),vnpayGateway());
         String amount=new BigDecimal(p.soTien()).movePointRight(2).toBigIntegerExact().toString();
         vnp.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,signedIpn(p,amount,status,"FAILED"));
         assertTrue(payments.get(driver(),p.maGiaoDich()).canDoiSoat());
-        assertThrows(PaymentService.Conflict.class, () -> requestCollection(driver(),id,"VNPAY_QR","new"));
+        var retry=requestCollection(driver(),id,"VNPAY_QR","new");
+        assertNotEquals(p.maGiaoDich(),retry.maGiaoDich());
+        assertEquals("CHO_THU_LAI_DEMO",payments.get(driver(),p.maGiaoDich()).trangThai().name());
         assertThrows(DispatchErrors.Conflict.class, () -> dispatch.transition(driver(),id,OrderStatus.DANG_GIAO));
-        vnp.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,signedIpn(p,amount,"00","LATE"));
+        assertEquals(PaymentEventResult.DA_AP_DUNG,vnp.apply(
+                com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,
+                signedIpn(retry,amount,"00","RETRY")).result());
         dispatch.transition(driver(),id,OrderStatus.DANG_GIAO);
-        // A second distinct successful transaction is a duplicate collection, not permission to continue.
-        vnp.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,signedIpn(p,amount,"00","DUPLICATE"));
+        // A late success for the retired attempt must not be counted as a second fare.
+        assertEquals(PaymentEventResult.CAN_DOI_SOAT,vnp.apply(
+                com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,
+                signedIpn(p,amount,"00","LATE")).result());
         dispatch.arrive(driver(),id);
         assertThrows(DispatchErrors.Conflict.class, () -> dispatch.transition(driver(),id,OrderStatus.HOAN_TAT));
         assertTrue(payments.get(driver(),p.maGiaoDich()).canDoiSoat());
