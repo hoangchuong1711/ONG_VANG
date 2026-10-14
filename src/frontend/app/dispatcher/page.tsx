@@ -1,122 +1,108 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { OrderItem } from "@/lib/types";
-import { useDemoStore, updateDemoState } from "@/lib/demo-store";
+import type { IncidentItem, OrderItem } from "@/lib/types";
+import { api, type Driver, type Order } from "@/lib/live-orders";
+import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
+type Page<T> = { items: T[]; totalElements: number };
+
 export default function DispatcherLiveBoardPage() {
   const { showToast } = useToast();
-  const { state: demo } = useDemoStore();
-  const { orders, drivers, incidents } = demo;
-
-  // Modal phân công tài xế thông minh (UC-12)
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [drivers, setDrivers] = useState<DispatchDriver[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [loadError, setLoadError] = useState("");
   const [assigningOrder, setAssigningOrder] = useState<OrderItem | null>(null);
-  const [selectedDriverId, setSelectedDriverId] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<DispatchDriver[]>([]);
+  const [selectedDriverId, setSelectedDriverId] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const incidents: IncidentItem[] = [];
 
-  // Thống kê tác chiến
-  const pendingOrders = orders.filter((o) => o.status === "CHO_GAN");
-  const deliveringOrders = orders.filter(
-    (o) => o.status === "DA_GAN" || o.status === "DA_LAY_HANG" || o.status === "DANG_GIAO"
-  );
-  const onlineIdleDrivers = drivers.filter((d) => d.status === "ONLINE_IDLE");
+  const refresh = useCallback(async () => {
+    try {
+      const [pending, assigned, picked, delivering, fleet] = await Promise.all([
+        api<Page<Order>>("/orders?trangThai=CHO_GAN&size=100"),
+        api<Page<Order>>("/orders?trangThai=DA_GAN&size=100"),
+        api<Page<Order>>("/orders?trangThai=DA_LAY_HANG&size=100"),
+        api<Page<Order>>("/orders?trangThai=DANG_GIAO&size=100"),
+        api<Page<Driver>>("/drivers?size=100"),
+      ]);
+      const roster = fleet.items.map(driverForView);
+      setDrivers(roster);
+      setOrders([...pending.items, ...assigned.items, ...picked.items, ...delivering.items]
+        .map(order => orderForView(order, roster)));
+      setPendingCount(pending.totalElements);
+      setLoadError("");
+    } catch (cause) { setLoadError((cause as Error).message); }
+  }, []);
 
-  // Mở modal gán tài xế
-  const handleOpenAssignModal = (order: OrderItem) => {
-    setAssigningOrder(order);
-    const bestDriver = onlineIdleDrivers[0] || drivers[0];
-    if (bestDriver) {
-      setSelectedDriverId(bestDriver.id);
-    }
+  useEffect(() => {
+    void refresh();
+    const timer = setInterval(() => { void refresh(); }, 15000);
+    return () => clearInterval(timer);
+  }, [refresh]);
+
+  const pendingOrders = orders.filter(order => order.status === "CHO_GAN");
+  const deliveringOrders = orders.filter(order =>
+    order.status === "DA_GAN" || order.status === "DA_LAY_HANG" || order.status === "DANG_GIAO");
+  const onlineIdleDrivers = drivers.filter(driver => driver.status === "ONLINE_IDLE");
+
+  const handleOpenAssignModal = async (order: OrderItem) => {
+    setAssigningOrder(order); setSuggestions([]); setSelectedDriverId(""); setLoadError("");
+    try {
+      const page = await api<Page<Driver>>(`/orders/${encodeURIComponent(order.id)}/driver-suggestions?size=100`);
+      const ranked = page.items.map(driverForView);
+      setSuggestions(ranked);
+      setSelectedDriverId(ranked[0]?.id ?? "");
+    } catch (cause) { setLoadError((cause as Error).message); void refresh(); }
   };
 
-  // Xác nhận gán tài xế (UC-12)
-  const handleConfirmAssignment = () => {
-    if (!assigningOrder || !selectedDriverId) return;
-
-    const assignedDriver = drivers.find((d) => d.id === selectedDriverId);
-    if (!assignedDriver) return;
-
-    updateDemoState((previous) => ({ ...previous,
-      orders: previous.orders.map((o) =>
-        o.id === assigningOrder.id
-          ? {
-              ...o,
-              status: "DA_GAN",
-              statusText: "Đã gán tài xế",
-              driver: {
-                id: assignedDriver.id,
-                name: assignedDriver.name,
-                phone: assignedDriver.phone,
-                vehiclePlate: assignedDriver.vehiclePlate,
-                vehicleType: assignedDriver.vehicleType,
-              },
-            }
-          : o
-      ),
-      drivers: previous.drivers.map((d) =>
-        d.id === selectedDriverId ? { ...d, status: "ONLINE_BUSY", idleSinceMinutes: 0 } : d
-      ),
-    }));
-
-    showToast(
-      `Đã phân công tài xế ${assignedDriver.name} (${assignedDriver.vehiclePlate}) cho đơn ${assigningOrder.id}!`,
-      "success"
-    );
-    setAssigningOrder(null);
+  const handleConfirmAssignment = async () => {
+    if (!assigningOrder || !selectedDriverId || assigning) return;
+    setAssigning(true);
+    try {
+      await api(`/orders/${encodeURIComponent(assigningOrder.id)}/assignments`, {
+        method: "POST", body: JSON.stringify({ maTx: selectedDriverId }),
+      });
+      const assigned = suggestions.find(driver => driver.id === selectedDriverId);
+      showToast(`Đã phân công ${assigned?.name ?? selectedDriverId} cho đơn ${assigningOrder.id}.`, "success");
+      setAssigningOrder(null); setSuggestions([]); setSelectedDriverId("");
+      await refresh();
+    } catch (cause) {
+      const message = (cause as Error).message;
+      showToast(message, "error");
+      await handleOpenAssignModal(assigningOrder);
+      setLoadError(message);
+    } finally { setAssigning(false); }
   };
 
-  // Xử lý sự cố: Đổi tài xế khác (UC-13)
-  const handleReassignIncidentOrder = (orderId: string) => {
-    const priorDriverId = orders.find((order) => order.id === orderId)?.driver?.id;
-    updateDemoState((previous) => ({ ...previous,
-      orders: previous.orders.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              status: "CHO_GAN",
-              statusText: "Chờ gán tài xế (Điều phối lại)",
-              incident: undefined,
-              driver: undefined,
-            }
-          : o
-      ),
-      incidents: previous.incidents.map((incident) => incident.orderId === orderId ? { ...incident, status: "DA_GIAI_QUYET" } : incident),
-      drivers: previous.drivers.map((driver) => driver.id === priorDriverId ? { ...driver, status: "ONLINE_IDLE" } : driver),
-    }));
-    showToast(`Đã thu hồi đơn ${orderId} về hàng đợi chờ gán để phân công tài xế mới!`, "info");
+  const handleReassignIncidentOrder = (_orderId: string) => {
+    showToast("Đơn có sự cố cần xử lý trong chi tiết đơn.", "info");
   };
-
-  // Hủy đơn hàng từ điều phối (UC-14)
-  const handleCancelOrder = (orderId: string, reason: string) => {
-    const priorDriverId = orders.find((order) => order.id === orderId)?.driver?.id;
-    updateDemoState((previous) => ({ ...previous,
-      orders: previous.orders.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              status: "DA_HUY",
-              statusText: `Đã hủy: ${reason}`,
-            }
-          : o
-      ),
-      incidents: previous.incidents.map((incident) => incident.orderId === orderId ? { ...incident, status: "DA_GIAI_QUYET" } : incident),
-      drivers: previous.drivers.map((driver) => driver.id === priorDriverId ? { ...driver, status: "ONLINE_IDLE" } : driver),
-    }));
-    showToast(`Đã hủy đơn ${orderId} thành công theo yêu cầu nghiệp vụ!`, "error");
+  const handleCancelOrder = async (orderId: string, reason: string) => {
+    try {
+      await api(`/orders/${encodeURIComponent(orderId)}/cancel`, {
+        method: "POST", body: JSON.stringify({ lyDo: reason }),
+      });
+      await refresh();
+    } catch (cause) { showToast((cause as Error).message, "error"); }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] font-sans">
       <DispatcherNavbar
-        pendingCount={pendingOrders.length}
+        pendingCount={pendingCount}
         incidentCount={incidents.filter((i) => i.status === "CHO_XU_LY").length}
       />
+
+      {loadError && <p role="alert" className="mx-auto max-w-[1600px] rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{loadError}</p>}
 
       {/* OPERATIONS TELEMETRY STRIP */}
       <section className="bg-white border-b border-stone-200 px-4 sm:px-6 py-2.5 shadow-2xs">
@@ -125,7 +111,7 @@ export default function DispatcherLiveBoardPage() {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 whitespace-nowrap">
               <span className="text-stone-500 font-semibold text-xs">Hàng đợi chờ gán:</span>
-              <span className="text-base font-extrabold text-amber-600">{pendingOrders.length}</span>
+              <span className="text-base font-extrabold text-amber-600">{pendingCount}</span>
             </div>
 
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 whitespace-nowrap">
@@ -171,7 +157,7 @@ export default function DispatcherLiveBoardPage() {
                 Hàng Đợi Chờ Gán
               </span>
               <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                {pendingOrders.length}
+                {pendingCount}
               </span>
             </div>
             <span className="text-xs font-semibold text-stone-400 whitespace-nowrap">Hàng đợi</span>
@@ -379,13 +365,13 @@ export default function DispatcherLiveBoardPage() {
                           : "bg-stone-100 text-stone-500 border-stone-200"
                       }`}
                     >
-                      {isIdle ? `Rảnh ${driver.idleSinceMinutes}m` : isBusy ? "Đang giao" : "Tạm nghỉ"}
+                      {isIdle ? "Rảnh" : isBusy ? "Đang giao" : "Tạm nghỉ"}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-stone-500 font-medium pt-1.5 border-t border-stone-100">
                     <span>{driver.currentDistrict}</span>
-                    <span className="font-semibold text-stone-700">COD: {formatVND(driver.codCashHolding)}</span>
+                    <span className="font-semibold text-stone-700">{driver.locationSource === "DEMO_CO_DINH" ? "Vị trí demo cố định" : "Chưa cấu hình vị trí"}</span>
                   </div>
                 </div>
               );
@@ -442,8 +428,10 @@ export default function DispatcherLiveBoardPage() {
                 Gợi ý tài xế tối ưu (Đang trực tuyến rảnh):
               </label>
 
+              <p className="text-xs text-stone-500">{suggestions[0]?.routeSource === "GOONG" ? "Xếp theo đường Goong đến điểm lấy hàng" : suggestions[0]?.routeSource === "FAKE" ? "Tuyến mô phỏng FAKE" : "Thứ tự dự phòng theo thời điểm rảnh; thiếu vị trí hoặc định tuyến không khả dụng"}</p>
               <div className="space-y-2 max-h-56 overflow-y-auto">
-                {drivers.map((d) => {
+                {suggestions.length === 0 && <p className="text-xs text-stone-500">Không có tài xế đủ điều kiện.</p>}
+                {suggestions.map((d) => {
                   const isSelected = selectedDriverId === d.id;
                   const isIdle = d.status === "ONLINE_IDLE";
 
@@ -478,9 +466,9 @@ export default function DispatcherLiveBoardPage() {
                             isIdle ? "text-emerald-700" : "text-amber-700"
                           }`}
                         >
-                          {isIdle ? `Rảnh ${d.idleSinceMinutes}m` : "Đang giao"}
+                          {d.routeKm ? `${d.routeKm} km · ${Math.ceil((d.routeSeconds ?? 0) / 60)} phút` : "Thứ tự dự phòng"}
                         </span>
-                        <span className="text-stone-400 text-[11px] font-medium">Đánh giá: ★{d.rating}</span>
+                        <span className="text-stone-400 text-[11px] font-medium">{d.routeSource === "GOONG" ? "Tuyến Goong" : d.routeSource === "FAKE" ? "Tuyến FAKE" : "Theo thời điểm rảnh"}</span>
                       </div>
                     </label>
                   );
@@ -500,7 +488,8 @@ export default function DispatcherLiveBoardPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={handleConfirmAssignment}
+                onClick={() => void handleConfirmAssignment()}
+                disabled={!selectedDriverId || assigning}
                 className="text-xs font-bold shadow-sm"
               >
                 Xác nhận phân công

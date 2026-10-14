@@ -1,93 +1,74 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { OrderItem } from "@/lib/types";
-import { useDemoStore, updateDemoState } from "@/lib/demo-store";
+import type { OrderItem } from "@/lib/types";
+import { api, type Driver, type Order } from "@/lib/live-orders";
+import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 export default function DriverDashboardPage() {
   const { showToast } = useToast();
-  const { state: demo } = useDemoStore();
-  const driver = demo.drivers.find((item) => item.id === "TX-DEMO-1");
-  const activeOrder = demo.orders.find((item) => item.driver?.id === driver?.id &&
-    ["DA_GAN", "DA_LAY_HANG", "DANG_GIAO"].includes(item.status)) ?? null;
-  const isOnline = driver?.status !== "OFFLINE";
-  const today = new Date().toDateString();
-  const todayTrips = demo.orders.filter((item) => item.driver?.id === driver?.id &&
-    ["HOAN_TAT", "CHUA_THANH_TOAN"].includes(item.status) &&
-    new Date(item.createdTimestamp).toDateString() === today);
-  const ratedTrips = demo.orders.filter((item) => item.driver?.id === driver?.id && item.rating);
-  const averageRating = ratedTrips.length ?
-    (ratedTrips.reduce((sum, item) => sum + (item.rating?.stars ?? 0), 0) / ratedTrips.length).toFixed(1) : "—";
-
-  // Modal đơn mới đến (TX-02 / UC-12)
+  const [driver, setDriver] = useState<DispatchDriver | null>(null);
+  const [activeOrder, setActiveOrder] = useState<OrderItem | null>(null);
+  const [todayTrips, setTodayTrips] = useState<OrderItem[]>([]);
   const [incomingOrder, setIncomingOrder] = useState<OrderItem | null>(null);
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState<boolean>(false);
-  const [rejectReason, setRejectReason] = useState<string>("Đang ở quá xa điểm lấy hàng (> 5km)");
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("Đang ở quá xa điểm lấy hàng");
+  const [error, setError] = useState("");
+  const isOnline = driver?.status === "ONLINE_IDLE" || driver?.status === "ONLINE_BUSY";
+  const ratedTrips: OrderItem[] = [];
+  const averageRating = "—";
 
-  const handleToggleOnline = () => {
-    const nextState = !isOnline;
-    updateDemoState((previous) => ({ ...previous, drivers: previous.drivers.map((item) =>
-      item.id === driver?.id ? { ...item, status: nextState ? (activeOrder ? "ONLINE_BUSY" : "ONLINE_IDLE") : "OFFLINE" } : item) }));
-    if (nextState) {
-      showToast("Bạn đã bật TRỰC TUYẾN. Sẵn sàng nhận cuốc!", "success");
-    } else {
-      showToast("Bạn đã chuyển sang TẠM NGHỈ. Sẽ không nhận thêm đơn.", "info");
-    }
-  };
+  const refresh = useCallback(async () => {
+    try {
+      const [self, assigned, picked, delivering, completed] = await Promise.all([
+        api<Driver>("/drivers/me"),
+        api<{ items: Order[] }>("/orders?trangThai=DA_GAN&size=100"),
+        api<{ items: Order[] }>("/orders?trangThai=DA_LAY_HANG&size=100"),
+        api<{ items: Order[] }>("/orders?trangThai=DANG_GIAO&size=100"),
+        api<{ items: Order[] }>("/orders?trangThai=HOAN_TAT&size=100"),
+      ]);
+      const roster = [driverForView(self)];
+      setDriver(roster[0]);
+      const current = [...assigned.items, ...picked.items, ...delivering.items].map(order => orderForView(order, roster));
+      setActiveOrder(current[0] ?? null);
+      const today = new Date().toDateString();
+      setTodayTrips(completed.items.map(order => orderForView(order, roster))
+        .filter(order => new Date(order.createdTimestamp).toDateString() === today));
+      setError("");
+    } catch (cause) { setError((cause as Error).message); }
+  }, []);
+  useEffect(() => { void refresh(); const timer = setInterval(() => { void refresh(); }, 15000); return () => clearInterval(timer); }, [refresh]);
 
+  const handleToggleOnline = () => showToast("Trạng thái trực tuyến hiện được quản lý ở backend.", "info");
   const handleTriggerIncomingOrder = () => {
-    if (activeOrder) {
-      showToast("Hãy hoàn tất đơn đang phụ trách trước khi nhận đơn mới.", "info");
-      return;
-    }
-    if (!isOnline) {
-      showToast("Vui lòng bật trạng thái TRỰC TUYẾN trước khi nhận đơn!", "error");
-      return;
-    }
-    const pending = demo.orders.find((item) => item.status === "CHO_GAN");
-    if (!pending) return showToast("Hiện không có đơn chờ phân công trong dữ liệu demo.", "info");
-    setIncomingOrder(pending);
-    showToast("Đã tìm thấy một đơn đang chờ phân công.", "info");
+    if (activeOrder?.status === "DA_GAN") setIncomingOrder(activeOrder);
+    else showToast("Chưa có đơn mới được phân công cho bạn.", "info");
   };
-
-  const handleAcceptOrder = () => {
-    if (incomingOrder) {
-      if (!demo.orders.some((item) => item.id === incomingOrder.id && item.status === "CHO_GAN")) {
-        setIncomingOrder(null);
-        showToast("Đơn này đã được phân công. Hãy chọn đơn khác.", "error");
-        return;
-      }
-      updateDemoState((previous) => ({ ...previous,
-        orders: previous.orders.map((item) => item.id === incomingOrder.id ? {
-          ...item, status: "DA_GAN", statusText: "Đã gán tài xế",
-          driver: driver ? { id: driver.id, name: driver.name, phone: driver.phone,
-            vehiclePlate: driver.vehiclePlate, vehicleType: driver.vehicleType } : undefined,
-        } : item),
-        drivers: previous.drivers.map((item) => item.id === driver?.id ? { ...item, status: "ONLINE_BUSY" } : item),
-      }));
-      setIncomingOrder(null);
-      showToast(`Đã nhận cuốc ${incomingOrder.id}! Bắt đầu di chuyển đến điểm lấy hàng.`, "success");
-    }
-  };
-
-  const handleRejectOrder = () => {
-    setIsRejectModalOpen(false);
-    setIncomingOrder(null);
-    showToast(`Đã từ chối đơn. Lý do: "${rejectReason}". Đơn đã trả về hàng đợi điều phối.`, "info");
+  const handleAcceptOrder = () => { setIncomingOrder(null); showToast("Đã mở đơn được phân công.", "success"); };
+  const handleRejectOrder = async () => {
+    if (!incomingOrder) return;
+    try {
+      await api(`/orders/${encodeURIComponent(incomingOrder.id)}/reject`, {
+        method: "POST", body: JSON.stringify({ lyDo: rejectReason }),
+      });
+      setIsRejectModalOpen(false); setIncomingOrder(null); await refresh();
+      showToast("Đã từ chối đơn; đơn trở về hàng đợi điều phối.", "info");
+    } catch (cause) { showToast((cause as Error).message, "error"); }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-20 md:pb-8">
-      <DriverNavbar isOnline={isOnline} onToggleOnline={handleToggleOnline} />
+      <DriverNavbar isOnline={isOnline} onToggleOnline={handleToggleOnline} showStatus={false} />
 
       <main className="flex-1 max-w-[1024px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
+        {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
         {/* BANNER THÔNG BÁO TRẠNG THÁI */}
         <section
           className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
@@ -119,9 +100,9 @@ export default function DriverDashboardPage() {
             type="button"
             onClick={handleTriggerIncomingOrder}
             className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-bold shrink-0 shadow-2xs"
-            title="Xem đơn đang chờ phân công trong dữ liệu demo"
+            title="Xem đơn mới đã được phân công cho bạn"
           >
-            Xem đơn chờ nhận
+            Xem đơn đã gán
           </button>
         </section>
 
@@ -306,7 +287,7 @@ export default function DriverDashboardPage() {
                 </span>
               </div>
               <div className="font-mono text-sm font-extrabold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                ⏱️ 28s còn lại
+                Đã phân công
               </div>
             </div>
 
