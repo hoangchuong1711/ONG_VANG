@@ -60,6 +60,39 @@ public final class DesignV1DemoSeeder {
                     .setParameter("now", now).executeUpdate();
             return null;
         });
+        configureVerifiedPositions();
+    }
+
+    /** Seed locations only after Goong resolves each landmark; never label a guessed point as GPS. */
+    private void configureVerifiedPositions() {
+        String key = System.getenv("GOONG_API_KEY");
+        if (key == null || key.isBlank()) return;
+        var goong = new com.miniongvang.integration.GoongRouteProvider(key, java.time.Duration.ofSeconds(5));
+        String[] addresses = {
+                "Bưu điện Trung tâm Sài Gòn, 2 Công xã Paris, Quận 1, Thành phố Hồ Chí Minh",
+                "Chợ Bến Thành, Lê Lợi, Quận 1, Thành phố Hồ Chí Minh",
+                "Công viên Tao Đàn, Trương Định, Quận 3, Thành phố Hồ Chí Minh"
+        };
+        for (int i = 1; i <= addresses.length; i++) {
+            String id = "TX-DEMO-" + i;
+            boolean missing = transactions.run(em -> {
+                TaiXe driver = em.find(TaiXe.class, id);
+                return driver != null && driver.getViTriDemoDiaChi() == null;
+            });
+            if (!missing) continue;
+            var location = goong.geocodeAddress(addresses[i - 1]);
+            transactions.run(em -> {
+                TaiXe driver = em.find(TaiXe.class, id, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+                if (driver != null && driver.getViTriDemoDiaChi() == null) {
+                    driver.setViTriDemoDiaChi(location.address());
+                    driver.setViTriDemoLat(location.latitude());
+                    driver.setViTriDemoLng(location.longitude());
+                    driver.setViTriDemoNguon("DEMO_CO_DINH");
+                    driver.setViTriDemoCauHinhLuc(clock.instant());
+                }
+                return null;
+            });
+        }
     }
 
     private static void install(EntityManager em, String hash, Instant now) {

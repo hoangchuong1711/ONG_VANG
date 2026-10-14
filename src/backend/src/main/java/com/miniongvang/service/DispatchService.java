@@ -18,6 +18,8 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.LockModeType;
 import java.time.*;
 import java.util.*;
+import com.miniongvang.integration.GoongRouteProvider;
+import com.miniongvang.config.RouteConfiguration;
 
 public final class DispatchService {
     private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -38,9 +40,42 @@ public final class DispatchService {
     public DriverPage drivers(ActorContext actor, int page, int size, DriverStatus status, Boolean busy) {
         return queries.drivers(actor, page, size, status, busy);
     }
+    public com.miniongvang.dto.dispatch.DispatchDtos.Driver driver(ActorContext actor) {
+        return queries.driver(actor);
+    }
     public DriverPage suggestions(ActorContext actor, String id, int page, int size) {
         return queries.suggestions(actor, id, page, size);
     }
+    public DemoPosition configureDemoPosition(
+            ActorContext actor, String driverId, String address) {
+        id(driverId);
+        if (address == null || address.isBlank() || address.strip().length() > 255)
+            throw new IllegalArgumentException("Invalid address");
+        transactions.run(em -> { actor(em, actor, AccountRole.TONG_DAI); return null; });
+        String key = System.getenv("GOONG_API_KEY");
+        if (key == null || key.isBlank()) throw new com.miniongvang.integration.RouteFailure(
+                com.miniongvang.integration.RouteFailure.Kind.ROUTE_PROVIDER_ERROR);
+        var goong = new GoongRouteProvider(key, Duration.ofMillis(
+                Long.parseLong(System.getenv().getOrDefault("GOONG_TIMEOUT_MS", "5000"))));
+        // Verify before taking a DB lock; a failed geocode cannot alter a shared position.
+        var location = goong.geocodeAddress(address.strip());
+        Instant configuredAt = clock.instant();
+        transactions.run(em -> {
+            actor(em, actor, AccountRole.TONG_DAI);
+            TaiXe driver = new TaiXeDAO(em).findForUpdate(driverId);
+            if (driver == null) throw new NoSuchElementException("Driver not found");
+            driver.setViTriDemoDiaChi(location.address());
+            driver.setViTriDemoLat(location.latitude());
+            driver.setViTriDemoLng(location.longitude());
+            driver.setViTriDemoNguon("DEMO_CO_DINH");
+            driver.setViTriDemoCauHinhLuc(configuredAt);
+            return null;
+        });
+        return new DemoPosition(driverId,location.address(),location.latitude(),location.longitude(),
+                "DEMO_CO_DINH",configuredAt.toString());
+    }
+    public record DemoPosition(String maTx,String diaChi,java.math.BigDecimal lat,java.math.BigDecimal lng,
+                               String nguon,String cauHinhLuc) {}
     public EventPage events(ActorContext actor, String id, int page, int size) {
         return queries.events(actor, id, page, size);
     }
