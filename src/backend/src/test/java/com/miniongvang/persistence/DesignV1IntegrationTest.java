@@ -238,7 +238,7 @@ class DesignV1IntegrationTest {
             assertArrayEquals(before, tableCounts(tables));
         }
         assertEquals("HOAN_TAT", dispatch.order(customer(1), id).trangThai());
-        assertEquals(5, dispatch.events(customer(1), id, 0, 20).items().size());
+        assertEquals(6, dispatch.events(customer(1), id, 0, 20).items().size());
     }
 
     @Test void t19InvariantQueryAcceptsValidPaymentAndDetectsWrongConfirmedAmount() throws Exception {
@@ -586,16 +586,19 @@ class DesignV1IntegrationTest {
         assertEquals("TX-DEMO-1", dispatch.assign(dispatcher(), id, "TX-DEMO-1").maTx());
         dispatch.transition(driver(), id, OrderStatus.DA_LAY_HANG);
         dispatch.transition(driver(), id, OrderStatus.DANG_GIAO);
+        assertEquals("ARRIVAL_REQUIRED", assertThrows(DispatchErrors.Conflict.class,
+                () -> dispatch.transition(driver(), id, OrderStatus.HOAN_TAT)).getMessage());
+        assertEquals(OrderEventType.DEN_DIEM_NHAN, dispatch.arrive(driver(), id).loaiSuKien());
         assertEquals(OrderStatus.HOAN_TAT.name(), dispatch.transition(driver(), id, OrderStatus.HOAN_TAT).trangThai());
         var events = dispatch.events(customer(1), id, 0, 20).items();
-        assertEquals(5, events.size());
+        assertEquals(6, events.size());
         assertEquals(1, events.get(0).thuTu());
         assertEquals(OrderEventType.TAO_DON, events.get(0).loaiSuKien());
         assertNull(events.get(0).trangThaiTruoc());
         assertEquals(OrderStatus.CHO_GAN, events.get(0).trangThaiSau());
         assertEquals("TK-DEMO-KH-1", events.get(0).maTkThucHien());
-        assertEquals(5, events.get(4).thuTu());
-        assertEquals(OrderStatus.HOAN_TAT, events.get(4).trangThaiSau());
+        assertEquals(6, events.get(5).thuTu());
+        assertEquals(OrderStatus.HOAN_TAT, events.get(5).trangThaiSau());
         tx.run(em -> {
             PhanCongDonHang assignment = em.createQuery(
                     "select p from PhanCongDonHang p where p.donHang.id=:id", PhanCongDonHang.class)
@@ -892,6 +895,7 @@ class DesignV1IntegrationTest {
         dispatch.assign(dispatcher(), id, "TX-DEMO-1");
         dispatch.transition(driver(), id, OrderStatus.DA_LAY_HANG);
         dispatch.transition(driver(), id, OrderStatus.DANG_GIAO);
+        dispatch.arrive(driver(), id);
         dispatch.transition(driver(), id, OrderStatus.HOAN_TAT);
         return id;
     }
@@ -903,6 +907,7 @@ class DesignV1IntegrationTest {
         dispatch.assign(dispatcher(), id, "TX-DEMO-1");
         dispatch.transition(driver(), id, OrderStatus.DA_LAY_HANG);
         dispatch.transition(driver(), id, OrderStatus.DANG_GIAO);
+        dispatch.arrive(driver(), id);
         dispatch.transition(driver(), id, OrderStatus.HOAN_TAT);
         var payment = payments.createCash(customer(1), id, "cash-key");
         assertEquals(payment.maGiaoDich(), payments.createCash(customer(1), id, "cash-key").maGiaoDich());
@@ -1265,7 +1270,7 @@ class DesignV1IntegrationTest {
         var q=quotes.create(customer(1),null,"Quận 1","Quận 3",parcels);
         String id=orders.create(customer(1),UUID.randomUUID().toString(),new CreateOrder(q.maBaoGia(),null,"Quận 1","Quận 3","0901234567",null,parcels)).maDon();
         dispatch.assign(dispatcher(),id,"TX-DEMO-1");dispatch.transition(driver(),id,OrderStatus.DA_LAY_HANG);
-        dispatch.transition(driver(),id,OrderStatus.DANG_GIAO);dispatch.transition(driver(),id,OrderStatus.HOAN_TAT);
+        dispatch.transition(driver(),id,OrderStatus.DANG_GIAO);dispatch.arrive(driver(),id);dispatch.transition(driver(),id,OrderStatus.HOAN_TAT);
         var partial=payments.createCash(customer(1),id,"t17-partial");payments.confirmCash(driver(),partial.maGiaoDich(),new BigDecimal("5000.00"));
         var full=payments.createCash(customer(1),id,"t17-full");payments.confirmCash(driver(),full.maGiaoDich(),new BigDecimal(full.soTien()));
         t17OrderTime(id,"2026-10-05T03:00:00Z");t17PaymentTime(partial.maGiaoDich(),"2026-10-05T04:00:00Z");t17PaymentTime(full.maGiaoDich(),"2026-10-05T05:00:00Z");
@@ -1316,6 +1321,7 @@ class DesignV1IntegrationTest {
         var second = new ActorContext("TK-DEMO-TX-2", "Driver", AccountRole.TAI_XE, null, "TX-DEMO-2");
         dispatch.transition(second, id, OrderStatus.DA_LAY_HANG);
         dispatch.transition(second, id, OrderStatus.DANG_GIAO);
+        dispatch.arrive(second, id);
         dispatch.transition(second, id, OrderStatus.HOAN_TAT);
         var payment = payments.createCash(customer(1), id, "t16-payment");
         payments.confirmCash(second, payment.maGiaoDich(), new BigDecimal(payment.soTien()));

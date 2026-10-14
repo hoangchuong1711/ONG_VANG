@@ -56,6 +56,8 @@ public final class DispatchEndpoint {
                     throw new NoSuchElementException("Endpoint not found");
                 String id=parts[3];
                 if (get && parts.length==4) result=service.detail(actor,id);
+                else if (get && parts.length==5 && parts[4].equals("driver-route"))
+                    result=service.driverRoute(actor,id);
                 else if (get && parts.length==5 && parts[4].equals("events"))
                     result=service.events(actor,id,integer(req,"page",0),integer(req,"size",20));
                 else if (post && parts.length==5 && parts[4].equals("transitions")) {
@@ -68,6 +70,9 @@ public final class DispatchEndpoint {
                             incident.get("lyDo").textValue());
                     result=service.incident(actor,id,command.loaiSuCo(),command.lyDo());
                     responseStatus=201;
+                }
+                else if (post && parts.length==5 && parts[4].equals("arrival")) {
+                    result=service.arrive(actor,id);
                 }
                 else if (get && parts.length==5 && parts[4].equals("driver-suggestions"))
                     result=service.suggestions(actor,id,integer(req,"page",0),integer(req,"size",20));
@@ -91,6 +96,7 @@ public final class DispatchEndpoint {
             int status=switch(failure.kind()) {
                 case ADDRESS_NOT_FOUND, OUT_OF_SERVICE_AREA, DISTANCE_INVALID -> 422;
                 case ROUTE_PROVIDER_TIMEOUT -> 504;
+                case ROUTE_PROVIDER_QUOTA -> 429;
                 case ROUTE_PROVIDER_ERROR -> 502;
             };
             error(resp,status,failure.kind().name());

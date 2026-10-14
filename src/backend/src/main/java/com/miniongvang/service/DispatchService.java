@@ -76,6 +76,64 @@ public final class DispatchService {
     }
     public record DemoPosition(String maTx,String diaChi,java.math.BigDecimal lat,java.math.BigDecimal lng,
                                String nguon,String cauHinhLuc) {}
+    public com.miniongvang.dto.dispatch.DispatchDtos.DriverRoute driverRoute(ActorContext actor,String orderId) {
+        id(orderId);
+        record RouteInput(String driverAddress,double driverLat,double driverLng,String pickup,String dropoff) {}
+        RouteInput input=transactions.run(em -> {
+            actor(em,actor,AccountRole.TAI_XE);
+            DonHang order=new DonHangDAO(em).find(orderId);
+            if (order==null) throw new NoSuchElementException("Order not found");
+            var dao=new DispatchDAO(em);
+            var assignment=dao.activeOrder(orderId);
+            boolean mine=assignment!=null && assignment.getTaiXe().getId().equals(actor.maTx());
+            if (!mine && !(order.getTrangThai()==OrderStatus.HOAN_TAT && dao.completedBy(orderId,actor.maTx())))
+                throw new NoSuchElementException("Order not found");
+            TaiXe driver=em.find(TaiXe.class,actor.maTx());
+            if (driver==null || driver.getViTriDemoLat()==null || driver.getViTriDemoLng()==null
+                    || driver.getViTriDemoDiaChi()==null) throw new Conflict("DEMO_POSITION_MISSING");
+            return new RouteInput(driver.getViTriDemoDiaChi(),driver.getViTriDemoLat().doubleValue(),
+                    driver.getViTriDemoLng().doubleValue(),order.getDiemLayHang(),order.getDiemGiaoHang());
+        });
+        String key=System.getenv("GOONG_API_KEY");
+        if (key==null || key.isBlank()) throw new com.miniongvang.integration.RouteFailure(
+                com.miniongvang.integration.RouteFailure.Kind.ROUTE_PROVIDER_ERROR);
+        var goong=new GoongRouteProvider(key,Duration.ofMillis(
+                Long.parseLong(System.getenv().getOrDefault("GOONG_TIMEOUT_MS","5000"))),
+                System.getenv().getOrDefault("GOONG_VEHICLE","car"));
+        var pickup=goong.geocodeAddress(input.pickup());
+        var dropoff=goong.geocodeAddress(input.dropoff());
+        var toPickup=goong.routeGeometry(input.driverLat(),input.driverLng(),
+                pickup.latitude().doubleValue(),pickup.longitude().doubleValue());
+        var toDropoff=goong.routeGeometry(pickup.latitude().doubleValue(),pickup.longitude().doubleValue(),
+                dropoff.latitude().doubleValue(),dropoff.longitude().doubleValue());
+        // Goong runs outside the DB lock; recheck assignment before returning its geometry.
+        transactions.run(em -> {
+            actor(em,actor,AccountRole.TAI_XE);
+            DonHang order=new DonHangDAO(em).find(orderId);
+            if (order==null) throw new NoSuchElementException("Order not found");
+            var dao=new DispatchDAO(em);
+            var assignment=dao.activeOrder(orderId);
+            boolean mine=assignment!=null && assignment.getTaiXe().getId().equals(actor.maTx());
+            if (!mine && !(order.getTrangThai()==OrderStatus.HOAN_TAT && dao.completedBy(orderId,actor.maTx())))
+                throw new NoSuchElementException("Order not found");
+            return null;
+        });
+        return new com.miniongvang.dto.dispatch.DispatchDtos.DriverRoute(
+                new com.miniongvang.dto.dispatch.DispatchDtos.MapPoint(input.driverAddress(),
+                        input.driverLat(),input.driverLng(),"DEMO_CO_DINH"),
+                new com.miniongvang.dto.dispatch.DispatchDtos.MapPoint(pickup.address(),
+                        pickup.latitude().doubleValue(),pickup.longitude().doubleValue(),"GOONG"),
+                new com.miniongvang.dto.dispatch.DispatchDtos.MapPoint(dropoff.address(),
+                        dropoff.latitude().doubleValue(),dropoff.longitude().doubleValue(),"GOONG"),
+                new com.miniongvang.dto.dispatch.DispatchDtos.MapLeg(toPickup.polyline(),
+                        km(toPickup.meters()),toPickup.seconds(),"GOONG"),
+                new com.miniongvang.dto.dispatch.DispatchDtos.MapLeg(toDropoff.polyline(),
+                        km(toDropoff.meters()),toDropoff.seconds(),"GOONG"),"GOONG");
+    }
+    private static String km(long meters) {
+        return java.math.BigDecimal.valueOf(meters).divide(java.math.BigDecimal.valueOf(1000),2,
+                java.math.RoundingMode.HALF_UP).toPlainString();
+    }
     public EventPage events(ActorContext actor, String id, int page, int size) {
         return queries.events(actor, id, page, size);
     }
@@ -205,6 +263,8 @@ public final class DispatchService {
                 default -> throw new IllegalArgumentException("Invalid transition target");
             };
             if (order.getTrangThai()!=required) throw new Conflict("ORDER_STATE_CONFLICT");
+            if (target==OrderStatus.HOAN_TAT && new DispatchDAO(em).arrival(orderId)==null)
+                throw new Conflict("ARRIVAL_REQUIRED");
             Instant now=clock.instant();
             OrderStatus previous=order.getTrangThai();
             order.setTrangThai(target);
@@ -228,6 +288,24 @@ public final class DispatchService {
             lockDriver(em,actor,account,orderId);
             SuKienDonHang event=incidentEvent(em,order,account,clock.instant(),type,reason.strip());
             em.flush(); return eventView(event);
+        });
+    }
+    public Event arrive(ActorContext actor,String orderId) {
+        id(orderId);
+        return transactions.run(em -> {
+            TaiKhoan account=actor(em,actor,AccountRole.TAI_XE);
+            DonHang order=ownedOrder(em,actor,orderId);
+            if (order.getTrangThai()!=OrderStatus.DANG_GIAO) throw new Conflict("ORDER_STATE_CONFLICT");
+            lockDriver(em,actor,account,orderId);
+            var dao=new DispatchDAO(em);
+            SuKienDonHang existing=dao.arrival(orderId);
+            if (existing!=null) return eventView(existing);
+            SuKienDonHang event=new SuKienDonHang();
+            event.setId(UUID.randomUUID().toString()); event.setDonHang(order);
+            event.setThuTu(nextSequence(em,orderId)); event.setLoaiSuKien(OrderEventType.DEN_DIEM_NHAN);
+            event.setTrangThaiTruoc(OrderStatus.DANG_GIAO); event.setTrangThaiSau(OrderStatus.DANG_GIAO);
+            event.setThoiGian(clock.instant()); event.setTaiKhoanThucHien(account);
+            em.persist(event); em.flush(); return eventView(event);
         });
     }
     private static DonHang ownedOrder(EntityManager em,ActorContext actor,String id) {
