@@ -71,6 +71,25 @@ public final class GoongRouteProvider implements RouteProvider {
 
     public record GeocodedAddress(String address, java.math.BigDecimal latitude, java.math.BigDecimal longitude) {}
 
+    /** Geometry is returned only to the authorized driver through the dispatch endpoint. */
+    public Geometry routeGeometry(double fromLat, double fromLng, double toLat, double toLng) {
+        JsonNode response = get("direction?origin=" + encode(fromLat + "," + fromLng)
+                + "&destination=" + encode(toLat + "," + toLng)
+                + "&vehicle=" + vehicle + "&api_key=" + encode(apiKey));
+        JsonNode routes = response.path("routes");
+        if (!routes.isArray() || routes.isEmpty()) throw new RouteFailure(RouteFailure.Kind.ADDRESS_NOT_FOUND);
+        JsonNode route = routes.get(0);
+        JsonNode legs = route.path("legs");
+        if (!legs.isArray() || legs.isEmpty()) throw new RouteFailure(RouteFailure.Kind.ROUTE_PROVIDER_ERROR);
+        String polyline = route.path("overview_polyline").path("points").asText();
+        if (polyline.isBlank()) throw new RouteFailure(RouteFailure.Kind.ROUTE_PROVIDER_ERROR);
+        long meters = positiveLong(legs.get(0).path("distance").path("value"));
+        long seconds = nonnegativeLong(legs.get(0).path("duration").path("value"));
+        return new Geometry(polyline, meters, seconds);
+    }
+
+    public record Geometry(String polyline, long meters, long seconds) {}
+
     private Location geocode(String address) {
         JsonNode response = get("geocode?address=" + encode(address) + "&api_key=" + encode(apiKey));
         JsonNode results = response.path("results");
@@ -94,6 +113,8 @@ public final class GoongRouteProvider implements RouteProvider {
             HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(pathAndQuery))
                     .timeout(timeout).GET().build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 429)
+                throw new RouteFailure(RouteFailure.Kind.ROUTE_PROVIDER_QUOTA);
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 LOG.warning("Goong API returned HTTP " + response.statusCode());
                 throw new RouteFailure(RouteFailure.Kind.ROUTE_PROVIDER_ERROR);
