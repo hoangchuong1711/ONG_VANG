@@ -4318,7 +4318,7 @@
         ],
         "summary": "Tạo yêu cầu thanh toán",
         "operationId": "createPayment",
-        "description": "Assigned driver only. Sender pays after DA_LAY_HANG, before DANG_GIAO; recipient pays after arrival during DANG_GIAO, before HOAN_TAT. Method must match the order. Amount comes from locked fare. Free orders create no attempt. Same idempotency key returns the original attempt. Pending or reconciliation cases block new attempts. Only verified IPN/query confirms VNPay.",
+        "description": "Assigned driver only. Sender pays after DA_LAY_HANG, before DANG_GIAO; recipient pays after arrival during DANG_GIAO, before HOAN_TAT. Method must match the order. Amount comes from locked fare. Free orders create no attempt. Same idempotency key returns the original attempt. For Sandbox demo, an expired 15-minute URL or failed attempt may be replaced with a new link. A valid signed IPN, Return or QueryDR success confirms VNPay.",
         "x-implementation-status": "implemented",
         "x-uc": [
           "UC-08",
@@ -5726,7 +5726,7 @@
         ],
         "summary": "Trang quay về từ VNPay",
         "operationId": "vnpayReturn",
-        "description": "Trả trang HTML tối giản cho test BE trước FE: hiển thị đã nhận kết quả/chờ xác minh, không thay đổi trạng thái thu tiền từ query. Không lộ chi tiết riêng tư khi chưa đăng nhập. Không đòi cookie/CSRF khi cổng redirect.",
+        "description": "Trang quay về từ VNPay Sandbox. BE chỉ cập nhật thu tiền khi phản hồi Return có chữ ký hợp lệ, đúng đơn và đúng số tiền; FE tài xế tự làm mới để mở khóa bước tiếp theo. Không lộ chi tiết riêng tư khi chưa đăng nhập. Không đòi cookie/CSRF khi cổng redirect.",
         "x-implementation-status": "implemented",
         "x-uc": [
           "UC-10"
@@ -7770,7 +7770,9 @@
               "CHUA_RO_KET_QUA",
               "THANH_CONG",
               "THAT_BAI",
-              "DA_HUY"
+              "DA_HUY",
+              "KHONG_THU_DA_XAC_MINH",
+              "CHO_THU_LAI_DEMO"
             ]
           },
           "maGiaoDichDoiTac": {

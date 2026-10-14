@@ -94,6 +94,23 @@ public final class PaymentService {
             BigDecimal due=fare(em,orderId);
             if (due.signum()==0) throw new NotRequired();
             if (dao.confirmed(orderId)) throw new Conflict("PAYMENT_ALREADY_PAID");
+            // Sandbox demo: retire abandoned checkout URLs so the assigned driver can
+            // generate a fresh VNPay link with one click after the 15-minute expiry.
+            for (LanThanhToan old : dao.findAttempts(orderId)) {
+                if (old.getPhuongThuc()!=PaymentMethod.VNPAY_QR
+                        || old.getTrangThai()==PaymentStatus.THANH_CONG
+                        || old.getTrangThai()==PaymentStatus.KHONG_THU_DA_XAC_MINH
+                        || old.getTrangThai()==PaymentStatus.CHO_THU_LAI_DEMO)
+                    continue;
+                boolean failed=old.getTrangThai()==PaymentStatus.THAT_BAI
+                        || old.getTrangThai()==PaymentStatus.DA_HUY;
+                boolean expired=!clock.instant().isBefore(old.getTaoLuc().plusSeconds(15*60));
+                if (failed || expired) {
+                    old.setTrangThai(PaymentStatus.CHO_THU_LAI_DEMO);
+                    old.setGiaiQuyetLuc(clock.instant());
+                }
+            }
+            em.flush();
             if (dao.hasUnresolved(orderId)) throw new Conflict("PAYMENT_PENDING");
             LanThanhToan payment=new LanThanhToan();
             payment.setId(UUID.randomUUID().toString()); payment.setDonHang(order);

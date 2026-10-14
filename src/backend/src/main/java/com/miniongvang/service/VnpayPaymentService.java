@@ -16,6 +16,7 @@ import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HexFormat;
@@ -84,7 +85,6 @@ public final class VnpayPaymentService {
             if (previous!=null) return new Result(previous.getKetQuaXuLy(),true);
             PaymentEventResult result;
             if (!signature) result=PaymentEventResult.KHONG_HOP_LE;
-            else if (source==PaymentEventSource.VNPAY_RETURN) result=PaymentEventResult.KHONG_THAY_DOI;
             else result=verified(em,payment,snapshot,source);
             event(em,source,hash,payment,signature,result,snapshot);
             em.flush();
@@ -101,21 +101,30 @@ public final class VnpayPaymentService {
                 || !message.getOrDefault("vnp_OrderInfo","").equals(source==PaymentEventSource.VNPAY_QUERY
                         ? "Query "+payment.getMaThamChieu() : VnpayGateway.orderInfo(orderId)))
             return PaymentEventResult.KHONG_KHOP;
+        String response=message.get("vnp_ResponseCode"), status=message.get("vnp_TransactionStatus");
+        if (message.containsKey("vnp_Command") && !"querydr".equals(message.get("vnp_Command")))
+            return PaymentEventResult.KHONG_KHOP;
+        if (message.containsKey("vnp_TransactionType") && !"01".equals(message.get("vnp_TransactionType")))
+            return PaymentEventResult.CAN_DOI_SOAT;
+        // QueryDR code 91 means the transaction was not found. VNPay may omit amount and
+        // transaction status in this response, so validate it before parsing those fields.
+        if (source==PaymentEventSource.VNPAY_QUERY && "91".equals(response))
+            return verifiedUnpaid(em,payment);
         BigDecimal received;
         try {
             String raw=message.get("vnp_Amount");
             if (raw==null || !raw.matches("[0-9]{1,12}")) return PaymentEventResult.KHONG_KHOP;
             received=new BigDecimal(raw).movePointLeft(2);
         } catch (ArithmeticException invalid) { return PaymentEventResult.KHONG_KHOP; }
-        String response=message.get("vnp_ResponseCode"), status=message.get("vnp_TransactionStatus");
         if (response==null || status==null) return PaymentEventResult.KHONG_KHOP;
-        if (message.containsKey("vnp_Command") && !"querydr".equals(message.get("vnp_Command")))
-            return PaymentEventResult.KHONG_KHOP;
-        if (message.containsKey("vnp_TransactionType") && !"01".equals(message.get("vnp_TransactionType")))
-            return PaymentEventResult.CAN_DOI_SOAT;
         if (source==PaymentEventSource.VNPAY_QUERY) {
             if (!"00".equals(response)) return PaymentEventResult.KHONG_THAY_DOI;
             if ("01".equals(status) || "05".equals(status)) return PaymentEventResult.KHONG_THAY_DOI;
+            if ("02".equals(status)) {
+                if (received.compareTo(PaymentService.fare(em,orderId))!=0)
+                    return PaymentEventResult.CAN_DOI_SOAT;
+                return verifiedUnpaid(em,payment);
+            }
         } else if ("00".equals(response)!= "00".equals(status)) return PaymentEventResult.CAN_DOI_SOAT;
         var dao=new LanThanhToanDAO(em);
         if ("00".equals(status)) {
@@ -147,12 +156,27 @@ public final class VnpayPaymentService {
         if (payment.getTrangThai()==PaymentStatus.THANH_CONG) return PaymentEventResult.CAN_DOI_SOAT;
         if (source==PaymentEventSource.VNPAY_QUERY && !"02".equals(status))
             return PaymentEventResult.CAN_DOI_SOAT;
-        if (payment.getTrangThai()==PaymentStatus.THAT_BAI || payment.getTrangThai()==PaymentStatus.DA_HUY)
+        if (payment.getTrangThai()==PaymentStatus.THAT_BAI || payment.getTrangThai()==PaymentStatus.DA_HUY
+                || payment.getTrangThai()==PaymentStatus.KHONG_THU_DA_XAC_MINH
+                || payment.getTrangThai()==PaymentStatus.CHO_THU_LAI_DEMO)
             return PaymentEventResult.KHONG_THAY_DOI;
         Instant resolved=clock.instant();
         if (resolved.isBefore(payment.getTaoLuc())) resolved=payment.getTaoLuc();
         payment.setTrangThai("24".equals(response)?PaymentStatus.DA_HUY:PaymentStatus.THAT_BAI);
         payment.setGiaiQuyetLuc(resolved);
+        return PaymentEventResult.DA_AP_DUNG;
+    }
+
+    private PaymentEventResult verifiedUnpaid(EntityManager em,LanThanhToan payment) {
+        if (clock.instant().isBefore(payment.getTaoLuc().plus(Duration.ofMinutes(20))))
+            return PaymentEventResult.KHONG_THAY_DOI;
+        if (payment.getTrangThai()==PaymentStatus.THANH_CONG
+                || new LanThanhToanDAO(em).confirmed(payment.getDonHang().getId()))
+            return PaymentEventResult.CAN_DOI_SOAT;
+        if (payment.getTrangThai()==PaymentStatus.KHONG_THU_DA_XAC_MINH)
+            return PaymentEventResult.KHONG_THAY_DOI;
+        payment.setTrangThai(PaymentStatus.KHONG_THU_DA_XAC_MINH);
+        payment.setGiaiQuyetLuc(clock.instant());
         return PaymentEventResult.DA_AP_DUNG;
     }
 

@@ -52,10 +52,12 @@ public final class LanThanhToanDAO extends BaseDAO<LanThanhToan> {
                 and ((p.trangThai=:success and not exists
                   (select c from XacNhanThanhToanDonHang c where c.lanThanhToan=p))
                   or p.trangThai in :uncertain
-                  or exists (select e from SuKienThanhToan e where e.lanThanhToan=p and e.ketQuaXuLy=:review))
+                  or (p.trangThai not in :retired and exists
+                    (select e from SuKienThanhToan e where e.lanThanhToan=p and e.ketQuaXuLy=:review)))
                 """, Long.class).setParameter("id", orderId)
                 .setParameter("success", PaymentStatus.THANH_CONG)
                 .setParameter("uncertain", List.of(PaymentStatus.CHUA_RO_KET_QUA, PaymentStatus.THAT_BAI, PaymentStatus.DA_HUY))
+                .setParameter("retired", List.of(PaymentStatus.KHONG_THU_DA_XAC_MINH, PaymentStatus.CHO_THU_LAI_DEMO))
                 .setParameter("review", com.miniongvang.entity.enums.PaymentEventResult.CAN_DOI_SOAT)
                 .getSingleResult() > 0;
     }
