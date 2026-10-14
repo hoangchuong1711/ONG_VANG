@@ -75,6 +75,7 @@ public final class QuoteServlet extends HttpServlet {
                 case ADDRESS_NOT_FOUND, OUT_OF_SERVICE_AREA, DISTANCE_INVALID -> 422;
                 case ROUTE_PROVIDER_ERROR -> 502;
                 case ROUTE_PROVIDER_TIMEOUT -> 504;
+                case ROUTE_PROVIDER_QUOTA -> 429;
             };
             error(resp, status, failure.kind().name());
         } catch (com.miniongvang.service.FareCalculator.FareConfigurationException missing) { error(resp, 503, "FARE_CONFIG_MISSING"); }

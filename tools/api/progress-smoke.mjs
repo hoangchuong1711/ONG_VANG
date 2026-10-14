@@ -76,6 +76,8 @@ await customer.call(path + '/transitions', { trangThai: 'DA_LAY_HANG' }, 403, 'E
 await dispatcher.call(path + '/incidents', incident, 403, 'Error', 'FORBIDDEN');
 await other.call(path + '/events', undefined, 404, 'Error', 'RESOURCE_NOT_FOUND');
 await other.call(path + '/transitions', { trangThai: 'DA_LAY_HANG' }, 404, 'Error', 'RESOURCE_NOT_FOUND');
+await other.call(path + '/driver-route', undefined, 404, 'Error', 'RESOURCE_NOT_FOUND');
+await other.call(path + '/arrival', {}, 404, 'Error', 'RESOURCE_NOT_FOUND');
 await other.call(path + '/incidents', incident, 404, 'Error', 'RESOURCE_NOT_FOUND');
 await driver.call(path + '/events?size=101', undefined, 400, 'Error', 'VALIDATION_ERROR');
 await driver.call(path + '/events?page=-1', undefined, 400, 'Error', 'VALIDATION_ERROR');
@@ -89,10 +91,12 @@ for (const body of [{}, { ...incident, loaiSuCo: 'OTHER' }, { ...incident, lyDo:
 await driver.headWithBody(path + '/transitions', { trangThai: 'DA_LAY_HANG' });
 await driver.headWithBody(path + '/incidents', incident);
 await driver.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 409, 'Error', 'ORDER_STATE_CONFLICT');
+await driver.call(path + '/arrival', {}, 409, 'Error', 'ORDER_STATE_CONFLICT');
 await driver.call(path + '/incidents', incident, 409, 'Error', 'ORDER_STATE_CONFLICT');
 let count = (await customer.call(path + '/events', undefined, 200, 'EventPage')).totalElements;
 for (const target of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT']) {
   if (target === 'HOAN_TAT') {
+    await driver.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 409, 'Error', 'ARRIVAL_REQUIRED');
     for (const type of ['KHONG_LIEN_LAC_DUOC', 'TU_CHOI_NHAN']) {
       const event = await driver.call(path + '/incidents', { loaiSuCo: type, lyDo: '  ' + 'x'.repeat(500) + '  ' }, 201, 'Event');
       assert.equal(event.loaiSuCo, type); assert.equal(event.ghiChu, 'x'.repeat(500));
@@ -100,6 +104,9 @@ for (const target of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT']) {
       assert.equal(event.trangThaiTruoc, 'DANG_GIAO');
       assert.equal(event.trangThaiSau, 'DANG_GIAO'); count++;
     }
+    const arrival = await driver.call(path + '/arrival', {}, 200, 'Event');
+    assert.equal(arrival.loaiSuKien, 'DEN_DIEM_NHAN'); count++;
+    assert.equal((await driver.call(path + '/arrival', {}, 200, 'Event')).maSuKien, arrival.maSuKien);
     assert.equal((await driver.call(path, undefined, 200, 'OrderDetail')).hoanTatLuc, null);
     const busy = await dispatcher.call('/api/drivers?dangBanChuyen=true', undefined, 200, 'DriverPage');
     assert(busy.items.some(d => d.maTx === 'TX-DEMO-1'));
@@ -115,6 +122,7 @@ assert(done.hoanTatLuc); assert.equal(done.thanhToan.trangThai, 'CHUA_THANH_TOAN
 await other.call(path + '/transitions', { trangThai: 'HOAN_TAT' }, 404, 'Error', 'RESOURCE_NOT_FOUND');
 await driver.call(path + '/transitions', { trangThai: 'DA_LAY_HANG' }, 409, 'Error', 'ORDER_STATE_CONFLICT');
 await driver.call(path + '/incidents', incident, 409, 'Error', 'ORDER_STATE_CONFLICT');
+await driver.call(path + '/arrival', {}, 409, 'Error', 'ORDER_STATE_CONFLICT');
 const free = await dispatcher.call('/api/drivers?dangBanChuyen=false', undefined, 200, 'DriverPage');
 assert(free.items.some(d => d.maTx === 'TX-DEMO-1'));
 const all = await driver.call(path + '/events', undefined, 200, 'EventPage');

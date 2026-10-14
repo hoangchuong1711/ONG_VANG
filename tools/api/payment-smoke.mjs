@@ -48,8 +48,10 @@ const path = '/api/orders/' + order.maDon;
 const request = { phuongThuc: 'TIEN_MAT' }, key = randomUUID();
 await customer.call(path + '/payments', request, 409, 'ORDER_STATE_CONFLICT', { 'Idempotency-Key': key });
 await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-1' });
-for (const trangThai of ['DA_LAY_HANG', 'DANG_GIAO', 'HOAN_TAT'])
+for (const trangThai of ['DA_LAY_HANG', 'DANG_GIAO'])
   await driver.call(path + '/transitions', { trangThai });
+await driver.call(path + '/arrival', {});
+await driver.call(path + '/transitions', { trangThai: 'HOAN_TAT' });
 const payment = await customer.call(path + '/payments', request, 201, undefined, { 'Idempotency-Key': key });
 assert.equal(payment.trangThai, 'CHO_XU_LY');
 assert.equal((await customer.call(path + '/payments', request, 201, undefined,

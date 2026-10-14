@@ -30,6 +30,14 @@ export type OrderDetail = Order & {
 export type Driver = { maTx: string; hoTen: string; soDienThoai: string; trangThaiHoatDong: string; dangBanChuyen: boolean;
   phuongTien: { bienSoXe: string; loaiXe?: string } | null; viTriDemoDiaChi: string | null; viTriDemoNguon: string | null;
   kmDenDiemLay: string | null; giayDenDiemLay: number | null; nguonDinhTuyen: string | null };
+export type DriverRoute = {
+  taiXe: { diaChi: string; lat: number; lng: number; nguon: string };
+  diemLay: { diaChi: string; lat: number; lng: number; nguon: string };
+  diemGiao: { diaChi: string; lat: number; lng: number; nguon: string };
+  denDiemLay: { polyline: string; quangDuongKm: string; thoiGianDuKienGiay: number; nguon: string };
+  denDiemGiao: { polyline: string; quangDuongKm: string; thoiGianDuKienGiay: number; nguon: string };
+  nguon: string;
+};
 
 const messages: Record<string, string> = {
   ADDRESS_NOT_FOUND: "Không tìm thấy địa chỉ. Hãy nhập địa chỉ đầy đủ và thử lại.",
@@ -37,11 +45,14 @@ const messages: Record<string, string> = {
   DISTANCE_INVALID: "Không tính được tuyến đường giữa hai địa chỉ này.",
   ROUTE_PROVIDER_ERROR: "Dịch vụ bản đồ đang lỗi. Vui lòng thử lại sau.",
   ROUTE_PROVIDER_TIMEOUT: "Dịch vụ bản đồ quá thời gian chờ. Vui lòng thử lại.",
+  ROUTE_PROVIDER_QUOTA: "Goong đã hết quota tạm thời. Vui lòng thử lại sau hoặc kiểm tra tài khoản Goong.",
   WEIGHT_LIMIT_EXCEEDED: "Tổng khối lượng vượt giới hạn biểu phí.",
   QUOTE_EXPIRED: "Báo giá đã hết hạn. Vui lòng báo giá lại.",
   QUOTE_CHANGED: "Báo giá đã thay đổi. Vui lòng báo giá lại.",
   FARE_CONFIG_MISSING: "Chưa có biểu phí phù hợp. Vui lòng liên hệ tổng đài.",
   ORDER_STATE_CONFLICT: "Trạng thái đơn đã đổi. Vui lòng tải lại đơn.",
+  ARRIVAL_REQUIRED: "Hãy xác nhận đã đến điểm nhận trước khi hoàn tất đơn.",
+  DEMO_POSITION_MISSING: "Tài xế chưa có vị trí demo trong DB. Hãy nhờ tổng đài cấu hình.",
   DRIVER_UNAVAILABLE: "Tài xế không còn khả dụng. Hãy chọn tài xế khác.",
   CANCELLATION_WINDOW_EXPIRED: "Đã hết thời hạn hủy đơn.",
   CSRF_INVALID: "Phiên xác thực đã đổi. Vui lòng tải lại trang.",

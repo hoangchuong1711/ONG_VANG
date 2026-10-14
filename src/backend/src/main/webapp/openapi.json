@@ -6424,6 +6424,46 @@
           ]
         }
       }
+    },
+    "/api/orders/{maDon}/driver-route": {
+      "get": {
+        "tags": ["Dispatch"],
+        "summary": "Bản đồ hai chặng cho tài xế được gán",
+        "operationId": "getDriverRoute",
+        "x-implementation-status": "implemented",
+        "x-uc": ["UC-13"],
+        "x-roles": ["TAI_XE"],
+        "security": [{"sessionCookie": []}],
+        "parameters": [{"name":"maDon","in":"path","required":true,"schema":{"$ref":"#/components/schemas/Id"}}],
+        "responses": {
+          "200": {"description":"Tuyến Goong; chặng đi lấy không tính vào cước khách.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/DriverRoute"}}}},
+          "401": {"description":"Cần đăng nhập"},
+          "404": {"description":"Đơn không thuộc tài xế"},
+          "409": {"description":"Thiếu vị trí demo"},
+          "429": {"description":"Goong đã hết quota"},
+          "502": {"description":"Goong không khả dụng"},
+          "504": {"description":"Goong quá thời gian chờ"}
+        }
+      }
+    },
+    "/api/orders/{maDon}/arrival": {
+      "post": {
+        "tags": ["Dispatch"],
+        "summary": "Tài xế xác nhận đã đến điểm nhận",
+        "operationId": "arriveAtReceiver",
+        "x-implementation-status": "implemented",
+        "x-uc": ["UC-13"],
+        "x-roles": ["TAI_XE"],
+        "security": [{"sessionCookie":[],"csrfToken":[]}],
+        "parameters": [{"name":"maDon","in":"path","required":true,"schema":{"$ref":"#/components/schemas/Id"}}],
+        "responses": {
+          "200": {"description":"Sự kiện đã đến điểm nhận","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Event"}}}},
+          "401": {"description":"Cần đăng nhập"},
+          "403": {"description":"Sai quyền hoặc CSRF"},
+          "404": {"description":"Đơn không thuộc tài xế"},
+          "409": {"description":"Trạng thái không hợp lệ"}
+        }
+      }
     }
   },
   "components": {
@@ -7409,6 +7449,7 @@
             "enum": [
               "TAO_DON",
               "CHUYEN_TRANG_THAI",
+              "DEN_DIEM_NHAN",
               "SU_CO"
             ]
           },
@@ -8090,6 +8131,41 @@
             "totalPages": 1
           }
         ]
+      },
+      "MapPoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["diaChi", "lat", "lng", "nguon"],
+        "properties": {
+          "diaChi": {"type":"string"},
+          "lat": {"type":"number","minimum":-90,"maximum":90},
+          "lng": {"type":"number","minimum":-180,"maximum":180},
+          "nguon": {"type":"string"}
+        }
+      },
+      "MapLeg": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["polyline", "quangDuongKm", "thoiGianDuKienGiay", "nguon"],
+        "properties": {
+          "polyline": {"type":"string","minLength":1},
+          "quangDuongKm": {"type":"string"},
+          "thoiGianDuKienGiay": {"type":"integer","minimum":0},
+          "nguon": {"type":"string","enum":["GOONG"]}
+        }
+      },
+      "DriverRoute": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["taiXe", "diemLay", "diemGiao", "denDiemLay", "denDiemGiao", "nguon"],
+        "properties": {
+          "taiXe": {"$ref":"#/components/schemas/MapPoint"},
+          "diemLay": {"$ref":"#/components/schemas/MapPoint"},
+          "diemGiao": {"$ref":"#/components/schemas/MapPoint"},
+          "denDiemLay": {"$ref":"#/components/schemas/MapLeg"},
+          "denDiemGiao": {"$ref":"#/components/schemas/MapLeg"},
+          "nguon": {"type":"string","enum":["GOONG"]}
+        }
       },
       "DriverPage": {
         "type": "object",

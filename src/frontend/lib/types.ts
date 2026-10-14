@@ -32,6 +32,7 @@ export interface OrderItem {
   createdAt: string;
   createdTimestamp: number;
   paid: boolean;
+  paymentStatus?: string;
   rating?: { stars: number; tags: string[]; comment: string };
   paymentMethod?: "TIEN_MAT" | "VNPAY";
   driver?: {

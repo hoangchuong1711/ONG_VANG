@@ -47,9 +47,10 @@ public final class DesignV1Smoke {
         dispatch.transition(driver, order.maDon(), OrderStatus.DA_LAY_HANG);
         dispatch.transition(driver, order.maDon(), OrderStatus.DANG_GIAO);
         dispatch.incident(driver, order.maDon(), IncidentType.KHONG_LIEN_LAC_DUOC, "Chưa liên lạc được");
+        dispatch.arrive(driver, order.maDon());
         var completed = dispatch.transition(driver, order.maDon(), OrderStatus.HOAN_TAT);
         if (!OrderStatus.HOAN_TAT.name().equals(completed.trangThai())
-                || dispatch.events(customer, order.maDon(), 0, 20).items().size() != 6)
+                || dispatch.events(customer, order.maDon(), 0, 20).items().size() != 7)
             throw new IllegalStateException("DesignV1 smoke lifecycle did not complete");
         System.out.println("designV1 quote -> create -> assign -> deliver -> complete succeeded");
     }

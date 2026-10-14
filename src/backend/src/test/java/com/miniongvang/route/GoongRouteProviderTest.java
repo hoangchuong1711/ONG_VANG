@@ -61,6 +61,24 @@ class GoongRouteProviderTest {
         } finally { server.stop(0); }
     }
 
+    @Test void returnsPolylineAndLegMetricsForDriverMap() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v2/direction", exchange -> reply(exchange, 200, """
+                {"routes":[{"overview_polyline":{"points":"_p~iF~ps|U_ulLnnqC_mqNvxq`@"},
+                "legs":[{"distance":{"value":4200},"duration":{"value":720}}]}]}
+                """));
+        server.start();
+        try {
+            var provider = new GoongRouteProvider(HttpClient.newHttpClient(),
+                    URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/v2/"),
+                    "test-key", Duration.ofSeconds(2));
+            var leg = provider.routeGeometry(10.77,106.7,10.78,106.71);
+            assertEquals("_p~iF~ps|U_ulLnnqC_mqNvxq`@",leg.polyline());
+            assertEquals(4200,leg.meters());
+            assertEquals(720,leg.seconds());
+        } finally { server.stop(0); }
+    }
+
     private static void reply(com.sun.net.httpserver.HttpExchange exchange, int status, String body) throws java.io.IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json");

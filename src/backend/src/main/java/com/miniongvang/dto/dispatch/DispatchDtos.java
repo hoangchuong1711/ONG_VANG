@@ -27,6 +27,11 @@ public final class DispatchDtos {
 
     public record DriverPage(List<Driver> items,int page,int size,long totalElements,long totalPages) {}
 
+    public record MapPoint(String diaChi,double lat,double lng,String nguon) {}
+    public record MapLeg(String polyline,String quangDuongKm,long thoiGianDuKienGiay,String nguon) {}
+    public record DriverRoute(MapPoint taiXe,MapPoint diemLay,MapPoint diemGiao,
+                              MapLeg denDiemLay,MapLeg denDiemGiao,String nguon) {}
+
     public record Summary(long tongSoDon,String tongCuoc) {}
 
     public record OrderPage(List<Order> items,int page,int size,long totalElements,long totalPages,Summary summary) {}

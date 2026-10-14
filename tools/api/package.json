@@ -10,6 +10,7 @@
     "check": "node validate.mjs && node generate-postman.mjs --check && node check-backend-boundaries.mjs && node --test swagger-config.test.mjs",
     "smoke:orders": "node order-smoke.mjs",
     "smoke:dispatch": "node dispatch-smoke.mjs",
+    "smoke:tx5:goong": "node tx5-goong-smoke.mjs",
     "smoke:progress": "node progress-smoke.mjs",
     "smoke:cancel": "node cancel-smoke.mjs",
     "smoke:payment": "node payment-smoke.mjs",

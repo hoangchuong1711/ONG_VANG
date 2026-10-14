@@ -10,6 +10,7 @@ import com.miniongvang.entity.enums.AccountStatus;
 import com.miniongvang.entity.enums.AssignmentOutcome;
 import com.miniongvang.entity.enums.DriverStatus;
 import com.miniongvang.entity.enums.OrderStatus;
+import com.miniongvang.entity.enums.OrderEventType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.TypedQuery;
@@ -49,6 +50,13 @@ public final class DispatchDAO {
                 "select max(e.thuTu) from SuKienDonHang e where e.donHang.id=:id", Integer.class)
                 .setParameter("id", order).getSingleResult();
         return last == null ? 1 : Math.addExact(last, 1);
+    }
+    public SuKienDonHang arrival(String order) {
+        return em.createQuery("""
+                from SuKienDonHang e where e.donHang.id=:order and e.loaiSuKien=:type
+                """, SuKienDonHang.class)
+                .setParameter("order",order).setParameter("type",OrderEventType.DEN_DIEM_NHAN)
+                .getResultStream().findFirst().orElse(null);
     }
     public record Events(List<SuKienDonHang> items, long total) {}
 
