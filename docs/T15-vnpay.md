@@ -1,32 +1,23 @@
-# T15 — VNPay Sandbox (UC-10)
+# T15 — VNPay Sandbox tại mốc thu cước
 
-T15 đã có implementation và hướng dẫn chạy local/ngrok. Giữ tài liệu này để tham khảo; đợt T18 hiện tại chỉ đồng bộ tài liệu, không chạy thêm kiểm thử thanh toán hoặc yêu cầu mọi thành viên dùng Sandbox. Môi trường thanh toán dùng chung sẽ được cấu hình/kiểm tra sau khi dự án hoàn thiện và deploy; xem [phạm vi T18](T18-sandbox-api.md).
+Tài xế được gán mở yêu cầu `VNPAY_QR` tại [mốc thu của T14](T14-payment.md). Người trả không cần tài khoản ứng dụng. Màn hình tài xế cung cấp URL và QR của URL cổng Sandbox cho người gửi/người nhận thao tác. QR được tạo cục bộ, không gửi URL sang dịch vụ bên ngoài. Đây là mô phỏng thanh toán qua cổng, không phải QR tài khoản ngân hàng cá nhân tài xế.
 
-## Cấu hình local
+## Cấu hình và chạy thử
 
-Sao chép `.env.example` thành `.env` (không commit) và đặt `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL`. Ví dụ với tunnel hiện tại:
+Đặt `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL` trong môi trường backend; không commit secret. Return URL là HTTPS kết thúc `/api/payments/vnpay/return`. Đăng ký URL public riêng `/api/payments/vnpay/ipn` với VNPay. Nếu dùng ngrok, tunnel trỏ tới backend; cập nhật cả hai URL khi đổi domain.
 
-```dotenv
-VNPAY_RETURN_URL=https://panorama-rippling-strongbox.ngrok-free.dev/api/payments/vnpay/return
-```
+Tạo đơn `VNPAY_QR`, gán tài xế và chuyển tới mốc nhận kiện (người gửi trả) hoặc đến điểm giao (người nhận trả). Trong `/driver/orders/{id}`, mở yêu cầu rồi mở cổng Sandbox. Dùng phương tiện test do VNPay cấp. Chỉ xem Sandbox trực tiếp đã đạt khi callback thực sự tới BE hoặc QueryDr xác minh thành công.
 
-IPN để đăng ký với VNPay là `https://panorama-rippling-strongbox.ngrok-free.dev/api/payments/vnpay/ipn`. Hai URL là hai đường dẫn khác nhau. Tunnel phải trỏ tới backend port `8081`, đang chạy khi thử sandbox; nếu domain ngrok đổi, cập nhật `.env` và địa chỉ IPN đã đăng ký. Khởi động lại backend sau khi đổi biến môi trường. Không đưa secret vào source, Postman hoặc URL.
+## Xác nhận và xử lý lỗi
 
-## Luồng
+- Return chỉ hiển thị lời nhắc và lưu bằng chứng, không ghi nhận thu đủ kể cả chữ ký hợp lệ.
+- Chỉ IPN hoặc QueryDr đã xác minh chữ ký/merchant, tham chiếu, nội dung đơn, số tiền và trạng thái mới xác nhận thu đủ. Query phải khớp tham chiếu đã yêu cầu.
+- Callback lưu trong `su_kien_thanh_toan` và xử lý dưới khóa đơn. Callback giống nhau không tạo thêm khoản thu/xác nhận đủ.
+- Chưa có IPN, chữ ký sai hoặc không khớp thì không mở khóa. Query timeout/chưa rõ chuyển `CHUA_RO_KET_QUA`.
+- Thất bại/hủy giữ trạng thái provider và `canDoiSoat=true`; không cho mở yêu cầu mới. IPN thành công hợp lệ đến muộn có thể xác nhận chính lần thử đó.
+- Thu sai tiền, mã giao dịch thành công thứ hai hoặc bằng chứng mâu thuẫn giữ cờ cần đối soát, chặn giao tiếp và yêu cầu mới. Tài xế không thể tự xóa cờ hay tự đánh dấu VNPay thành công. Xử lý thủ công khoản sai/trùng và hoàn tiền chưa nằm trong API này.
+- Tài xế đang được gán, khách chủ đơn hoặc tổng đài gọi `POST /api/payments/{id}/reconcile`. Giao diện đọc trạng thái BE định kỳ và có nút đối soát/làm mới.
 
-1. Đơn đã `HOAN_TAT`, khách gọi `POST /api/orders/{maDon}/payments` với `{ "phuongThuc": "VNPAY_QR" }` và `Idempotency-Key`. BE tạo một lần thử `CHO_XU_LY`, ký `paymentUrl` và lưu URL đó. Gọi lại cùng key nhận cùng lần thử và URL. Đơn miễn cước không tạo lần thử.
-2. Khách mở `paymentUrl` trong trình duyệt. Return chỉ hiển thị lời nhắc kiểm tra trạng thái, đồng thời lưu sự kiện để tra cứu; không đánh dấu đã thu.
-3. VNPay gửi IPN server-to-server. BE kiểm tra chữ ký HMAC-SHA512 và mã merchant, mã tham chiếu, đơn, số tiền, trạng thái. Sự kiện được lưu trong `su_kien_thanh_toan`; callback lặp chỉ có một bản ghi. Trong cùng transaction và dưới khóa đơn, khoản thu hợp lệ cập nhật `thanh_toan`, rồi tạo liên kết `xac_nhan_thanh_toan_don_hang` nếu đủ cước và chưa có khoản thu nào được xác nhận.
-4. Sự kiện sai chữ ký/không khớp và khoản thu sai tiền được giữ để đối soát. Thu đủ lần thứ hai không ghi đè liên kết đã có. Khách hoặc tổng đài gọi `POST /api/payments/{maGiaoDich}/reconcile` để QueryDr; nếu không liên lạc được hoặc trạng thái còn chờ, lần thử thành `CHUA_RO_KET_QUA`, không được tự tạo lần thử mới. Phải đối soát trước khi quyết định thu lại.
+Test tự động dùng secret giả và callback ký tại test, không giao dịch tiền thật; bao gồm Return, chữ ký sai, sai tiền/nội dung, IPN lặp/đồng thời/đến muộn, QueryDr, timeout và ma trận mốc thu.
 
-Thử với thẻ Sandbox do VNPay cấp, sau đó xem `GET /api/payments/{maGiaoDich}` và chi tiết đơn. IPN public chỉ nhận GET, không cần session/CSRF. Không mở IPN bằng tay để giả lập thành công: thiếu chữ ký sẽ bị từ chối và được ghi làm bằng chứng. Test tự động dùng secret giả, không đòi kết nối mạng VNPay. Chỉ xem luồng sandbox trực tiếp là đã kiểm tra khi IPN đã được VNPay cấu hình và callback thực sự tới backend.
-
-Tài liệu VNPay: [PAY/IPN](https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html), [QueryDr](https://sandbox.vnpayment.vn/apis/docs/truy-van-hoan-tien/querydr%26refund.html).
-
-## Thử Sandbox thật từ local
-
-1. Trong `.env` đặt `DEMO_SEED=true`, `DEMO_PASSWORD` là mật khẩu tự chọn cho tài khoản demo, cùng `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` từ email và `VNPAY_RETURN_URL` là URL HTTPS ngrok kết thúc bằng `/api/payments/vnpay/return`. Khởi động `docker compose up --build -d backend`; kiểm tra `http://localhost:8081/api/health`.
-2. Chạy `ngrok http 8081`. Gửi URL HTTPS kết thúc bằng `/api/payments/vnpay/ipn` cho VNPay để họ cấu hình IPN và chờ xác nhận. Nếu URL tunnel đổi, sửa cả return URL trong `.env`, khởi động lại backend và cập nhật IPN với VNPay.
-3. Import collection và environment ở `tests/postman`. Dùng khách demo `0900000001`, tổng đài `demo_dispatcher`, tài xế `0800000001`; tất cả dùng `DEMO_PASSWORD`. Mỗi lần đổi tài khoản cần đăng xuất, lấy CSRF mới và đăng nhập lại. Tạo báo giá, tạo đơn mới, tổng đài gán `TX-DEMO-1`, tài xế chuyển lần lượt `DA_LAY_HANG` → `DANG_GIAO` → `HOAN_TAT`. Seed không có đơn dựng sẵn.
-4. Đăng nhập lại bằng khách chủ đơn. Gọi `createPayment` với `{"phuongThuc":"VNPAY_QR"}` và một `Idempotency-Key` mới; lưu `maGiaoDich`, mở `paymentUrl` trả về trong trình duyệt. Dùng thẻ test trong email VNPay để hoàn tất giao dịch.
-5. Xem `http://127.0.0.1:4040` để xác nhận tunnel nhận request `GET /api/payments/vnpay/ipn`. Gọi `getPayment` bằng `maGiaoDich`; kết quả mong đợi là `trangThai=THANH_CONG`, `daXacNhanDu=true`, `canDoiSoat=false`. Chi tiết đơn phải báo `DA_THANH_TOAN`. Nếu chỉ thấy Return mà chưa thấy IPN, đừng kết luận đã thu; có thể gọi `reconcilePayment` bằng phiên khách/tổng đài để truy vấn lại.
+Tham khảo: [VNPay PAY/IPN/Return](https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html), [QueryDr](https://sandbox.vnpayment.vn/apis/docs/truy-van-hoan-tien/querydr%26refund.html).

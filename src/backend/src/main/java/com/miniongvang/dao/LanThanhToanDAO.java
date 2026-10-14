@@ -38,10 +38,25 @@ public final class LanThanhToanDAO extends BaseDAO<LanThanhToan> {
     }
 
     public boolean hasUnresolved(String orderId) {
+        if (needsReconciliation(orderId)) return true;
         return em.createQuery("""
                 select count(p) from LanThanhToan p where p.donHang.id=:id and p.trangThai in :states
                 """, Long.class).setParameter("id", orderId)
                 .setParameter("states", List.of(PaymentStatus.CHO_XU_LY, PaymentStatus.CHUA_RO_KET_QUA))
+                .getSingleResult() > 0;
+    }
+
+    public boolean needsReconciliation(String orderId) {
+        return em.createQuery("""
+                select count(p) from LanThanhToan p where p.donHang.id=:id
+                and ((p.trangThai=:success and not exists
+                  (select c from XacNhanThanhToanDonHang c where c.lanThanhToan=p))
+                  or p.trangThai in :uncertain
+                  or exists (select e from SuKienThanhToan e where e.lanThanhToan=p and e.ketQuaXuLy=:review))
+                """, Long.class).setParameter("id", orderId)
+                .setParameter("success", PaymentStatus.THANH_CONG)
+                .setParameter("uncertain", List.of(PaymentStatus.CHUA_RO_KET_QUA, PaymentStatus.THAT_BAI, PaymentStatus.DA_HUY))
+                .setParameter("review", com.miniongvang.entity.enums.PaymentEventResult.CAN_DOI_SOAT)
                 .getSingleResult() > 0;
     }
 

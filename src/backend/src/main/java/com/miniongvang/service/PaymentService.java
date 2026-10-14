@@ -9,6 +9,7 @@ import com.miniongvang.dao.LanThanhToanDAO;
 import com.miniongvang.integration.VnpayGateway;
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
+import com.miniongvang.entity.enums.PaymentStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import java.math.BigDecimal;
@@ -38,10 +39,9 @@ public final class PaymentService {
         if (key == null || key.isBlank() || key.length() > 100 || !key.equals(key.strip()))
             throw new IllegalArgumentException("Invalid Idempotency-Key");
         return transactions.run(em -> {
-            account(em, actor, AccountRole.KHACH_HANG);
+            account(em, actor, AccountRole.TAI_XE);
             DonHang order = new DonHangDAO(em).findForUpdate(orderId);
-            if (order == null || !order.getKhachHang().getId().equals(actor.maKh()))
-                throw new NoSuchElementException("Order not found");
+            if (order == null) throw new NoSuchElementException("Order not found");
             var payments = new LanThanhToanDAO(em);
             String reference = reference(actor.maNguoiDung(), key);
             LanThanhToan replay = payments.findByReference(reference);
@@ -52,7 +52,8 @@ public final class PaymentService {
             }
             if (payments.findByReference(reference.replace("CASH-", "VNP")) != null)
                 throw new Conflict("IDEMPOTENCY_CONFLICT");
-            if (order.getTrangThai() != OrderStatus.HOAN_TAT) throw new Conflict("ORDER_STATE_CONFLICT");
+            assigned(em, actor, order);
+            collectionPoint(em, order, PaymentMethod.TIEN_MAT);
             BigDecimal due = fare(em, orderId);
             if (due.signum() == 0) throw new NotRequired();
             if (payments.confirmed(orderId)) throw new Conflict("PAYMENT_ALREADY_PAID");
@@ -75,10 +76,9 @@ public final class PaymentService {
         if (key == null || key.isBlank() || key.length() > 100 || !key.equals(key.strip()) || gateway == null)
             throw new IllegalArgumentException("Invalid online request");
         return transactions.run(em -> {
-            account(em,actor,AccountRole.KHACH_HANG);
+            account(em,actor,AccountRole.TAI_XE);
             DonHang order=new DonHangDAO(em).findForUpdate(orderId);
-            if (order==null || !order.getKhachHang().getId().equals(actor.maKh()))
-                throw new NoSuchElementException("Order not found");
+            if (order == null) throw new NoSuchElementException("Order not found");
             var dao=new LanThanhToanDAO(em);
             String cashReference=reference(actor.maNguoiDung(),key);
             String idempotency=cashReference.replace("CASH-","VNP");
@@ -89,7 +89,8 @@ public final class PaymentService {
                 return view(em,replay);
             }
             if (dao.findByReference(cashReference)!=null) throw new Conflict("IDEMPOTENCY_CONFLICT");
-            if (order.getTrangThai()!=OrderStatus.HOAN_TAT) throw new Conflict("ORDER_STATE_CONFLICT");
+            assigned(em, actor, order);
+            collectionPoint(em, order, PaymentMethod.VNPAY_QR);
             BigDecimal due=fare(em,orderId);
             if (due.signum()==0) throw new NotRequired();
             if (dao.confirmed(orderId)) throw new Conflict("PAYMENT_ALREADY_PAID");
@@ -114,7 +115,7 @@ public final class PaymentService {
                 || received.toBigInteger().toString().length() > 13)
             throw new IllegalArgumentException("Invalid received amount");
         return transactions.run(em -> {
-            TaiKhoan confirmer = account(em, actor, AccountRole.TAI_XE, AccountRole.TONG_DAI);
+            TaiKhoan confirmer = account(em, actor, AccountRole.TAI_XE);
             LanThanhToan existing = em.find(LanThanhToan.class, paymentId);
             if (existing == null) throw new NoSuchElementException("Payment not found");
             String orderId = existing.getDonHang().getId();
@@ -122,18 +123,20 @@ public final class PaymentService {
             LanThanhToan payment = em.find(LanThanhToan.class, paymentId);
             em.refresh(payment);
             if (payment.getPhuongThuc() != PaymentMethod.TIEN_MAT) throw new Conflict("PAYMENT_METHOD_CONFLICT");
-            if (actor.vaiTro() == AccountRole.TAI_XE
-                    && !new DispatchDAO(em).completedBy(orderId, actor.maTx()))
-                throw new SecurityException("Wrong driver");
-            if (order.getTrangThai() != OrderStatus.HOAN_TAT) throw new Conflict("ORDER_STATE_CONFLICT");
             BigDecimal due = fare(em, orderId);
             if (due.signum() == 0) throw new NotRequired();
             var payments = new LanThanhToanDAO(em);
             if (payment.getTrangThai() == PaymentStatus.THANH_CONG) {
+                if (payment.getTaiKhoanXacNhan() == null || !confirmer.getId().equals(payment.getTaiKhoanXacNhan().getId()))
+                    throw new SecurityException("Wrong collector");
                 if (payment.getSoTienThucNhan().compareTo(received) != 0)
                     throw new Conflict("PAYMENT_AMOUNT_MISMATCH");
                 return new CashResult(view(em, payment), !payments.confirmedBy(orderId, paymentId));
             }
+            assigned(em, actor, order);
+            collectionPoint(em, order, PaymentMethod.TIEN_MAT);
+            if (received.compareTo(due) != 0) throw new Conflict("PAYMENT_AMOUNT_MISMATCH");
+            if (payments.confirmed(orderId)) throw new Conflict("PAYMENT_ALREADY_PAID");
             if (payment.getTrangThai() != PaymentStatus.CHO_XU_LY)
                 throw new Conflict("PAYMENT_STATE_CONFLICT");
             Instant now = clock.instant();
@@ -180,6 +183,27 @@ public final class PaymentService {
         });
     }
 
+    static void assigned(EntityManager em, ActorContext actor, DonHang order) {
+        if (order == null) throw new NoSuchElementException("Order not found");
+        var assignment = new DispatchDAO(em).activeOrder(order.getId());
+        if (assignment == null || !assignment.getTaiXe().getId().equals(actor.maTx()))
+            throw new SecurityException("Wrong driver");
+    }
+
+    static void collectionPoint(EntityManager em, DonHang order, PaymentMethod method) {
+        if (!method.name().equals(order.getPhuongThucThanhToan())) throw new Conflict("PAYMENT_METHOD_CONFLICT");
+        boolean sender = "NGUOI_DAT".equals(order.getBenThanhToan());
+        if (sender ? order.getTrangThai() != OrderStatus.DA_LAY_HANG
+                : order.getTrangThai() != OrderStatus.DANG_GIAO || new DispatchDAO(em).arrival(order.getId()) == null)
+            throw new Conflict("PAYMENT_MILESTONE_REQUIRED");
+    }
+
+    static boolean cleared(EntityManager em, DonHang order) {
+        var dao = new LanThanhToanDAO(em);
+        return fare(em, order.getId()).signum() == 0
+                || dao.confirmed(order.getId()) && !dao.hasUnresolved(order.getId());
+    }
+
     static BigDecimal fare(EntityManager em, String orderId) {
         var details = new DonHangDAO(em).findDetailsV1(orderId);
         if (details == null || details.fare() == null) throw new IllegalStateException("Order fare missing");
@@ -196,7 +220,10 @@ public final class PaymentService {
                 payment.getTaoLuc().toString(), payment.getThuLuc() == null ? null : payment.getThuLuc().toString(),
                 payment.getPaymentUrl(), confirmed, payment.getSoTienThucNhan() == null ? null
                 : payment.getSoTienThucNhan().setScale(2).toPlainString(),
-                payment.getTrangThai() == PaymentStatus.THANH_CONG && !confirmed);
+                new LanThanhToanDAO(em).needsReconciliation(orderId),
+                payment.getTaiKhoanXacNhan() == null ? null : payment.getTaiKhoanXacNhan().getId(),
+                payment.getPhuongThuc() == PaymentMethod.TIEN_MAT && payment.getSoTienThucNhan() != null
+                        ? payment.getSoTienThucNhan().toPlainString() : "0.00");
     }
 
     private static boolean visible(EntityManager em, ActorContext actor, DonHang order) {

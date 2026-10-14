@@ -6,6 +6,7 @@ import com.miniongvang.dao.DonHangDAO;
 import com.miniongvang.dao.LanThanhToanDAO;
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
+import com.miniongvang.entity.enums.PaymentStatus;
 import com.miniongvang.integration.VnpayGateway;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -160,9 +161,10 @@ public final class VnpayPaymentService {
             throw new IllegalArgumentException("Invalid payment ID");
         // Read and call the gateway without holding an order/database lock.
         ReconcileTarget target=transactions.run(em -> {
-            PaymentService.account(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI);
+            PaymentService.account(em,actor,AccountRole.KHACH_HANG,AccountRole.TONG_DAI,AccountRole.TAI_XE);
             LanThanhToan payment=em.find(LanThanhToan.class,paymentId);
             if (payment==null) throw new NoSuchElementException("Payment not found");
+            if (actor.vaiTro()==AccountRole.TAI_XE) PaymentService.assigned(em,actor,payment.getDonHang());
             if (actor.vaiTro()==AccountRole.KHACH_HANG
                     && !payment.getDonHang().getKhachHang().getId().equals(actor.maKh()))
                 throw new NoSuchElementException("Payment not found");
@@ -170,7 +172,7 @@ public final class VnpayPaymentService {
                 throw new PaymentService.Conflict("PAYMENT_METHOD_CONFLICT");
             return new ReconcileTarget(PaymentService.view(em,payment),payment.getMaThamChieu(),payment.getTaoLuc());
         });
-        if (target.payment().trangThai()==PaymentStatus.THANH_CONG) return target.payment();
+        if (target.payment().daXacNhanDu() && !target.payment().canDoiSoat()) return target.payment();
         Map<String,String> query;
         try {
             String serverIp=System.getenv("VNPAY_QUERY_IP");
@@ -187,7 +189,8 @@ public final class VnpayPaymentService {
             });
             return transactions.run(em -> PaymentService.view(em,em.find(LanThanhToan.class,paymentId)));
         }
-        apply(PaymentEventSource.VNPAY_QUERY,query);
+        if (target.reference().equals(query.get("vnp_TxnRef")))
+            apply(PaymentEventSource.VNPAY_QUERY,query);
         markUnknown(paymentId);
         return transactions.run(em -> PaymentService.view(em,em.find(LanThanhToan.class,paymentId)));
     }

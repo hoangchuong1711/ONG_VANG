@@ -46,17 +46,16 @@ const order = await customer.call('/api/orders', { ...input, maBaoGia: quote.maB
   sdtNguoiNhan: '0901234567' }, 201, undefined, { 'Idempotency-Key': randomUUID() });
 const path = '/api/orders/' + order.maDon;
 const request = { phuongThuc: 'TIEN_MAT' }, key = randomUUID();
-await customer.call(path + '/payments', request, 409, 'ORDER_STATE_CONFLICT', { 'Idempotency-Key': key });
+await customer.call(path + '/payments', request, 403, 'FORBIDDEN', { 'Idempotency-Key': key });
 await dispatcher.call(path + '/assignments', { maTx: 'TX-DEMO-1' });
-for (const trangThai of ['DA_LAY_HANG', 'DANG_GIAO'])
-  await driver.call(path + '/transitions', { trangThai });
-await driver.call(path + '/arrival', {});
-await driver.call(path + '/transitions', { trangThai: 'HOAN_TAT' });
-const payment = await customer.call(path + '/payments', request, 201, undefined, { 'Idempotency-Key': key });
+await driver.call(path + '/payments', request, 409, 'PAYMENT_MILESTONE_REQUIRED', { 'Idempotency-Key': key });
+await driver.call(path + '/transitions', { trangThai: 'DA_LAY_HANG' });
+await driver.call(path + '/transitions', { trangThai: 'DANG_GIAO' }, 409, 'PAYMENT_REQUIRED');
+const payment = await driver.call(path + '/payments', request, 201, undefined, { 'Idempotency-Key': key });
 assert.equal(payment.trangThai, 'CHO_XU_LY');
-assert.equal((await customer.call(path + '/payments', request, 201, undefined,
+assert.equal((await driver.call(path + '/payments', request, 201, undefined,
   { 'Idempotency-Key': key })).maGiaoDich, payment.maGiaoDich);
-await customer.call(path + '/payments', request, 409, 'PAYMENT_PENDING',
+await driver.call(path + '/payments', request, 409, 'PAYMENT_PENDING',
   { 'Idempotency-Key': randomUUID() });
 assert.equal((await customer.call(path + '/payments')).totalElements, 1);
 await customer.call('/api/payments/' + payment.maGiaoDich + '/confirm-cash',
@@ -68,8 +67,13 @@ const confirmed = await driver.call('/api/payments/' + payment.maGiaoDich + '/co
 assert.equal(confirmed.daXacNhanDu, true);
 assert.equal((await customer.call('/api/payments/' + payment.maGiaoDich)).soTienThucNhan, payment.soTien);
 assert.equal((await customer.call(path)).thanhToan.trangThai, 'DA_THANH_TOAN');
-assert.equal((await dispatcher.call('/api/payments/' + payment.maGiaoDich + '/confirm-cash',
+await dispatcher.call('/api/payments/' + payment.maGiaoDich + '/confirm-cash',
+  { soTienDaThu: payment.soTien }, 403, 'FORBIDDEN');
+assert.equal((await driver.call('/api/payments/' + payment.maGiaoDich + '/confirm-cash',
   { soTienDaThu: payment.soTien })).maGiaoDich, payment.maGiaoDich);
-await customer.call(path + '/payments', request, 409, 'PAYMENT_ALREADY_PAID',
+await driver.call(path + '/payments', request, 409, 'PAYMENT_ALREADY_PAID',
   { 'Idempotency-Key': randomUUID() });
+await driver.call(path + '/transitions', { trangThai: 'DANG_GIAO' });
+await driver.call(path + '/arrival', {});
+await driver.call(path + '/transitions', { trangThai: 'HOAN_TAT' });
 console.log(`T14 payment smoke: ${checks} HTTP checks passed`);

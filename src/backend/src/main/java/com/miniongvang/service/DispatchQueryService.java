@@ -13,6 +13,7 @@ import com.miniongvang.config.RouteConfiguration;
 import com.miniongvang.integration.RouteFailure;
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
+import com.miniongvang.entity.enums.PaymentStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import java.math.BigDecimal;
@@ -165,8 +166,7 @@ public final class DispatchQueryService {
         boolean paid=payments.confirmed(id);
         boolean pending=attempts.stream().anyMatch(p->p.getTrangThai()==PaymentStatus.CHO_XU_LY
                 || p.getTrangThai()==PaymentStatus.CHUA_RO_KET_QUA);
-        boolean reconcile=attempts.stream().anyMatch(p->p.getTrangThai()==PaymentStatus.THANH_CONG
-                && !payments.confirmedBy(id,p.getId()));
+        boolean reconcile=payments.needsReconciliation(id);
         String state=total.signum()==0?"MIEN_CUOC":paid?"DA_THANH_TOAN":pending?"DANG_XU_LY":"CHUA_THANH_TOAN";
         var dispatch=new DispatchDAO(em);
         PhanCongDonHang assignment=dispatch.activeOrder(id);

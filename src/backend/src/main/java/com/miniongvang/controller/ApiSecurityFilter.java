@@ -77,9 +77,9 @@ public final class ApiSecurityFilter implements Filter {
         if (path.matches("/api/orders/[^/]+/assignments")) return EnumSet.of(AccountRole.TONG_DAI);
         if (path.matches("/api/orders/[^/]+/cancel") || path.equals("/api/routes/estimate") || path.equals("/api/quotes"))
             return EnumSet.of(AccountRole.KHACH_HANG, AccountRole.TONG_DAI);
-        if (path.matches("/api/orders/[^/]+/payments") && "POST".equals(method)) return EnumSet.of(AccountRole.KHACH_HANG);
-        if (path.matches("/api/payments/[^/]+/confirm-cash")) return EnumSet.of(AccountRole.TAI_XE, AccountRole.TONG_DAI);
-        if (path.matches("/api/payments/[^/]+/reconcile")) return EnumSet.of(AccountRole.KHACH_HANG, AccountRole.TONG_DAI);
+        if (path.matches("/api/orders/[^/]+/payments") && "POST".equals(method)) return EnumSet.of(AccountRole.TAI_XE);
+        if (path.matches("/api/payments/[^/]+/confirm-cash")) return EnumSet.of(AccountRole.TAI_XE);
+        if (path.matches("/api/payments/[^/]+/reconcile")) return EnumSet.of(AccountRole.KHACH_HANG, AccountRole.TONG_DAI, AccountRole.TAI_XE);
         if (path.equals("/api/orders") && "POST".equals(method)) return EnumSet.of(AccountRole.KHACH_HANG, AccountRole.TONG_DAI);
         if (path.equals("/api/orders") || path.matches("/api/orders/[^/]+(/events|/payments)?") || path.matches("/api/payments/[^/]+"))
             return EnumSet.of(AccountRole.KHACH_HANG, AccountRole.TONG_DAI, AccountRole.TAI_XE);
