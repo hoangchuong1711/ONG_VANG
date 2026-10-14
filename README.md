@@ -11,6 +11,8 @@ T10: [thiết kế và cách tạo đơn](docs/T10-order-creation.md).
 
 T11: [thiết kế điều phối/gán/từ chối](docs/T11-driver-dispatch.md).
 
+TX4: Bàn `/dispatcher` và màn hình tài xế lấy đơn, tài xế từ API/DB. Sau migration V6, vị trí demo của tài xế được lưu trong `tai_xe` với nguồn `DEMO_CO_DINH`, tọa độ và thời điểm cấu hình. Khi `DEMO_SEED=true` và có `GOONG_API_KEY`, seeder geocode ba địa danh trước khi ghi vị trí; nếu thiếu key thì vị trí để trống và gợi ý ghi rõ `DU_PHONG_RANH_TU`. Tổng đài có thể cấu hình từng tài xế qua `POST /api/drivers/{maTx}/demo-position` với JSON `{ "diaChi": "..." }`; backend xác minh địa chỉ qua Goong trước khi lưu. `GET /api/orders/{maDon}/driver-suggestions` trả km, giây, nguồn tuyến đến điểm lấy khi định tuyến thành công; lỗi hoặc vị trí chưa được cấu hình chuyển cả danh sách sang thứ tự dự phòng có nhãn. API gán đơn giữ kiểm tra và khóa giao dịch khi ghi.
+
 T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progress.md).
 T13: [thiết kế hủy đơn](docs/T13-order-cancellation.md), [phạm vi kiểm thử](tests/T13-validation.md).
 T14: [nghiệp vụ thanh toán tiền mặt](docs/T14-payment.md).

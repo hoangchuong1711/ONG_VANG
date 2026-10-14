@@ -16,17 +16,20 @@ export type Quote = {
 };
 export type Order = {
   maDon: string; thoiGianTao: string; diemLayHang: string; diemGiaoHang: string;
-  tenNguoiNhan: string | null; sdtNguoiNhan: string; quangDuongKm: string;
-  trangThai: string; maKh: string; maTkTao: string; benThanhToan: PaymentChoice;
+  tenNguoiNhan: string | null; sdtNguoiNhan: string; quangDuongKm: string; ghiChuGiaoHang?: string | null;
+  trangThai: string; maKh: string; maTkTao: string; maTx?: string | null; benThanhToan: PaymentChoice;
   nguonLoTrinh: "FAKE" | "GOONG";
   phuongThucThanhToan: PaymentMethod; cuoc: Fare;
   thanhToan: { trangThai: string; soTienConPhaiThu: string };
   kienHang: Parcel[];
 };
 export type OrderDetail = Order & {
-  nhatKy: { thuTu: number; loaiSuKien: string; trangThaiSau: string; thoiGian: string; tenNguoiThucHien: string | null }[];
+  nhatKy: { thuTu: number; loaiSuKien: string; trangThaiSau: string; thoiGian: string;
+    nguoiThucHien?: string | null; tenNguoiThucHien?: string | null; ghiChu?: string | null }[];
 };
-export type Driver = { maTx: string; hoTen: string; soDienThoai: string; phuongTien: { bienSoXe: string } | null };
+export type Driver = { maTx: string; hoTen: string; soDienThoai: string; trangThaiHoatDong: string; dangBanChuyen: boolean;
+  phuongTien: { bienSoXe: string; loaiXe?: string } | null; viTriDemoDiaChi: string | null; viTriDemoNguon: string | null;
+  kmDenDiemLay: string | null; giayDenDiemLay: number | null; nguonDinhTuyen: string | null };
 
 const messages: Record<string, string> = {
   ADDRESS_NOT_FOUND: "Không tìm thấy địa chỉ. Hãy nhập địa chỉ đầy đủ và thử lại.",

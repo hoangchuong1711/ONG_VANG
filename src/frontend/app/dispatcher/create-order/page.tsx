@@ -1,111 +1,109 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
-import { updateDemoState, useDemoStore } from "@/lib/demo-store";
-import { quoteDemoFare } from "@/lib/demo-pricing";
+import { api, type Order, type Quote } from "@/lib/live-orders";
 import type { AdminCustomer } from "@/lib/admin-extras";
 
-const DISTRICTS = [
-  "Quận 1",
-  "Quận 3",
-  "Quận 5",
-  "Quận 7",
-  "Quận 10",
-  "Quận Bình Thạnh",
-];
-
+const DISTRICTS = ["Quận 1", "Quận 3", "Quận 5", "Quận 7", "Quận 10", "Quận Bình Thạnh"];
 const PACKAGE_TYPES = [
-  "Tài liệu & Hợp đồng hỏa tốc",
-  "Đồ ăn & Thực phẩm giao nhanh",
-  "Mỹ phẩm & Dược phẩm",
-  "Hàng điện tử & Phụ kiện",
-  "Quần áo thời trang",
-  "Khác",
+  "Tài liệu & Hợp đồng hỏa tốc", "Đồ ăn & Thực phẩm giao nhanh",
+  "Mỹ phẩm & Dược phẩm", "Hàng điện tử & Phụ kiện", "Quần áo thời trang", "Khác",
 ];
-
-const newHotlineOrderId = () => "DH-" + new Date().getFullYear() + "-" + crypto.randomUUID().slice(0, 8).toUpperCase();
+type Customer = { maKh: string; hoTen: string; soDienThoai: string;
+  diaChiMacDinh: string | null; hangThanhVien?: { tenHang?: string } | null };
 
 export default function DispatcherCreateOrderPage() {
   const { showToast } = useToast();
-  const { state: demo } = useDemoStore();
   const router = useRouter();
-
-  // Khách hàng gọi đến
-  const [callerPhone, setCallerPhone] = useState("0900000001");
-  const [senderName, setSenderName] = useState("Nguyễn Thu Hà");
-  const [senderStreet, setSenderStreet] = useState("123 Nguyễn Văn Linh");
-  const [senderDistrict, setSenderDistrict] = useState("Quận 7");
-  const [customerTier, setCustomerTier] = useState<AdminCustomer["tier"]>("VANG");
-
-  // Người nhận
-  const [receiverName, setReceiverName] = useState("Lê Hoàng Phúc");
-  const [receiverPhone, setReceiverPhone] = useState("0912345678");
-  const [receiverStreet, setReceiverStreet] = useState("45 Nguyễn Huệ");
-  const [receiverDistrict, setReceiverDistrict] = useState("Quận 1");
-  const [receiverNotes, setReceiverNotes] = useState("Giao tận tay trong giờ hành chính");
-
-  // Kiện hàng
+  const [callerPhone, setCallerPhone] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [senderStreet, setSenderStreet] = useState("");
+  const [senderDistrict, setSenderDistrict] = useState(DISTRICTS[0]);
+  const [customerTier, setCustomerTier] = useState<AdminCustomer["tier"]>("THUONG");
+  const [receiverName, setReceiverName] = useState("");
+  const [receiverPhone, setReceiverPhone] = useState("");
+  const [receiverStreet, setReceiverStreet] = useState("");
+  const [receiverDistrict, setReceiverDistrict] = useState(DISTRICTS[0]);
+  const [receiverNotes, setReceiverNotes] = useState("");
   const [packageType, setPackageType] = useState(PACKAGE_TYPES[0]);
   const [weightKg, setWeightKg] = useState<number>(0.5);
   const [paymentMethod, setPaymentMethod] = useState<"TIEN_MAT" | "VNPAY">("TIEN_MAT");
+  const [quoted, setQuoted] = useState<{ input: string; result: Quote } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const orderKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!/^0\d{9}$/.test(callerPhone)) return;
+    let active = true;
+    const timer = setTimeout(() => {
+      api<{ items: Customer[] }>(`/customers?q=${encodeURIComponent(callerPhone)}&size=20`)
+        .then(page => {
+          if (!active) return;
+          const customer = page.items.find(item => item.soDienThoai === callerPhone);
+          if (!customer) { setCustomerId(""); setSenderName(""); showToast("Không tìm thấy khách hàng trong DB.", "error"); return; }
+          setCustomerId(customer.maKh); setSenderName(customer.hoTen);
+          if (customer.diaChiMacDinh) setSenderStreet(customer.diaChiMacDinh);
+          setCustomerTier(customer.hangThanhVien?.tenHang === "VANG" ? "VANG" : "THUONG");
+        }).catch(cause => { if (active) showToast((cause as Error).message, "error"); });
+    }, 300);
+    return () => { active = false; clearTimeout(timer); };
+  }, [callerPhone, showToast]);
 
-  // Snapshot cước ước tính (UC-04 / UC-05)
-  const distanceKm = 4.2;
-  const { baseFee, surchargeFee, vipDiscountFee: vipDiscount, totalFee } =
-    quoteDemoFare(demo.fare, demo.discounts, customerTier, distanceKm, weightKg > 2);
-
-  // Tìm kiếm khách hàng theo SĐT (UC-02)
   const handleLookupCustomer = (phoneInput: string) => {
+    if (phoneInput === callerPhone) return;
     setCallerPhone(phoneInput);
-    const customer = demo.customers.find((item) => item.phone === phoneInput);
-    if (customer) {
-      setSenderName(customer.name);
-      setSenderStreet(phoneInput === "0900000001" ? "123 Nguyễn Văn Linh" : "");
-      setSenderDistrict(phoneInput === "0900000001" ? "Quận 7" : DISTRICTS[0]);
-      setCustomerTier(customer.tier);
-      showToast(`Đã tìm thấy hồ sơ: ${customer.name}.`, "success");
-    } else {
-      setSenderName("");
-      setSenderStreet("");
-      setCustomerTier("THUONG");
-    }
+    setCustomerId("");
+    setSenderName("");
   };
+  const pickup = /TP\.HCM|Hồ Chí Minh/i.test(senderStreet)
+    ? senderStreet.trim() : [senderStreet.trim(), senderDistrict, "TP.HCM"].filter(Boolean).join(", ");
+  const dropoff = [receiverStreet.trim(), receiverDistrict, "TP.HCM"].filter(Boolean).join(", ");
+  const quoteInput = { maKh: customerId, diemLayHang: pickup, diemGiaoHang: dropoff,
+    kienHang: [{ loaiHangHoa: packageType, ghiChuBaoQuan: "", khoiLuongKg: weightKg.toFixed(2) }],
+    benThanhToan: "NGUOI_DAT", phuongThucThanhToan: paymentMethod === "VNPAY" ? "VNPAY_QR" : "TIEN_MAT" };
+  const quoteRequestBody = JSON.stringify(quoteInput);
+  const quote = quoted?.input === quoteRequestBody ? quoted.result : null;
+  const distanceKm = Number(quote?.loTrinh.quangDuongKm ?? 0);
+  const baseFee = Number(quote?.cuoc.cuocGoc ?? 0);
+  const vipDiscount = Number(quote?.cuoc.tienGiamGia ?? 0);
+  const totalFee = Number(quote?.cuoc.tongCuoc ?? 0);
 
-  const handleCreateOrder = (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    orderKey.current = null;
+    if (!customerId || !senderStreet.trim() || !receiverStreet.trim() || weightKg <= 0) return;
+    let active = true;
+    const timer = setTimeout(() => {
+      api<Quote>("/quotes", { method: "POST", body: quoteRequestBody })
+        .then(result => { if (active) setQuoted({ input: quoteRequestBody, result }); })
+        .catch(() => { if (active) setQuoted(null); });
+    }, 500);
+    return () => { active = false; clearTimeout(timer); };
+  }, [customerId, senderStreet, receiverStreet, weightKg, quoteRequestBody]);
 
-    if (!senderName || !receiverName || !receiverPhone || !receiverStreet) {
-      showToast("Vui lòng điền đầy đủ thông tin người gửi và người nhận!", "error");
-      return;
+  const handleCreateOrder = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!customerId || !receiverName.trim() || !/^0\d{9}$/.test(receiverPhone) || !senderStreet.trim() || !receiverStreet.trim()) {
+      showToast("Hãy chọn khách hàng từ DB và nhập đầy đủ địa chỉ, người nhận, SĐT.", "error"); return;
     }
-    if (distanceKm > demo.fare.maxKm) {
-      showToast("Quãng đường vượt phạm vi giao hàng đang cấu hình.", "error");
-      return;
-    }
-
-    const orderId = newHotlineOrderId();
-    showToast(
-      `Tạo đơn hotline thành công (${orderId})! Đã chuyển vào hàng đợi chờ gán tài xế.`,
-      "success"
-    );
-
-    updateDemoState((previous) => ({ ...previous, orders: [{
-      id: orderId,
-      sender: { name: senderName.trim(), phone: callerPhone.trim(), street: senderStreet.trim(), district: senderDistrict, city: "TP.HCM" },
-      receiver: { name: receiverName.trim(), phone: receiverPhone.trim(), street: receiverStreet.trim(), district: receiverDistrict, city: "TP.HCM", notes: receiverNotes.trim() || undefined },
-      packageType, packageWeightKg: weightKg, distanceKm, baseFee, surchargeFee, vipDiscountFee: vipDiscount, totalFee,
-      status: "CHO_GAN", statusText: "Chờ gán tài xế", createdAt: new Date().toLocaleString("vi-VN"),
-      createdTimestamp: Date.now(), paid: false, paymentMethod,
-    }, ...previous.orders] }));
-    setTimeout(() => {
+    if (creating) return;
+    setCreating(true);
+    if (!orderKey.current) orderKey.current = crypto.randomUUID();
+    try {
+      const freshQuote = await api<Quote>("/quotes", { method: "POST", body: JSON.stringify(quoteInput) });
+      const result = await api<Order>("/orders", { method: "POST", headers: { "Idempotency-Key": orderKey.current },
+        body: JSON.stringify({ ...quoteInput, maBaoGia: freshQuote.maBaoGia,
+          tenNguoiNhan: receiverName.trim(), sdtNguoiNhan: receiverPhone,
+          ghiChuGiaoHang: receiverNotes.trim() }) });
+      showToast(`Đã tạo đơn ${result.maDon} trong DB.`, "success");
       router.push("/dispatcher");
-    }, 1000);
+    } catch (cause) { showToast((cause as Error).message, "error"); }
+    finally { setCreating(false); }
   };
 
   return (
@@ -362,7 +360,7 @@ export default function DispatcherCreateOrderPage() {
             {/* BẢNG TÍNH CƯỚC */}
             <div className="bg-stone-50 p-4 sm:p-5 rounded-xl border border-stone-200 flex flex-wrap items-center justify-between gap-4 text-xs sm:text-sm">
               <div className="space-y-1.5 text-stone-600 font-medium">
-                <div>Khoảng cách dự kiến: <span className="text-stone-900 font-bold">{distanceKm} km</span></div>
+                <div>Khoảng cách dự kiến: <span className="text-stone-900 font-bold">{quote ? distanceKm : "—"} km</span></div>
                 <div>Cước cơ bản: <span className="text-stone-900 font-bold">{formatVND(baseFee)}</span></div>
                 {vipDiscount > 0 && (
                   <div className="text-emerald-700 font-semibold">Giảm hội viên VIP: <strong>-{formatVND(vipDiscount)}</strong></div>
@@ -374,7 +372,7 @@ export default function DispatcherCreateOrderPage() {
                   Tổng cước thanh toán
                 </span>
                 <span className="text-2xl sm:text-3xl font-extrabold text-amber-700">
-                  {formatVND(totalFee)}
+                  {quote ? formatVND(totalFee) : "Đang tính cước..."}
                 </span>
               </div>
             </div>
@@ -391,6 +389,7 @@ export default function DispatcherCreateOrderPage() {
               variant="primary"
               size="lg"
               type="submit"
+              disabled={creating}
               className="text-xs sm:text-sm font-bold shadow-sm"
             >
               Tạo đơn & Đưa vào hàng đợi điều phối ➔

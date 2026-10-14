@@ -62,6 +62,15 @@ public final class GoongRouteProvider implements RouteProvider {
         return new RouteData(start.address, end.address, meters, seconds, "GOONG");
     }
 
+    public GeocodedAddress geocodeAddress(String address) {
+        Location location = geocode(address);
+        String[] pair = location.coordinates().split(",", 2);
+        return new GeocodedAddress(location.address(),
+                new java.math.BigDecimal(pair[0]), new java.math.BigDecimal(pair[1]));
+    }
+
+    public record GeocodedAddress(String address, java.math.BigDecimal latitude, java.math.BigDecimal longitude) {}
+
     private Location geocode(String address) {
         JsonNode response = get("geocode?address=" + encode(address) + "&api_key=" + encode(apiKey));
         JsonNode results = response.path("results");

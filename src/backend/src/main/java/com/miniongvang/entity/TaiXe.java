@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "tai_xe")
@@ -32,6 +33,11 @@ public class TaiXe {
     private DriverStatus trangThai = DriverStatus.OFFLINE;
     @Column(name = "ranh_tu")
     private Instant ranhTu;
+    @Column(name = "vi_tri_demo_dia_chi", length = 255) private String viTriDemoDiaChi;
+    @Column(name = "vi_tri_demo_lat", precision = 10, scale = 7) private BigDecimal viTriDemoLat;
+    @Column(name = "vi_tri_demo_lng", precision = 10, scale = 7) private BigDecimal viTriDemoLng;
+    @Column(name = "vi_tri_demo_nguon", length = 30) private String viTriDemoNguon;
+    @Column(name = "vi_tri_demo_cau_hinh_luc") private Instant viTriDemoCauHinhLuc;
 
     @Transient private String legacyViTriHienTai;
 
@@ -50,6 +56,16 @@ public class TaiXe {
     public void setTrangThai(DriverStatus value) { trangThai = value; }
     public Instant getRanhTu() { return ranhTu; }
     public void setRanhTu(Instant value) { ranhTu = value; }
+    public String getViTriDemoDiaChi() { return viTriDemoDiaChi; }
+    public void setViTriDemoDiaChi(String value) { viTriDemoDiaChi = value; }
+    public BigDecimal getViTriDemoLat() { return viTriDemoLat; }
+    public void setViTriDemoLat(BigDecimal value) { viTriDemoLat = value; }
+    public BigDecimal getViTriDemoLng() { return viTriDemoLng; }
+    public void setViTriDemoLng(BigDecimal value) { viTriDemoLng = value; }
+    public String getViTriDemoNguon() { return viTriDemoNguon; }
+    public void setViTriDemoNguon(String value) { viTriDemoNguon = value; }
+    public Instant getViTriDemoCauHinhLuc() { return viTriDemoCauHinhLuc; }
+    public void setViTriDemoCauHinhLuc(Instant value) { viTriDemoCauHinhLuc = value; }
 
     @Deprecated public String getHoTen() { return taiKhoan == null ? null : taiKhoan.getHoTen(); }
     @Deprecated public void setHoTen(String value) { if (taiKhoan != null) taiKhoan.setHoTen(value); }

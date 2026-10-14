@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { OrderStatus } from "@/lib/types";
-import { useDemoStore, updateDemoState, toggleDemoDriverOnline } from "@/lib/demo-store";
+import type { OrderItem, OrderStatus } from "@/lib/types";
+import { api, type Driver, type OrderDetail } from "@/lib/live-orders";
+import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
@@ -22,89 +23,68 @@ const INCIDENT_TYPES = [
 
 export default function DriverOrderExecutionPage() {
   const { showToast } = useToast();
-  const params = useParams();
-  const orderId = params?.id as string;
-  const { state: demo, ready } = useDemoStore();
-  const order = demo.orders.find((item) => item.id === orderId);
-  const currentDriver = demo.drivers.find((item) => item.id === "TX-DEMO-1");
-  const isOnline = currentDriver?.status !== "OFFLINE";
+  const params = useParams<{ id: string }>();
+  const orderId = params.id;
+  const [order, setOrder] = useState<OrderItem | null>(null);
+  const [currentDriver, setCurrentDriver] = useState<DispatchDriver | null>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
+  const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
+  const [incidentType, setIncidentType] = useState(INCIDENT_TYPES[0]);
+  const [incidentNote, setIncidentNote] = useState("");
+  const [incidentLogs, setIncidentLogs] = useState<string[]>([]);
+  const isOnline = currentDriver?.status === "ONLINE_IDLE" || currentDriver?.status === "ONLINE_BUSY";
 
-  // Modal Báo sự cố (TX-04 / UC-13)
-  const [isIncidentModalOpen, setIsIncidentModalOpen] = useState<boolean>(false);
-  const [incidentType, setIncidentType] = useState<string>(INCIDENT_TYPES[0]);
-  const [incidentNote, setIncidentNote] = useState<string>("");
-  const incidentLogs = demo.incidents.filter((incident) => incident.orderId === orderId)
-    .map((incident) => incident.type + ": " + incident.note);
+  const refresh = useCallback(async () => {
+    try {
+      const [detail, self] = await Promise.all([
+        api<OrderDetail>(`/orders/${encodeURIComponent(orderId)}`), api<Driver>("/drivers/me"),
+      ]);
+      const driver = driverForView(self);
+      setCurrentDriver(driver);
+      setOrder(orderForView(detail, [driver]));
+      setIncidentLogs((detail.nhatKy ?? []).filter(event => event.loaiSuKien === "SU_CO")
+        .map(event => event.ghiChu ?? "Sự cố đã ghi nhận"));
+      setError("");
+    } catch (cause) { setOrder(null); setError((cause as Error).message); }
+    finally { setReady(true); }
+  }, [orderId]);
+  useEffect(() => {
+    const initial = setTimeout(() => { void refresh(); }, 0);
+    return () => clearTimeout(initial);
+  }, [refresh]);
 
-  // Modal Thu tiền mặt COD (TX-05 / UC-08)
-  const [isCashCollectModalOpen, setIsCashCollectModalOpen] = useState<boolean>(false);
-  const [collectedAmount, setCollectedAmount] = useState<number>(order?.totalFee ?? 0);
-
-  // Tiến trình chuyển bước (DA_GAN -> DA_LAY_HANG -> DANG_GIAO -> HOAN_TAT)
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (!order) return;
-    if (order.status === "DA_GAN") {
-      updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
-        item.id === order.id ? { ...item, status: "DA_LAY_HANG", statusText: "Đã lấy hàng từ người gửi" } : item) }));
-      showToast("Xác nhận: Đã lấy hàng thành công từ người gửi!", "success");
-    } else if (order.status === "DA_LAY_HANG") {
-      updateDemoState((previous) => ({ ...previous, orders: previous.orders.map((item) =>
-        item.id === order.id ? { ...item, status: "DANG_GIAO", statusText: "Đang trên đường giao đến người nhận" } : item) }));
-      showToast("Bắt đầu di chuyển giao kiện hàng cho người nhận!", "info");
-    } else if (order.status === "DANG_GIAO") {
-      if (order.paymentMethod === "TIEN_MAT" && !order.paid) {
-        setCollectedAmount(order.totalFee);
-        setIsCashCollectModalOpen(true);
-      } else {
-        completeOrder();
-      }
-    }
+    const next = order.status === "DA_GAN" ? "DA_LAY_HANG" :
+      order.status === "DA_LAY_HANG" ? "DANG_GIAO" :
+      order.status === "DANG_GIAO" ? "HOAN_TAT" : null;
+    if (!next) return;
+    try {
+      await api(`/orders/${encodeURIComponent(order.id)}/transitions`, {
+        method: "POST", body: JSON.stringify({ trangThai: next }),
+      });
+      await refresh(); showToast("Đã cập nhật tiến trình đơn hàng.", "success");
+    } catch (cause) { showToast((cause as Error).message, "error"); }
   };
 
-  const completeOrder = (cashCollected = false) => {
+  const handleSubmitIncident = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!order) return;
-    updateDemoState((previous) => ({ ...previous,
-      orders: previous.orders.map((item) => item.id === order.id ? {
-        ...item, status: item.paid || cashCollected ? "HOAN_TAT" : "CHUA_THANH_TOAN",
-        statusText: item.paid || cashCollected ? "Đã giao hàng thành công" : "Hoàn tất - Chờ thanh toán",
-        paid: item.paid || cashCollected, paymentMethod: cashCollected ? "TIEN_MAT" : item.paymentMethod,
-      } : item),
-      drivers: previous.drivers.map((driver) => driver.id === currentDriver?.id ? {
-        ...driver, status: "ONLINE_IDLE",
-        codCashHolding: driver.codCashHolding + (cashCollected ? collectedAmount : 0),
-      } : driver),
-    }));
-    showToast("Chúc mừng! Cuốc xe đã hoàn thành thành công.", "success");
+    try {
+      await api(`/orders/${encodeURIComponent(order.id)}/incidents`, {
+        method: "POST", body: JSON.stringify({
+          loaiSuCo: incidentType.includes("từ chối") ? "TU_CHOI_NHAN" : "KHONG_LIEN_LAC_DUOC",
+          lyDo: `${incidentType}: ${incidentNote.trim() || "Đã báo tổng đài"}`,
+        }),
+      });
+      setIsIncidentModalOpen(false); setIncidentNote(""); await refresh();
+      showToast("Đã gửi báo cáo sự cố.", "success");
+    } catch (cause) { showToast((cause as Error).message, "error"); }
   };
 
-  const handleConfirmCashCollection = () => {
-    if (!order || collectedAmount !== order.totalFee) {
-      showToast("Số tiền xác nhận cần khớp với cước đơn hàng.", "error");
-      return;
-    }
-    setIsCashCollectModalOpen(false);
-    completeOrder(true);
-    showToast(`Đã xác nhận thu tiền mặt ${formatVND(collectedAmount)} thành công!`, "success");
-  };
-
-  const handleSubmitIncident = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (order) updateDemoState((previous) => ({ ...previous,
-      incidents: [{ id: crypto.randomUUID(), orderId: order.id, driverId: currentDriver?.id ?? "",
-        driverName: currentDriver?.name ?? "", driverPhone: currentDriver?.phone ?? "",
-        type: incidentType, note: incidentNote.trim() || "Đã gọi điện báo tổng đài",
-        reportedAt: new Date().toLocaleString("vi-VN"), status: "CHO_XU_LY", assignee: "", resolution: "" }, ...previous.incidents],
-      orders: previous.orders.map((item) => item.id === order.id ? { ...item,
-        incident: { type: incidentType, note: incidentNote.trim() || "Đã gọi điện báo tổng đài", reportedAt: new Date().toLocaleString("vi-VN") },
-      } : item),
-    }));
-    setIsIncidentModalOpen(false);
-    setIncidentNote("");
-    showToast("Đã gửi báo cáo sự cố về tổng đài điều phối viên!", "error");
-  };
-
-  if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} /><main className="p-6">Đang tải đơn hàng...</main></div>;
-  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} /><main className="p-6"><h1 className="text-xl font-bold">Không tìm thấy đơn hàng</h1><Link href="/driver" className="text-amber-800 underline">Về trang tài xế</Link></main></div>;
+  if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} showStatus={false} /><main className="p-6">Đang tải đơn hàng...</main></div>;
+  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} showStatus={false} /><main className="p-6"><h1 className="text-xl font-bold">{error || "Không tìm thấy đơn hàng"}</h1><Link href="/driver" className="text-amber-800 underline">Về trang tài xế</Link></main></div>;
 
   // Xác định bước hiện tại của timeline tài xế (1 -> 4)
   const getStepNumber = (st: OrderStatus): number => {
@@ -128,7 +108,7 @@ export default function DriverOrderExecutionPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
-      <DriverNavbar isOnline={isOnline} onToggleOnline={() => toggleDemoDriverOnline("TX-DEMO-1")} />
+      <DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} showStatus={false} />
 
       <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
         {/* Top Header & Breadcrumb */}
@@ -320,7 +300,7 @@ export default function DriverOrderExecutionPage() {
               <span className="text-xs text-stone-600 font-semibold">
                 {order.paymentMethod === "TIEN_MAT"
                   ? "💵 Thu tiền mặt trực tiếp khi giao (COD)"
-                  : "💳 Khách đã thanh toán VNPay Online"}
+                  : "💳 Thanh toán qua VNPay QR"}
               </span>
             </div>
 
@@ -385,7 +365,7 @@ export default function DriverOrderExecutionPage() {
               onClick={handleNextStep}
               className="h-14 sm:h-15 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"
             >
-              3. XÁC NHẬN GIAO THÀNH CÔNG {order.paymentMethod === "TIEN_MAT" ? "& THU TIỀN" : ""} ➔
+              3. XÁC NHẬN GIAO THÀNH CÔNG ➔
             </Button>
           )}
 
@@ -398,7 +378,7 @@ export default function DriverOrderExecutionPage() {
                 Cuốc xe đã hoàn tất thành công!
               </h3>
               <p className="text-xs text-emerald-800">
-                Cước phí <strong>{formatVND(order.totalFee)}</strong> đã được ghi nhận vào ví thu nhập của bạn.
+                Cước phí <strong>{formatVND(order.totalFee)}</strong> đã được cập nhật trạng thái giao hàng.
               </p>
               <div className="pt-1">
                 <Link href="/driver" className="block w-full">
@@ -496,63 +476,6 @@ export default function DriverOrderExecutionPage() {
               </Button>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL XÁC NHẬN THU TIỀN MẶT COD (TX-05 / UC-08)                           */}
-      {/* ========================================================================= */}
-      {isCashCollectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 animate-scaleUp">
-            <div className="text-center space-y-1">
-              <span className="text-3xl">💵</span>
-              <h3 className="text-lg font-black text-stone-900">
-                Xác nhận thu tiền mặt COD
-              </h3>
-              <p className="text-xs text-stone-500">
-                Vui lòng thu đúng số tiền cước từ người nhận trước khi hoàn tất cuốc xe.
-              </p>
-            </div>
-
-            <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-center space-y-1">
-              <span className="text-xs text-amber-800 font-bold block uppercase tracking-wider">
-                Số tiền cần thu
-              </span>
-              <div className="text-3xl font-black text-amber-950">
-                {formatVND(order.totalFee)}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-stone-600 mb-1">
-                Số tiền thực tế đã nhận (đ):
-              </label>
-              <input
-                type="number"
-                value={collectedAmount}
-                onChange={(e) => setCollectedAmount(Number(e.target.value))}
-                className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-base font-mono font-bold focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-3 pt-2">
-              <Button
-                variant="outline"
-                size="md"
-                onClick={() => setIsCashCollectModalOpen(false)}
-              >
-                Chưa thu được
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                onClick={handleConfirmCashCollection}
-              >
-                ĐÃ THU ĐỦ TIỀN MẶT ✓
-              </Button>
-            </div>
-          </div>
         </div>
       )}
 

@@ -9,6 +9,8 @@ import com.miniongvang.dto.quote.FareDtos.Fare;
 import com.miniongvang.dto.quote.FareDtos.Surcharge;
 import com.miniongvang.dto.quote.QuoteDtos.Parcel;
 import com.miniongvang.dao.*;
+import com.miniongvang.config.RouteConfiguration;
+import com.miniongvang.integration.RouteFailure;
 import com.miniongvang.entity.*;
 import com.miniongvang.entity.enums.*;
 import jakarta.persistence.EntityManager;
@@ -22,9 +24,11 @@ public final class DispatchQueryService {
     private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
     private final TransactionRunner transactions;
     private final Clock clock;
+    private final RouteService routes;
     public DispatchQueryService(EntityManagerFactory factory, Clock clock) {
         transactions = new TransactionRunner(factory);
         this.clock = clock;
+        this.routes = RouteConfiguration.fromEnvironment();
     }
 
     public OrderPage orders(ActorContext actor, int page, int size, LocalDate from, LocalDate to, OrderStatus status) {
@@ -70,6 +74,15 @@ public final class DispatchQueryService {
         });
     }
 
+    public Driver driver(ActorContext actor) {
+        return transactions.run(em -> {
+            DispatchAccess.actor(em,actor,AccountRole.TAI_XE);
+            TaiXe driver=em.find(TaiXe.class,actor.maTx());
+            if (driver==null) throw new NoSuchElementException("Driver not found");
+            return driverPage(em,new DispatchDAO.Drivers(List.of(driver),1),0,1).items().get(0);
+        });
+    }
+
     public DriverPage suggestions(ActorContext actor,String id,int page,int size) {
         id(id); page(page,size);
         return transactions.run(em -> {
@@ -77,8 +90,30 @@ public final class DispatchQueryService {
             DonHang order=new DonHangDAO(em).find(id);
             if (order==null) throw new NoSuchElementException("Order not found");
             if (order.getTrangThai()!=OrderStatus.CHO_GAN) throw new DispatchErrors.Conflict("ORDER_STATE_CONFLICT");
-            return driverPage(em,new DispatchDAO(em).drivers(DriverStatus.ONLINE,false,id,
-                    LocalDate.ofInstant(clock.instant(),VIETNAM),page,size),page,size);
+            var all = new DispatchDAO(em).drivers(DriverStatus.ONLINE,false,id,
+                    LocalDate.ofInstant(clock.instant(),VIETNAM),0,Integer.MAX_VALUE);
+            var candidates = new ArrayList<>(driverPage(em,all,0,Integer.MAX_VALUE).items());
+            boolean routed = !candidates.isEmpty() && candidates.stream().allMatch(d -> d.viTriDemoDiaChi()!=null);
+            if (routed) {
+                try {
+                    candidates = new ArrayList<>(candidates.stream().map(d -> {
+                        var route = routes.estimate(d.viTriDemoDiaChi(),order.getDiemLayHang());
+                        return new Driver(d.maTx(),d.hoTen(),d.soDienThoai(),d.trangThaiHoatDong(),
+                                d.dangBanChuyen(),d.phuongTien(),d.viTriDemoDiaChi(),d.viTriDemoNguon(),
+                                d.viTriDemoCauHinhLuc(),route.quangDuongKm(),(long)route.thoiGianDuKienGiay(),route.nguon());
+                    }).toList());
+                    candidates.sort(Comparator.comparing(d -> new BigDecimal(d.kmDenDiemLay())));
+                } catch (RouteFailure | IllegalArgumentException failure) { routed = false; }
+            }
+            if (!routed) {
+                candidates = new ArrayList<>(candidates.stream().map(d -> new Driver(d.maTx(),d.hoTen(),
+                        d.soDienThoai(),d.trangThaiHoatDong(),d.dangBanChuyen(),d.phuongTien(),
+                        d.viTriDemoDiaChi(),d.viTriDemoNguon(),d.viTriDemoCauHinhLuc(),null,null,
+                        "DU_PHONG_RANH_TU")).toList());
+            }
+            int start = (int)Math.min((long)page*size,candidates.size());
+            int end = Math.min(start+size,candidates.size());
+            return new DriverPage(candidates.subList(start,end),page,size,candidates.size(),pages(candidates.size(),size));
         });
     }
 
@@ -151,7 +186,9 @@ public final class DispatchQueryService {
         var items=result.items().stream().map(t->{
             var v=dao.vehicle(t.getId());
             Vehicle vehicle=v==null?null:new Vehicle(v.getId(),v.getBienSoXe(),v.getLoaiXe(),v.getMauXe());
-            return new Driver(t.getId(),t.getHoTen(),t.getSoDienThoai(),t.getTrangThai().name(),dao.busy(t.getId()),vehicle);
+            return new Driver(t.getId(),t.getHoTen(),t.getSoDienThoai(),t.getTrangThai().name(),dao.busy(t.getId()),vehicle,
+                    t.getViTriDemoDiaChi(),t.getViTriDemoNguon(),
+                    t.getViTriDemoCauHinhLuc()==null?null:t.getViTriDemoCauHinhLuc().toString(),null,null,null);
         }).toList();
         return new DriverPage(items,page,size,result.total(),pages(result.total(),size));
     }

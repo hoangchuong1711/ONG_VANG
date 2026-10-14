@@ -1,82 +1,79 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { useDemoStore, updateDemoState } from "@/lib/demo-store";
-import { OrderItem } from "@/lib/types";
+import { api, type Driver, type OrderDetail } from "@/lib/live-orders";
+import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
+import type { OrderItem } from "@/lib/types";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 export default function DispatcherOrderDetailPage() {
   const { showToast } = useToast();
-  const params = useParams();
-  const orderId = params?.id as string;
-  const { state: demo, ready } = useDemoStore();
-  const order = demo.orders.find((item) => item.id === orderId);
-  const setOrder = (next: OrderItem) => updateDemoState((previous) => ({
-    ...previous, orders: previous.orders.map((item) => item.id === next.id ? next : item),
-  }));
+  const params = useParams<{ id: string }>();
+  const orderId = params.id;
+  const [order, setOrder] = useState<OrderItem | null>(null);
+  const [events, setEvents] = useState<OrderDetail["nhatKy"]>([]);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("Khách yêu cầu hủy qua hotline");
+  const [cancelReason, setCancelReason] = useState("");
   const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
-  const [selectedDriverId, setSelectedDriverId] = useState("TX-DEMO-1");
+  const [suggestions, setSuggestions] = useState<DispatchDriver[]>([]);
+  const [selectedDriverId, setSelectedDriverId] = useState("");
 
-  // Hủy đơn (UC-14)
-  const handleConfirmCancel = () => {
-    if (!order) return;
-    updateDemoState((previous) => ({ ...previous,
-      orders: previous.orders.map((item) => item.id === order.id ? { ...item,
-        status: "DA_HUY", statusText: `Đã hủy: ${cancelReason}` } : item),
-      drivers: previous.drivers.map((driver) => driver.id === order.driver?.id ?
-        { ...driver, status: "ONLINE_IDLE" } : driver),
-      incidents: previous.incidents.map((incident) => incident.orderId === order.id ?
-        { ...incident, status: "DA_GIAI_QUYET", resolution: "Đơn đã hủy" } : incident),
-    }));
-    setIsCancelModalOpen(false);
-    showToast(`Đã hủy đơn ${order.id} thành công! Lý do: "${cancelReason}"`, "error");
+  const refresh = useCallback(async () => {
+    try {
+      const [detail, fleet] = await Promise.all([
+        api<OrderDetail>(`/orders/${encodeURIComponent(orderId)}`),
+        api<{ items: Driver[] }>("/drivers?size=100"),
+      ]);
+      setOrder(orderForView(detail, fleet.items.map(driverForView)));
+      setEvents(detail.nhatKy ?? []);
+      setError("");
+    } catch (cause) { setError((cause as Error).message); setOrder(null); }
+    finally { setReady(true); }
+  }, [orderId]);
+
+  useEffect(() => {
+    const initial = setTimeout(() => { void refresh(); }, 0);
+    return () => clearTimeout(initial);
+  }, [refresh]);
+  useEffect(() => {
+    if (!isReassignModalOpen || !order || order.status !== "CHO_GAN") return;
+    api<{ items: Driver[] }>(`/orders/${encodeURIComponent(order.id)}/driver-suggestions?size=100`)
+      .then(page => { const ranked = page.items.map(driverForView); setSuggestions(ranked); setSelectedDriverId(ranked[0]?.id ?? ""); })
+      .catch(cause => setError((cause as Error).message));
+  }, [isReassignModalOpen, order]);
+
+  const handleConfirmCancel = async () => {
+    if (!order || !cancelReason.trim()) return;
+    try {
+      await api(`/orders/${encodeURIComponent(order.id)}/cancel`, {
+        method: "POST", body: JSON.stringify({ lyDo: cancelReason.trim() }),
+      });
+      setIsCancelModalOpen(false); await refresh();
+      showToast(`Đã hủy đơn ${order.id}.`, "success");
+    } catch (cause) { showToast((cause as Error).message, "error"); }
   };
 
-  // Điều phối lại tài xế (UC-13)
-  const handleConfirmReassign = () => {
-    const newDriver = demo.drivers.find((d) => d.id === selectedDriverId);
-    if (!newDriver || !order) return;
-
-    updateDemoState((previous) => ({ ...previous,
-      orders: previous.orders.map((item) => item.id === order.id ? { ...item,
-        status: "DA_GAN", statusText: "Đã gán lại tài xế", incident: undefined,
-        driver: {
-        id: newDriver.id,
-        name: newDriver.name,
-        phone: newDriver.phone,
-        vehiclePlate: newDriver.vehiclePlate,
-        vehicleType: newDriver.vehicleType,
-        },
-      } : item),
-      drivers: previous.drivers.map((driver) => driver.id === newDriver.id ?
-        { ...driver, status: "ONLINE_BUSY" } : driver.id === order.driver?.id ?
-          { ...driver, status: "ONLINE_IDLE" } : driver),
-      incidents: previous.incidents.map((incident) => incident.orderId === order.id ?
-        { ...incident, status: "DA_GIAI_QUYET", resolution: "Đã gán lại tài xế" } : incident),
-    }));
-    setIsReassignModalOpen(false);
-    showToast(`Đã điều phối lại tài xế ${newDriver.name} cho đơn ${order.id}!`, "success");
-  };
-
-  // Xác nhận thu COD hộ (UC-08)
-  const handleConfirmCODCollect = () => {
-    if (!order) return;
-    setOrder({ ...order, paid: true,
-      status: order.status === "CHUA_THANH_TOAN" ? "HOAN_TAT" : order.status,
-      statusText: order.status === "CHUA_THANH_TOAN" ? "Đã giao và thu tiền" : order.statusText });
-    showToast(`Đã xác nhận thu đối soát ${formatVND(order.totalFee)} thành công!`, "success");
+  const handleConfirmReassign = async () => {
+    if (!order || !selectedDriverId) return;
+    try {
+      await api(`/orders/${encodeURIComponent(order.id)}/assignments`, {
+        method: "POST", body: JSON.stringify({ maTx: selectedDriverId }),
+      });
+      setIsReassignModalOpen(false); await refresh();
+      showToast(`Đã gán tài xế cho đơn ${order.id}.`, "success");
+    } catch (cause) { showToast((cause as Error).message, "error"); }
   };
 
   if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><DispatcherNavbar /><main className="p-6">Đang tải đơn hàng...</main></div>;
-  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><DispatcherNavbar /><main className="p-6"><h1 className="text-xl font-bold">Không tìm thấy đơn hàng</h1><Link href="/dispatcher" className="text-amber-800 underline">Về bàn điều phối</Link></main></div>;
+  if (!order) return <div className="min-h-dvh bg-[#FAFAF9]"><DispatcherNavbar /><main className="p-6"><h1 className="text-xl font-bold">{error || "Không tìm thấy đơn hàng"}</h1><Link href="/dispatcher" className="text-amber-800 underline">Về bàn điều phối</Link></main></div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] font-sans">
@@ -98,7 +95,7 @@ export default function DispatcherOrderDetailPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {order.status !== "DA_HUY" && (
+            {(order.status === "CHO_GAN" || order.status === "DA_GAN") && (
               <Button
                 variant="danger"
                 size="sm"
@@ -261,19 +258,7 @@ export default function DispatcherOrderDetailPage() {
                 </div>
               </div>
 
-              {!order.paid && (
-                <div className="pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    fullWidth
-                    onClick={handleConfirmCODCollect}
-                    className="border-amber-300 text-amber-900 hover:bg-amber-50 text-xs font-bold"
-                  >
-                    Xác nhận đã thu tiền mặt tại bàn
-                  </Button>
-                </div>
-              )}
+
             </div>
           </div>
 
@@ -285,7 +270,7 @@ export default function DispatcherOrderDetailPage() {
                 <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
                   Tài xế tiếp nhận
                 </span>
-                {order.driver && (
+                {order.status === "CHO_GAN" && (
                   <button
                     type="button"
                     onClick={() => setIsReassignModalOpen(true)}
@@ -342,39 +327,12 @@ export default function DispatcherOrderDetailPage() {
               </span>
 
               <div className="relative pl-5 space-y-4 text-xs before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-px before:bg-stone-200">
-                <div className="relative space-y-1">
-                  <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-stone-400" />
-                  <div className="text-stone-900 font-bold">10:15 - Tiếp nhận yêu cầu</div>
-                  <div className="text-stone-500 font-medium text-xs">
-                    Khách hàng khởi tạo đơn qua hệ thống Mini Ong Vàng.
-                  </div>
-                </div>
-
-                <div className="relative space-y-1">
-                  <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  <div className="text-stone-900 font-bold">10:18 - Phân công cuốc xe</div>
-                  <div className="text-stone-500 font-medium text-xs">
-                    Hệ thống điều phối gán tài xế tiếp nhận lộ trình.
-                  </div>
-                </div>
-
-                <div className="relative space-y-1">
-                  <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <div className="text-stone-900 font-bold">10:35 - Lấy hàng thành công</div>
-                  <div className="text-stone-500 font-medium text-xs">
-                    Tài xế đã nhận bưu kiện từ người gửi.
-                  </div>
-                </div>
-
-                {order.incident && (
-                  <div className="relative space-y-1">
-                    <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-rose-500" />
-                    <div className="text-rose-800 font-bold">10:55 - Báo cáo sự cố</div>
-                    <div className="text-rose-900 font-medium text-xs">
-                      {order.incident.note}
-                    </div>
-                  </div>
-                )}
+                {events.map(event => <div key={event.thuTu} className="relative space-y-1">
+                  <span className="absolute -left-5 top-1 h-2.5 w-2.5 rounded-full bg-amber-500" />
+                  <div className="font-bold text-stone-900">{new Date(event.thoiGian).toLocaleString("vi-VN")} · {event.loaiSuKien}</div>
+                  <div className="text-stone-500">{event.trangThaiSau}{event.ghiChu ? ` · ${event.ghiChu}` : ""}</div>
+                </div>)}
+                {events.length === 0 && <p className="text-stone-500">Chưa có nhật ký.</p>}
               </div>
             </div>
           </div>
@@ -434,7 +392,7 @@ export default function DispatcherOrderDetailPage() {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={handleConfirmCancel}
+                onClick={() => void handleConfirmCancel()}
                 className="text-xs font-bold"
               >
                 Xác nhận hủy đơn
@@ -456,7 +414,8 @@ export default function DispatcherOrderDetailPage() {
               <label className="block text-xs font-bold text-stone-700">
                 Chọn tài xế đang trực tuyến rảnh:
               </label>
-              {demo.drivers.filter((d) => d.status === "ONLINE_IDLE").map((d) => (
+              <p className="text-xs text-stone-500">{suggestions[0]?.routeSource === "GOONG" ? "Theo đường Goong đến điểm lấy" : "Thứ tự dự phòng theo thời điểm rảnh"}</p>
+              {suggestions.map((d) => (
                 <label
                   key={d.id}
                   className={`flex items-center justify-between p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
@@ -481,7 +440,7 @@ export default function DispatcherOrderDetailPage() {
                     </div>
                   </div>
                   <span className="font-bold text-emerald-700 text-xs">
-                    Rảnh {d.idleSinceMinutes}m
+                    {d.routeKm ? `${d.routeKm} km · ${Math.ceil((d.routeSeconds ?? 0) / 60)} phút` : "Dự phòng"}
                   </span>
                 </label>
               ))}
@@ -499,7 +458,8 @@ export default function DispatcherOrderDetailPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={handleConfirmReassign}
+                disabled={!selectedDriverId}
+                onClick={() => void handleConfirmReassign()}
                 className="text-xs font-bold shadow-sm"
               >
                 Gán tài xế thay thế

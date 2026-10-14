@@ -2,6 +2,7 @@ package com.miniongvang.web;
 
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
+import com.miniongvang.integration.RouteFailure;
 import com.miniongvang.dto.dispatch.DispatchDtos.AssignmentRequest;
 import com.miniongvang.dto.dispatch.DispatchDtos.IncidentRequest;
 import com.miniongvang.dto.dispatch.DispatchDtos.ReasonRequest;
@@ -44,6 +45,11 @@ public final class DispatchEndpoint {
             } else if (get && path.equals("/api/drivers")) {
                 result=service.drivers(actor,integer(req,"page",0),integer(req,"size",20),
                         enumeration(req,"trangThaiHoatDong",DriverStatus.class),bool(req,"dangBanChuyen"));
+            } else if (get && path.equals("/api/drivers/me")) {
+                result=service.driver(actor);
+            } else if (post && path.matches("/api/drivers/[^/]+/demo-position")) {
+                String driverId=path.split("/")[3];
+                result=service.configureDemoPosition(actor,driverId,body(req,"diaChi"));
             } else {
                 String[] parts=path.split("/",-1);
                 if (parts.length<4 || !parts[1].equals("api") || !parts[2].equals("orders"))
@@ -81,6 +87,14 @@ public final class DispatchEndpoint {
             }
             send(resp,responseStatus,result);
         } catch (JsonRequests.InvalidJson invalid) { error(resp,400,"JSON_INVALID"); }
+        catch (RouteFailure failure) {
+            int status=switch(failure.kind()) {
+                case ADDRESS_NOT_FOUND, OUT_OF_SERVICE_AREA, DISTANCE_INVALID -> 422;
+                case ROUTE_PROVIDER_TIMEOUT -> 504;
+                case ROUTE_PROVIDER_ERROR -> 502;
+            };
+            error(resp,status,failure.kind().name());
+        }
         catch (DispatchErrors.DateRangeInvalid invalid) { error(resp,400,"DATE_RANGE_INVALID"); }
         catch (IllegalArgumentException invalid) { error(resp,400,"VALIDATION_ERROR"); }
         catch (SecurityException forbidden) { error(resp,403,"FORBIDDEN"); }

@@ -1,34 +1,51 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
-import { useDemoStore } from "@/lib/demo-store";
-import { DriverItem, DriverStatus } from "@/lib/types";
-import { formatVND } from "@/lib/utils";
+import { api, type Driver } from "@/lib/live-orders";
+import { driverForView, type DispatchDriver } from "@/lib/dispatch-view";
+import type { DriverStatus } from "@/lib/types";
 import { useToast } from "@/components/ui/Toast";
 
 type FilterStatus = "ALL" | DriverStatus;
 
 export default function DispatcherFleetPage() {
   const { showToast } = useToast();
-  const { state: demo } = useDemoStore();
-  const drivers: DriverItem[] = demo.drivers;
+  const [drivers, setDrivers] = useState<DispatchDriver[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("ALL");
-  const [searchDistrict, setSearchDistrict] = useState<string>("ALL");
+  const [searchDistrict, setSearchDistrict] = useState("ALL");
+  const [editing, setEditing] = useState<DispatchDriver | null>(null);
+  const [address, setAddress] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const refresh = useCallback(async () => {
+    try { const page = await api<{ items: Driver[] }>("/drivers?size=100"); setDrivers(page.items.map(driverForView)); setError(""); }
+    catch (cause) { setError((cause as Error).message); }
+  }, []);
+  useEffect(() => {
+    const initial = setTimeout(() => { void refresh(); }, 0);
+    return () => clearTimeout(initial);
+  }, [refresh]);
 
-  const filteredDrivers = drivers.filter((d) => {
-    if (filter !== "ALL" && d.status !== filter) return false;
-    if (searchDistrict !== "ALL" && d.currentDistrict !== searchDistrict) return false;
-    return true;
-  });
+  const filteredDrivers = drivers.filter(driver =>
+    (filter === "ALL" || driver.status === filter) &&
+    (searchDistrict === "ALL" || driver.currentDistrict.includes(searchDistrict)));
+  const onlineIdleCount = drivers.filter(driver => driver.status === "ONLINE_IDLE").length;
+  const onlineBusyCount = drivers.filter(driver => driver.status === "ONLINE_BUSY").length;
+  const offlineCount = drivers.filter(driver => driver.status === "OFFLINE").length;
 
-  const onlineIdleCount = drivers.filter((d) => d.status === "ONLINE_IDLE").length;
-  const onlineBusyCount = drivers.filter((d) => d.status === "ONLINE_BUSY").length;
-  const offlineCount = drivers.filter((d) => d.status === "OFFLINE").length;
-
-  const handlePingDriver = (driver: DriverItem) => {
-    showToast(`Đã gửi tín hiệu kiểm tra định vị GPS đến tài xế ${driver.name}!`, "info");
+  const handlePingDriver = (driver: DispatchDriver) => { setEditing(driver); setAddress(driver.currentDistrict === "Chưa cấu hình vị trí demo" ? "" : driver.currentDistrict); };
+  const savePosition = async () => {
+    if (!editing || !address.trim() || saving) return;
+    setSaving(true);
+    try {
+      await api(`/drivers/${encodeURIComponent(editing.id)}/demo-position`, {
+        method: "POST", body: JSON.stringify({ diaChi: address.trim() }),
+      });
+      setEditing(null); await refresh(); showToast("Đã lưu vị trí demo cố định từ Goong.", "success");
+    } catch (cause) { setError((cause as Error).message); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -36,6 +53,7 @@ export default function DispatcherFleetPage() {
       <DispatcherNavbar />
 
       <main className="flex-1 max-w-[1440px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-200">
           <div>
@@ -179,15 +197,15 @@ export default function DispatcherFleetPage() {
                               : "bg-stone-100 text-stone-600 border-stone-200"
                           }`}
                         >
-                          {isIdle ? `Rảnh (${d.idleSinceMinutes}m)` : isBusy ? "Đang giao" : "Tạm nghỉ"}
+                          {isIdle ? "Rảnh" : isBusy ? "Đang giao" : "Tạm nghỉ"}
                         </span>
                       </td>
                       <td className="p-4 font-semibold text-stone-800">
-                        {d.completedOrdersToday} cuốc
+                        —
                       </td>
                       <td className="p-4">
-                        <span className="font-bold text-amber-700">★ {d.rating}</span>
-                        <div className="text-xs text-stone-500 font-medium">Nhận: {d.acceptanceRate}%</div>
+                        <span className="font-bold text-amber-700">—</span>
+                        <div className="text-xs text-stone-500 font-medium">Chưa có thống kê</div>
                       </td>
                       <td className="p-4">
                         <span
@@ -195,7 +213,7 @@ export default function DispatcherFleetPage() {
                             hasHighCod ? "text-rose-700" : "text-stone-800"
                           }`}
                         >
-                          {formatVND(d.codCashHolding)}
+                          —
                         </span>
                         {hasHighCod && (
                           <span className="block text-[11px] text-rose-600 font-medium">
@@ -215,7 +233,7 @@ export default function DispatcherFleetPage() {
                           onClick={() => handlePingDriver(d)}
                           className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-200 transition-colors cursor-pointer"
                         >
-                          Ping GPS
+                          Sửa vị trí demo
                         </button>
                       </td>
                     </tr>
@@ -226,6 +244,16 @@ export default function DispatcherFleetPage() {
           </div>
         </section>
       </main>
+      {editing && <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
+        <div className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 text-stone-800">
+          <h2 className="text-lg font-extrabold">Vị trí demo cố định · {editing.name}</h2>
+          <p className="text-xs text-stone-500">Địa chỉ được Goong geocode trước khi lưu vào DB; không phải GPS trực tiếp.</p>
+          {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
+          <input value={address} onChange={event => setAddress(event.target.value)} maxLength={255} className="w-full rounded-xl border px-3 py-2" />
+          <div className="flex justify-end gap-2"><button onClick={() => setEditing(null)} className="rounded-xl border px-4 py-2">Hủy</button>
+            <button onClick={() => void savePosition()} disabled={saving || !address.trim()} className="rounded-xl bg-amber-500 px-4 py-2 font-bold disabled:opacity-50">Lưu</button></div>
+        </div>
+      </div>}
     </div>
   );
 }
