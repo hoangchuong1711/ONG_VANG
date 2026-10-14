@@ -66,19 +66,19 @@ const quote=await customer.call('/api/quotes',input);
 const order=await customer.call('/api/orders',{...input,maBaoGia:quote.maBaoGia,sdtNguoiNhan:'0901234567'},201,undefined,{'Idempotency-Key':randomUUID()});
 const path='/api/orders/'+order.maDon;
 await dispatcher.call(path+'/assignments',{maTx:'TX-DEMO-1'});
-for(const trangThai of ['DA_LAY_HANG','DANG_GIAO']) await driver.call(path+'/transitions',{trangThai});
+await driver.call(path+'/transitions',{trangThai:'DA_LAY_HANG'});
+const full=await driver.call(path+'/payments',{phuongThuc:'TIEN_MAT'},201,undefined,{'Idempotency-Key':randomUUID()});
+await driver.call('/api/payments/'+full.maGiaoDich+'/confirm-cash',{soTienDaThu:'5000.00'},409,'PAYMENT_AMOUNT_MISMATCH');
+await driver.call('/api/payments/'+full.maGiaoDich+'/confirm-cash',{soTienDaThu:full.soTien});
+await driver.call(path+'/transitions',{trangThai:'DANG_GIAO'});
 await driver.call(path+'/arrival',{});
 await driver.call(path+'/transitions',{trangThai:'HOAN_TAT'});
-const partial=await customer.call(path+'/payments',{phuongThuc:'TIEN_MAT'},201,undefined,{'Idempotency-Key':randomUUID()});
-await driver.call('/api/payments/'+partial.maGiaoDich+'/confirm-cash',{soTienDaThu:'5000.00'},422,'PAYMENT_AMOUNT_MISMATCH');
-const full=await customer.call(path+'/payments',{phuongThuc:'TIEN_MAT'},201,undefined,{'Idempotency-Key':randomUUID()});
-await driver.call('/api/payments/'+full.maGiaoDich+'/confirm-cash',{soTienDaThu:full.soTien});
 const now=new Date(),day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
 const next=new Date(day+'T00:00:00Z');next.setUTCDate(next.getUTCDate()+1);
 const period=`?tuNgay=${day}&denNgay=${next.toISOString().slice(0,10)}`;
 const report=await admin.call('/api/reports/revenue'+period);
 assert(schema(report),JSON.stringify(schema.errors));assert.equal(report.tong.giaTriDonHoanTat,order.cuoc.tongCuoc);
-assert.equal(Number(report.tong.tienThucThu),Number(full.soTien)+5000);assert.equal(report.tong.tienThuChuaPhanBo,'5000.00');
+assert.equal(Number(report.tong.tienThucThu),Number(full.soTien));assert.equal(report.tong.tienThuChuaPhanBo,'0.00');
 assert.equal(report.tong.cuocConPhaiThuCuoiKy,'0.00');assert.equal(report.tong.soDonHoanTat,1);
 function sheet(bytes) {
   let end=bytes.length-22;while(end>=0&&bytes.readUInt32LE(end)!==0x06054b50)end--;
@@ -107,4 +107,4 @@ for(const group of ['NGAY','TUAN','THANG']) {
   if(process.env.REPORT_EXPORT_DIR) writeFileSync(process.env.REPORT_EXPORT_DIR+'/'+group+'.xlsx',bytes);
   assert.deepEqual(await admin.call('/api/reports/revenue'+q),json);
 }
-console.log(`PASS: ${checks} T17 HTTP checks; admin permissions, filters, actual receipts, unallocated receipts and matching XLSX.`);
+console.log(`PASS: ${checks} T17 HTTP checks; admin permissions, filters, actual receipts and matching XLSX.`);

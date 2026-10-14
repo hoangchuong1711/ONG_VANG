@@ -45,6 +45,9 @@ public final class DesignV1Smoke {
             throw new IllegalStateException("Eligible demo driver not suggested");
         dispatch.assign(dispatcher, order.maDon(), "TX-DEMO-1");
         dispatch.transition(driver, order.maDon(), OrderStatus.DA_LAY_HANG);
+        var paymentService = new com.miniongvang.service.PaymentService(factory);
+        var payment = paymentService.createCash(driver, order.maDon(), "design-v1-smoke-payment");
+        paymentService.confirmCash(driver, payment.maGiaoDich(), new java.math.BigDecimal(payment.soTien()));
         dispatch.transition(driver, order.maDon(), OrderStatus.DANG_GIAO);
         dispatch.incident(driver, order.maDon(), IncidentType.KHONG_LIEN_LAC_DUOC, "Chưa liên lạc được");
         dispatch.arrive(driver, order.maDon());
