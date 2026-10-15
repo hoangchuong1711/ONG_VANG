@@ -121,7 +121,7 @@ Hướng dẫn dưới đây đã có từ T15, được giữ để tham khảo
 
 **Người host:**
 
-1. Trong `.env` riêng trên máy, đặt `DEMO_SEED=true`, `DEMO_PASSWORD`, `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` và `VNPAY_RETURN_URL=https://<domain-ngrok>/api/payments/vnpay/return`. Không commit `.env`.
+1. Trong `.env` riêng trên máy, đặt `DEMO_SEED=true`, `DEMO_PASSWORD`, `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` và `VNPAY_RETURN_URL=https://<domain-ngrok>/api/payments/vnpay/return`. Đặt thêm `DRIVER_RETURN_URL=http://localhost:3001/driver/orders` nếu thử trên cùng máy, hoặc URL frontend công khai khi mở VNPay trên thiết bị khác. Không commit `.env`.
 2. Chạy `docker compose up --build -d backend`, kiểm tra `http://localhost:8081/api/health`, rồi chạy `ngrok http 8081`. Giữ Docker, ngrok và máy host hoạt động trong lúc nhóm test.
 3. Đảm bảo VNPay đã cấu hình IPN là `https://<domain-ngrok>/api/payments/vnpay/ipn`. Nếu domain đổi, cập nhật IPN với VNPay, sửa `VNPAY_RETURN_URL` và khởi động lại backend trước khi test.
 4. Gửi cho nhóm **URL HTTPS gốc** của ngrok (không kèm `/api/...`), mật khẩu demo và thông tin thẻ **Sandbox** qua kênh nội bộ. Không gửi authtoken hoặc VNPay Hash Secret.

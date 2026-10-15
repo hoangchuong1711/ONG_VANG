@@ -33,7 +33,7 @@ class Client {
 const customer = new Client(), dispatcher = new Client(), driver = new Client(), other = new Client();
 customer.csrf = (await customer.call('/api/auth/csrf')).csrfToken;
 const username = '0' + randomInt(100000000, 999999999), password = randomUUID();
-await customer.call('/api/auth/register', { hoTen: 'T14 HTTP test', soDienThoai: username, password }, 201);
+await customer.call('/api/auth/register', { hoTen: 'T14 HTTP test', soDienThoai: username, password, email: `${username}@example.test` }, 201);
 await customer.login(username, password);
 await dispatcher.login('demo_dispatcher', process.env.DEMO_PASSWORD);
 await driver.login('0800000001', process.env.DEMO_PASSWORD);

@@ -30,7 +30,7 @@ await call('/api/orders', {}, 401, 'AUTH_REQUIRED');
 csrf = (await call('/api/auth/csrf', undefined, 200)).csrfToken;
 const username = '0' + String(randomInt(100000000, 999999999));
 const password = randomUUID();
-await call('/api/auth/register', { hoTen: 'T10 HTTP test', soDienThoai: username, password }, 201);
+await call('/api/auth/register', { hoTen: 'T10 HTTP test', soDienThoai: username, password, email: `${username}@example.test` }, 201);
 const user = await call('/api/auth/login', { username, password }, 200);
 csrf = (await call('/api/auth/csrf', undefined, 200)).csrfToken;
 const quoteInput = { diemLayHang: 'Điểm mẫu A', diemGiaoHang: 'Điểm mẫu B', kienHang: [{ loaiHangHoa: 'Hoa', khoiLuongKg: '1.00' }] };

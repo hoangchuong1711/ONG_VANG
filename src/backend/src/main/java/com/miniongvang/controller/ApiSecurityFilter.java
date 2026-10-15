@@ -1,9 +1,10 @@
 package com.miniongvang.controller;
-import com.miniongvang.dto.auth.AuthDtos.User;
 
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
+import com.miniongvang.dto.auth.AuthDtos.User;
 import com.miniongvang.entity.enums.AccountRole;
+import com.miniongvang.security.AuthSession;
 import com.miniongvang.service.AuthService;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -22,6 +23,10 @@ import java.util.Set;
 @WebFilter("/api/*")
 public final class ApiSecurityFilter implements Filter {
     private static final Set<String> ORIGINS = Set.of("http://localhost:3000", "http://localhost:3001");
+    private static final Set<String> PUBLIC_PATHS = Set.of(
+            "/api/health", "/api/auth/csrf", "/api/auth/login", "/api/auth/register",
+            "/api/auth/forgot-password", "/api/auth/verify-reset-otp", "/api/auth/reset-password",
+            "/api/auth/logout", "/api/auth/me", "/api/payments/vnpay/ipn", "/api/payments/vnpay/return");
 
     @Override public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
@@ -42,27 +47,27 @@ public final class ApiSecurityFilter implements Filter {
             return;
         }
         String path = req.getServletPath() + (req.getPathInfo() == null ? "" : req.getPathInfo());
-        if (path.equals("/api/health") || path.equals("/api/auth/csrf") || path.equals("/api/auth/login")
-                || path.equals("/api/auth/register") || path.equals("/api/payments/vnpay/ipn")
-                || path.equals("/api/payments/vnpay/return") || path.equals("/api/auth/logout")
-                || path.equals("/api/auth/me")) {
+        if (PUBLIC_PATHS.contains(path)) {
             chain.doFilter(request, response); return;
         }
         EnumSet<AccountRole> roles = roles(req.getMethod(), path);
-        if (roles == null) { chain.doFilter(request, response); return; }
         HttpSession session = req.getSession(false);
-        String id = session == null ? null : (String) session.getAttribute("auth.userId");
-        if (id == null) { error(resp, 401, missingSessionCode(req)); return; }
-        PersistenceContext persistence = (PersistenceContext) req.getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
-        User user = new AuthService(persistence.entityManagerFactory()).current(id);
+        String id = AuthSession.userId(session);
+        AuthService auth = null;
+        if (id != null) {
+            PersistenceContext persistence = (PersistenceContext) req.getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
+            auth = new AuthService(persistence.entityManagerFactory());
+            if (!auth.sessionValid(id, AuthSession.version(session))) {
+                session.invalidate(); error(resp, 401, "SESSION_EXPIRED"); return;
+            }
+        }
+        if (roles == null) { chain.doFilter(request, response); return; }
+        if (id == null) { error(resp, 401, AuthSession.missingSessionCode(req)); return; }
+        User user = auth.current(id);
         if (user == null) { session.invalidate(); error(resp, 403, "FORBIDDEN"); return; }
         if (!roles.contains(user.vaiTro())) { error(resp, 403, "FORBIDDEN"); return; }
         if (!"GET".equals(req.getMethod()) && !"HEAD".equals(req.getMethod())) {
-            String token = (String) session.getAttribute("auth.csrf");
-            String supplied = req.getHeader("X-CSRF-Token");
-            if (token == null || supplied == null || !java.security.MessageDigest.isEqual(
-                    token.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                    supplied.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            if (!AuthSession.hasValidCsrf(req, session)) {
                 error(resp, 403, "CSRF_INVALID"); return;
             }
         }
@@ -94,10 +99,5 @@ public final class ApiSecurityFilter implements Filter {
 
     private static void error(HttpServletResponse resp, int status, String code) throws IOException {
         com.miniongvang.web.WebResponses.error(resp, status, code);
-    }
-    private static String missingSessionCode(HttpServletRequest req) {
-        if (req.getCookies() != null) for (var cookie : req.getCookies())
-            if ("JSESSIONID".equals(cookie.getName())) return "SESSION_EXPIRED";
-        return "AUTH_REQUIRED";
     }
 }

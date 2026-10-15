@@ -25,7 +25,7 @@ const username = `0${randomInt(100000000, 999999999)}`;
 const password = randomUUID();
 const registered = await fetch(`${base}/api/auth/register`, {
   method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-  body: JSON.stringify({ hoTen: 'TX3 Goong test', soDienThoai: username, password }),
+  body: JSON.stringify({ hoTen: 'TX3 Goong test', soDienThoai: username, password, email: `${username}@example.test` }),
 });
 assert.equal(registered.status, 201, await registered.text());
 await call('/api/auth/login', { username, password });

@@ -33,7 +33,7 @@ await driver.login('0800000001', process.env.DEMO_PASSWORD);
 await other.login('0900000002', process.env.DEMO_PASSWORD);
 customer.csrf = (await customer.call('/api/auth/csrf')).csrfToken;
 const username = '0' + randomInt(100000000, 999999999), password = randomUUID();
-await customer.call('/api/auth/register', { hoTen: 'T13 HTTP test', soDienThoai: username, password }, 201);
+await customer.call('/api/auth/register', { hoTen: 'T13 HTTP test', soDienThoai: username, password, email: `${username}@example.test` }, 201);
 await customer.login(username, password);
 const input = { diemLayHang: 'Điểm mẫu A', diemGiaoHang: 'Điểm mẫu B', kienHang: [{ loaiHangHoa: 'Hoa', khoiLuongKg: '1.00' }] };
 async function create() {

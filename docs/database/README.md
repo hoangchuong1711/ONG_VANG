@@ -1,6 +1,6 @@
 # Cơ sở dữ liệu designV1
 
-Nguồn thiết kế là [designV1.md](designV1.md); danh sách ràng buộc và trách nhiệm DB/service nằm ở [designV1-constraint-matrix.md](designV1-constraint-matrix.md). Flyway tạo schema từ `src/backend/src/main/resources/db/designV1/sqlserver/V1__design_v1_baseline.sql` và thêm trigger bảo vệ chính sách đã công bố ở `V2__published_policy_immutability.sql`. Có **19 bảng nghiệp vụ**, thêm `demo_seed_manifest` và `flyway_schema_history` phục vụ vận hành. Không chạy các migration V1–V7 của mô hình cũ trên DB này.
+Mô tả schema hiện hành ở [Chương 3](chuong3.md): Flyway V1–V12 tạo **26 bảng ứng dụng**; `demo_seed_manifest` và `flyway_schema_history` phục vụ vận hành, còn `sysdiagrams` có thể do SSMS tạo. [designV1.md](designV1.md) và [designV1-constraint-matrix.md](designV1-constraint-matrix.md) là tài liệu của baseline ban đầu, trước các phần mở rộng TX và auth. Không chạy các migration V1–V7 của mô hình cũ trên DB này.
 
 ## Khởi động local
 

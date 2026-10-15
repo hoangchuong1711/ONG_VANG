@@ -3,6 +3,7 @@
     <persistence-unit name="mini-ong-vang-design-v1" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         <class>com.miniongvang.entity.TaiKhoan</class>
+        <class>com.miniongvang.entity.PasswordResetChallenge</class>
         <class>com.miniongvang.entity.KhachHang</class>
         <class>com.miniongvang.entity.TaiXe</class>
         <class>com.miniongvang.entity.PhuongTien</class>

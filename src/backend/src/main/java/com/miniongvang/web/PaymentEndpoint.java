@@ -62,8 +62,16 @@ public final class PaymentEndpoint {
                     resp.sendRedirect(target + (result.maDot() == null ? "" : "?codBatch=" + result.maDot()));
                     return;
                 }
-                new VnpayPaymentService(persistence.entityManagerFactory(), VnpayGateway.fromEnvironment())
+                var result = new VnpayPaymentService(persistence.entityManagerFactory(), gateway)
                         .browserReturn(req.getQueryString());
+                if (result.returnOrderId() != null) {
+                    String target = System.getenv("DRIVER_RETURN_URL");
+                    if (target == null || target.isBlank()) target = "http://localhost:3001/driver/orders";
+                    if (!target.matches("https?://[^?#]+/driver/orders"))
+                        throw new IllegalStateException("Invalid driver return URL");
+                    resp.sendRedirect(target + "/" + result.returnOrderId());
+                    return;
+                }
                 resp.setStatus(200);
                 resp.setContentType("text/html;charset=UTF-8");
                 resp.getWriter().write("<!doctype html><html lang=\"vi\"><meta charset=\"utf-8\"><title>VNPay</title>"

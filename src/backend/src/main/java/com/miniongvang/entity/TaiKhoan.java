@@ -45,6 +45,9 @@ public class TaiKhoan {
     @Column(name="lan_dang_nhap_cuoi")
     private Instant lanDangNhapCuoi;
 
+    @Column(name="auth_version", nullable=false)
+    private long authVersion;
+
     public TaiKhoan() {}
 
     public String getId() { return id; }
@@ -76,4 +79,6 @@ public class TaiKhoan {
 
     public Instant getLanDangNhapCuoi() { return lanDangNhapCuoi; }
     public void setLanDangNhapCuoi(Instant value) { this.lanDangNhapCuoi = value; }
+    public long getAuthVersion() { return authVersion; }
+    public void setAuthVersion(long value) { authVersion = value; }
 }

@@ -4,13 +4,13 @@ Tài xế được gán mở yêu cầu `VNPAY_QR` tại [mốc thu của T14](T
 
 ## Cấu hình và chạy thử
 
-Đặt `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL` trong môi trường backend; không commit secret. Return URL là HTTPS kết thúc `/api/payments/vnpay/return`. Đăng ký URL public riêng `/api/payments/vnpay/ipn` với VNPay. Nếu dùng ngrok, tunnel trỏ tới backend; cập nhật cả hai URL khi đổi domain.
+Đặt `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL` và `DRIVER_RETURN_URL` trong môi trường backend; không commit secret. Return URL là HTTPS kết thúc `/api/payments/vnpay/return`. `DRIVER_RETURN_URL` là URL frontend kết thúc `/driver/orders` (mặc định `http://localhost:3001/driver/orders` khi thử trên cùng máy). Nếu thanh toán bằng trình duyệt trên thiết bị khác, dùng URL frontend mà thiết bị đó truy cập được. Đăng ký URL public riêng `/api/payments/vnpay/ipn` với VNPay. Nếu dùng ngrok, tunnel trỏ tới backend; cập nhật cả hai URL VNPay khi đổi domain.
 
 Tạo đơn `VNPAY_QR`, gán tài xế và chuyển tới mốc nhận kiện (người gửi trả) hoặc đến điểm giao (người nhận trả). Trong `/driver/orders/{id}`, mở yêu cầu rồi mở cổng Sandbox. Dùng phương tiện test do VNPay cấp. Chỉ xem Sandbox trực tiếp đã đạt khi callback thực sự tới BE hoặc QueryDr xác minh thành công.
 
 ## Xác nhận và xử lý lỗi
 
-- Return chỉ hiển thị lời nhắc và lưu bằng chứng, không ghi nhận thu đủ kể cả chữ ký hợp lệ.
+- Return có chữ ký hợp lệ và khớp đơn sẽ chuyển trình duyệt về `/driver/orders/{id}`. Return sai hoặc không khớp chỉ hiển thị lời nhắc chung. Giao diện tài xế làm mới trạng thái từ backend trước khi cho đi tiếp.
 - Chỉ IPN hoặc QueryDr đã xác minh chữ ký/merchant, tham chiếu, nội dung đơn, số tiền và trạng thái mới xác nhận thu đủ. Query phải khớp tham chiếu đã yêu cầu.
 - Callback lưu trong `su_kien_thanh_toan` và xử lý dưới khóa đơn. Callback giống nhau không tạo thêm khoản thu/xác nhận đủ.
 - Chưa có IPN, chữ ký sai hoặc không khớp thì không mở khóa. Query timeout/chưa rõ chuyển `CHUA_RO_KET_QUA`.

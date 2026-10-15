@@ -12,6 +12,10 @@ public final class AuthDtos {
                                   String email, String diaChiMacDinh) {}
 
     public record LoginRequest(String username, String password) {}
+    public record ForgotPasswordRequest(String soDienThoai, String email) {}
+    public record VerifyResetOtpRequest(String soDienThoai, String email, String otp) {}
+    public record ResetPasswordRequest(String soDienThoai, String email, String resetToken,
+                                       String newPassword) {}
 
     public record User(String maNguoiDung, String hoTen, AccountRole vaiTro,
                            String maKh, String maTx) {}
