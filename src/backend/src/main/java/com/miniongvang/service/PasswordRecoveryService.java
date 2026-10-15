@@ -1,12 +1,12 @@
 package com.miniongvang.service;
 
+import com.miniongvang.dao.PasswordResetChallengeDAO;
 import com.miniongvang.dao.TaiKhoanDAO;
 import com.miniongvang.entity.PasswordResetChallenge;
 import com.miniongvang.entity.TaiKhoan;
 import com.miniongvang.entity.enums.AccountStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.LockModeType;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -45,7 +45,8 @@ public final class PasswordRecoveryService {
     private boolean issueChallenge(EntityManager em, String phone, String email, String hash) {
         TaiKhoan account = account(em, phone, email);
         if (account == null) return false;
-        PasswordResetChallenge challenge = em.find(PasswordResetChallenge.class, account.getId());
+        PasswordResetChallengeDAO challenges = new PasswordResetChallengeDAO(em);
+        PasswordResetChallenge challenge = challenges.find(account.getId());
         boolean fresh = challenge == null;
         if (fresh) challenge = new PasswordResetChallenge(account.getId());
         challenge.setOtpHash(hash);
@@ -54,7 +55,7 @@ public final class PasswordRecoveryService {
         challenge.setTokenHash(null);
         challenge.setTokenExpiresAt(null);
         challenge.setAuthVersion(account.getAuthVersion());
-        if (fresh) em.persist(challenge);
+        if (fresh) challenges.persist(challenge);
         return true;
     }
 
@@ -74,8 +75,9 @@ public final class PasswordRecoveryService {
     private void revokeChallenge(String phone, String email, String hash) {
         new TransactionRunner(factory).run(em -> {
             TaiKhoan account = account(em, phone, email);
-            PasswordResetChallenge current = account == null ? null : em.find(PasswordResetChallenge.class, account.getId());
-            if (current != null && hash.equals(current.getOtpHash())) em.remove(current);
+            PasswordResetChallengeDAO challenges = new PasswordResetChallengeDAO(em);
+            PasswordResetChallenge current = account == null ? null : challenges.find(account.getId());
+            if (current != null && hash.equals(current.getOtpHash())) challenges.remove(current);
             return null;
         });
     }
@@ -125,19 +127,19 @@ public final class PasswordRecoveryService {
                         challenge.getTokenHash().getBytes(StandardCharsets.US_ASCII))) return false;
         account.setMatKhauHash(PasswordHasher.hash(password));
         account.setAuthVersion(account.getAuthVersion() + 1);
-        em.remove(challenge);
+        new PasswordResetChallengeDAO(em).remove(challenge);
         return true;
     }
     private TaiKhoan account(EntityManager em, String phone, String email) {
         TaiKhoan found = new TaiKhoanDAO(em).findByUsername(phone).orElse(null);
         if (found == null) return null;
-        TaiKhoan locked = em.find(TaiKhoan.class, found.getId(), LockModeType.PESSIMISTIC_WRITE);
+        TaiKhoan locked = new TaiKhoanDAO(em).findForUpdate(found.getId());
         return locked != null && locked.getTrangThai() == AccountStatus.HOAT_DONG
                 && locked.getEmail() != null && locked.getEmail().trim().equalsIgnoreCase(email) ? locked : null;
     }
     private PasswordResetChallenge active(EntityManager em, TaiKhoan account) {
         if (account == null) return null;
-        PasswordResetChallenge challenge = em.find(PasswordResetChallenge.class, account.getId());
+        PasswordResetChallenge challenge = new PasswordResetChallengeDAO(em).find(account.getId());
         return challenge != null && challenge.getAuthVersion() == account.getAuthVersion() ? challenge : null;
     }
     private static String phone(String raw) {

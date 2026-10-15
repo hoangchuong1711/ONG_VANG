@@ -3,13 +3,12 @@ package com.miniongvang.controller;
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
 import com.miniongvang.dto.auth.AuthDtos.Csrf;
-import com.miniongvang.dto.auth.AuthDtos.LoginRequest;
-import com.miniongvang.dto.auth.AuthDtos.RegisterRequest;
 import com.miniongvang.dto.auth.AuthDtos.User;
 import com.miniongvang.security.AuthSession;
 import com.miniongvang.service.AuthService;
 import com.miniongvang.service.BrevoEmailSender;
 import com.miniongvang.service.PasswordRecoveryService;
+import com.miniongvang.web.AuthRequests;
 import com.miniongvang.web.JsonRequests;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -18,20 +17,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import tools.jackson.databind.JsonNode;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 @WebServlet({"/api/auth/csrf", "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout",
         "/api/auth/forgot-password", "/api/auth/verify-reset-otp", "/api/auth/reset-password"})
 public final class AuthServlet extends HttpServlet {
-    private static final Set<String> REGISTER_FIELDS = Set.of("hoTen", "soDienThoai", "password", "email", "diaChiMacDinh");
-    private static final Set<String> LOGIN_FIELDS = Set.of("username", "password");
-    private static final Set<String> FORGOT_FIELDS = Set.of("soDienThoai", "email");
-    private static final Set<String> VERIFY_FIELDS = Set.of("soDienThoai", "email", "otp");
-    private static final Set<String> RESET_FIELDS = Set.of("soDienThoai", "email", "resetToken", "newPassword");
-
     private AuthService service() {
         PersistenceContext persistence = (PersistenceContext) getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
         return new AuthService(persistence.entityManagerFactory());
@@ -96,6 +86,8 @@ public final class AuthServlet extends HttpServlet {
                 case "/api/auth/reset-password" -> resetPassword(req, resp, body);
                 default -> error(resp, 404, "RESOURCE_NOT_FOUND");
             }
+        } catch (AuthRequests.InvalidRequest failure) {
+            error(resp, 400, "VALIDATION_ERROR");
         } catch (PasswordRecoveryService.RecoveryException failure) {
             error(resp, failure.status(), failure.code());
         } catch (RuntimeException failure) {
@@ -105,25 +97,13 @@ public final class AuthServlet extends HttpServlet {
     }
 
     private void register(HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, REGISTER_FIELDS) || !validRegistration(body)) {
-            error(resp, 400, "VALIDATION_ERROR"); return;
-        }
-        String name = value(body, "hoTen").trim();
-        String phone = value(body, "soDienThoai");
-        String password = value(body, "password");
-        String email = value(body, "email").trim().toLowerCase(Locale.ROOT);
-        String address = value(body, "diaChiMacDinh");
         try {
-            send(resp, 201, service().register(new RegisterRequest(name, phone, password, email, address)));
+            send(resp, 201, service().register(AuthRequests.register(body)));
         } catch (AuthService.AccountExistsException duplicate) { error(resp, 409, "ACCOUNT_ALREADY_EXISTS"); }
     }
 
     private void login(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, LOGIN_FIELDS) || !validLogin(body)) {
-            error(resp, 400, "VALIDATION_ERROR"); return;
-        }
-        String username = value(body, "username"), password = value(body, "password");
-        var result = service().login(new LoginRequest(username, password));
+        var result = service().login(AuthRequests.login(body));
         if (result.status() == AuthService.LoginStatus.INVALID_CREDENTIALS) {
             error(resp, 401, "INVALID_CREDENTIALS"); return;
         }
@@ -135,62 +115,22 @@ public final class AuthServlet extends HttpServlet {
     }
 
     private void forgotPassword(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, FORGOT_FIELDS)) { error(resp, 400, "VALIDATION_ERROR"); return; }
-        recovery().request(value(body, "soDienThoai"), value(body, "email"), req.getRemoteAddr());
+        var request = AuthRequests.forgotPassword(body);
+        recovery().request(request.soDienThoai(), request.email(), req.getRemoteAddr());
         send(resp, 200, Map.of("message", "Neu thong tin khop tai khoan, ma OTP se duoc gui qua email."));
     }
     private void verifyResetOtp(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, VERIFY_FIELDS)) { error(resp, 400, "VALIDATION_ERROR"); return; }
-        String token = recovery().verify(value(body, "soDienThoai"), value(body, "email"), value(body, "otp"), req.getRemoteAddr());
+        var request = AuthRequests.verifyResetOtp(body);
+        String token = recovery().verify(request.soDienThoai(), request.email(), request.otp(), req.getRemoteAddr());
         send(resp, 200, Map.of("resetToken", token));
     }
     private void resetPassword(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, RESET_FIELDS)) {
-            error(resp, 400, "VALIDATION_ERROR"); return;
-        }
-        recovery().reset(value(body, "soDienThoai"), value(body, "email"), value(body, "resetToken"),
-                value(body, "newPassword"), req.getRemoteAddr());
+        var request = AuthRequests.resetPassword(body);
+        recovery().reset(request.soDienThoai(), request.email(), request.resetToken(),
+                request.newPassword(), req.getRemoteAddr());
         send(resp, 200, Map.of("message", "Mat khau da duoc thay doi."));
     }
 
-    private static boolean validRegistration(JsonNode body) {
-        String name = value(body, "hoTen");
-        String phone = value(body, "soDienThoai");
-        String password = value(body, "password");
-        String email = value(body, "email");
-        String address = value(body, "diaChiMacDinh");
-        return name != null && !name.isBlank() && name.trim().length() <= 100
-                && AuthService.normalizePhone(phone) != null
-                && validPassword(password)
-                && email != null && email.trim().length() <= 150
-                && email.trim().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
-                && !invalidOptional(body, "diaChiMacDinh")
-                && (address == null || address.length() <= 255);
-    }
-
-    private static boolean validLogin(JsonNode body) {
-        String username = value(body, "username");
-        String password = value(body, "password");
-        return username != null && !username.isBlank() && username.length() <= 50
-                && password != null && !password.isBlank()
-                && password.getBytes(StandardCharsets.UTF_8).length <= 72;
-    }
-
-    private static boolean validPassword(String password) {
-        return password != null && password.length() >= 8 && !password.isBlank()
-                && password.getBytes(StandardCharsets.UTF_8).length <= 72;
-    }
-
-    private static boolean fields(JsonNode body, Set<String> allowed) {
-        return JsonRequests.allowed(body, allowed);
-    }
-    private static String value(JsonNode body, String name) {
-        return JsonRequests.text(body, name);
-    }
-    private static boolean invalidOptional(JsonNode body, String name) {
-        JsonNode field = body.get(name);
-        return field != null && !field.isTextual();
-    }
     private static void noStore(HttpServletResponse resp) { resp.setHeader("Cache-Control", "no-store"); }
     private static void send(HttpServletResponse resp, int status, Object body) throws IOException {
         com.miniongvang.web.WebResponses.json(resp, status, body);

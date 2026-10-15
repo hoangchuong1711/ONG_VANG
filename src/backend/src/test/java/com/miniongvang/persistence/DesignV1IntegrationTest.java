@@ -440,7 +440,7 @@ class DesignV1IntegrationTest {
         new DesignV1DemoSeeder(db.entityManagerFactory()).seed("design-v1-test-password");
     }
 
-    @Test void migratedSchemaHasTwentyFourDomainTablesAndTrustedConstraints() throws Exception {
+    @Test void migratedSchemaHasTwentySixDomainTablesAndTrustedConstraints() throws Exception {
         try (var connection = db.dataSource().getConnection();
              var statement = connection.createStatement();
              var result = statement.executeQuery("""
@@ -450,7 +450,7 @@ class DesignV1IntegrationTest {
                             (SELECT COUNT(*) FROM sys.check_constraints WHERE is_disabled=1 OR is_not_trusted=1)
                      """)) {
             assertTrue(result.next());
-            assertEquals(24, result.getInt(1));
+            assertEquals(26, result.getInt(1));
             assertEquals(0, result.getInt(2));
             assertEquals(0, result.getInt(3));
         }

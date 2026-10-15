@@ -1,5 +1,6 @@
 package com.miniongvang.service;
 
+import com.miniongvang.dao.KhachHangDAO;
 import com.miniongvang.dao.TaiKhoanDAO;
 import com.miniongvang.dto.auth.AuthDtos.LoginRequest;
 import com.miniongvang.dto.auth.AuthDtos.RegisterRequest;
@@ -43,12 +44,13 @@ public final class AuthService {
         if (normalized == null) throw new IllegalArgumentException("soDienThoai");
         try {
             User created = new TransactionRunner(factory).run(em -> {
-                if (new TaiKhoanDAO(em).findByUsername(normalized).isPresent())
+                TaiKhoanDAO accounts = new TaiKhoanDAO(em);
+                if (accounts.findByUsername(normalized).isPresent())
                     throw new AccountExistsException();
                 TaiKhoan account = newCustomerAccount(name, normalized, password, email);
-                em.persist(account);
+                accounts.persist(account);
                 KhachHang customer = newCustomerProfile(account, address);
-                em.persist(customer);
+                new KhachHangDAO(em).persist(customer);
                 return new User(account.getId(), name, AccountRole.KHACH_HANG,
                         customer.getId(), null);
             });
