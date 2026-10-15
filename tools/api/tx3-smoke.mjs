@@ -33,7 +33,7 @@ const customer = session();
 await customer.csrf();
 const username = `0${String(Math.floor(100000000 + Math.random() * 900000000))}`;
 const password = randomUUID();
-await customer.call('/api/auth/register', { hoTen: 'TX3 test customer', soDienThoai: username, password }, 201);
+await customer.call('/api/auth/register', { hoTen: 'TX3 test customer', soDienThoai: username, password, email: `${username}@example.test` }, 201);
 const account = await customer.call('/api/auth/login', { username, password });
 await customer.csrf();
 

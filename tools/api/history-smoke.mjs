@@ -31,7 +31,7 @@ await call('/api/orders', undefined, 401, 'AUTH_REQUIRED');
 async function register() {
   cookie = ''; csrf = (await call('/api/auth/csrf', undefined, 200)).csrfToken;
   const username = '0' + String(randomInt(100000000, 999999999)), password = randomUUID();
-  await call('/api/auth/register', { hoTen: 'T16 HTTP test', soDienThoai: username, password }, 201);
+  await call('/api/auth/register', { hoTen: 'T16 HTTP test', soDienThoai: username, password, email: `${username}@example.test` }, 201);
   const user = await call('/api/auth/login', { username, password }, 200);
   csrf = (await call('/api/auth/csrf', undefined, 200)).csrfToken;
   return user;
