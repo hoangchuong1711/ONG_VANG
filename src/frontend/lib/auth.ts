@@ -24,27 +24,37 @@ export class AuthError extends Error {
 }
 
 async function readJson(response: Response) {
-  try { return await response.json(); } catch { return null; }
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
 }
 
 async function csrf(refresh = false): Promise<string> {
   if (csrfToken && !refresh) return csrfToken;
+
   const response = await fetch("/api/auth/csrf", { credentials: "same-origin", cache: "no-store" });
   const body = await readJson(response);
-  if (!response.ok || typeof body?.csrfToken !== "string") throw new AuthError(body?.code ?? "SERVER_ERROR", response.status);
-  csrfToken = body.csrfToken;
-  return csrfToken!;
+  if (!response.ok || typeof body?.csrfToken !== "string") {
+    throw new AuthError(body?.code ?? "SERVER_ERROR", response.status);
+  }
+  const token: string = body.csrfToken;
+  csrfToken = token;
+  return token;
 }
 
 async function post<T>(path: string, body?: object): Promise<T> {
+  const token = await csrf();
   const response = await fetch(path, {
     method: "POST",
     credentials: "same-origin",
     cache: "no-store",
-    headers: { "Content-Type": "application/json", "X-CSRF-Token": await csrf() },
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
     body: JSON.stringify(body ?? {}),
   });
   const data = response.status === 204 ? null : await readJson(response);
+
   if (!response.ok) {
     if (response.status === 401 || data?.code === "CSRF_INVALID") csrfToken = null;
     throw new AuthError(data?.code ?? data?.error?.code ?? "SERVER_ERROR", response.status);
@@ -76,13 +86,19 @@ export async function resetPassword(soDienThoai: string, email: string, resetTok
 
 export async function currentUser(): Promise<AuthUser | null> {
   const response = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
-  if (response.status === 401 || response.status === 403) { csrfToken = null; return null; }
+  if (response.status === 401 || response.status === 403) {
+    csrfToken = null;
+    return null;
+  }
   const data = await readJson(response);
   if (!response.ok) throw new AuthError(data?.code ?? "SERVER_ERROR", response.status);
   return data as AuthUser;
 }
 
 export async function logout(): Promise<void> {
-  try { await post<void>("/api/auth/logout"); }
-  finally { csrfToken = null; }
+  try {
+    await post<void>("/api/auth/logout");
+  } finally {
+    csrfToken = null;
+  }
 }

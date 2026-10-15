@@ -1,34 +1,36 @@
 package com.miniongvang.controller;
-import com.miniongvang.dto.auth.AuthDtos.Csrf;
-import com.miniongvang.dto.auth.AuthDtos.User;
-import com.miniongvang.dto.auth.AuthDtos.RegisterRequest;
-import com.miniongvang.dto.auth.AuthDtos.LoginRequest;
-import com.miniongvang.web.JsonRequests;
 
-import tools.jackson.databind.JsonNode;
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
+import com.miniongvang.dto.auth.AuthDtos.Csrf;
+import com.miniongvang.dto.auth.AuthDtos.LoginRequest;
+import com.miniongvang.dto.auth.AuthDtos.RegisterRequest;
+import com.miniongvang.dto.auth.AuthDtos.User;
+import com.miniongvang.security.AuthSession;
 import com.miniongvang.service.AuthService;
-import com.miniongvang.service.PasswordRecoveryService;
 import com.miniongvang.service.BrevoEmailSender;
+import com.miniongvang.service.PasswordRecoveryService;
+import com.miniongvang.web.JsonRequests;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import tools.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.util.Base64;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @WebServlet({"/api/auth/csrf", "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout",
         "/api/auth/forgot-password", "/api/auth/verify-reset-otp", "/api/auth/reset-password"})
 public final class AuthServlet extends HttpServlet {
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static final String USER_ID = "auth.userId";
-    private static final String CSRF = "auth.csrf";
+    private static final Set<String> REGISTER_FIELDS = Set.of("hoTen", "soDienThoai", "password", "email", "diaChiMacDinh");
+    private static final Set<String> LOGIN_FIELDS = Set.of("username", "password");
+    private static final Set<String> FORGOT_FIELDS = Set.of("soDienThoai", "email");
+    private static final Set<String> VERIFY_FIELDS = Set.of("soDienThoai", "email", "otp");
+    private static final Set<String> RESET_FIELDS = Set.of("soDienThoai", "email", "resetToken", "newPassword");
 
     private AuthService service() {
         PersistenceContext persistence = (PersistenceContext) getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
@@ -42,44 +44,43 @@ public final class AuthServlet extends HttpServlet {
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         noStore(resp);
         try {
-        if (req.getServletPath().endsWith("/csrf")) {
-            HttpSession session = req.getSession();
-            String token = (String) session.getAttribute(CSRF);
-            if (token == null) { token = token(); session.setAttribute(CSRF, token); }
-            send(resp, 200, new Csrf(token, "X-CSRF-Token"));
-        } else if (req.getServletPath().endsWith("/me")) {
-            HttpSession session = req.getSession(false);
-            String id = session == null ? null : (String) session.getAttribute(USER_ID);
-            if (id == null) { error(resp, 401, missingSessionCode(req)); return; }
-            if (!service().sessionValid(id, (Long) session.getAttribute("auth.version"))) {
-                session.invalidate(); error(resp, 401, "SESSION_EXPIRED"); return;
+            switch (req.getServletPath()) {
+                case "/api/auth/csrf" -> send(resp, 200,
+                        new Csrf(AuthSession.csrfToken(req.getSession()), AuthSession.CSRF_HEADER));
+                case "/api/auth/me" -> currentUser(req, resp);
+                default -> error(resp, 404, "RESOURCE_NOT_FOUND");
             }
-            User user = service().current(id);
-            if (user == null) { session.invalidate(); error(resp, 403, "FORBIDDEN"); return; }
-            send(resp, 200, user);
-        } else error(resp, 404, "RESOURCE_NOT_FOUND");
         } catch (RuntimeException failure) {
             getServletContext().log("Auth GET failed", failure);
             if (!resp.isCommitted()) error(resp, 500, "INTERNAL_ERROR");
         }
     }
 
+    private void currentUser(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        HttpSession session = req.getSession(false);
+        String id = AuthSession.userId(session);
+        if (id == null) { error(resp, 401, AuthSession.missingSessionCode(req)); return; }
+        AuthService auth = service();
+        if (!auth.sessionValid(id, AuthSession.version(session))) {
+            session.invalidate(); error(resp, 401, "SESSION_EXPIRED"); return;
+        }
+        User user = auth.current(id);
+        if (user == null) { session.invalidate(); error(resp, 403, "FORBIDDEN"); return; }
+        send(resp, 200, user);
+    }
+
     @Override protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         noStore(resp);
-        String path = req.getServletPath();
         HttpSession session = req.getSession(false);
-        if (path.endsWith("/logout") && (session == null || session.getAttribute(USER_ID) == null)) {
-            error(resp, 401, missingSessionCode(req)); return;
+        String path = req.getServletPath();
+        if ("/api/auth/logout".equals(path) && AuthSession.userId(session) == null) {
+            error(resp, 401, AuthSession.missingSessionCode(req)); return;
         }
-        String expected = session == null ? null : (String) session.getAttribute(CSRF);
-        String supplied = req.getHeader("X-CSRF-Token");
-        if (expected == null || supplied == null || !MessageDigest.isEqual(
-                expected.getBytes(StandardCharsets.UTF_8), supplied.getBytes(StandardCharsets.UTF_8))) {
+        if (!AuthSession.hasValidCsrf(req, session)) {
             error(resp, 403, "CSRF_INVALID"); return;
         }
-        if (path.endsWith("/logout")) {
-            session.invalidate();
-            resp.setHeader("Set-Cookie", "JSESSIONID=; Path=" + cookiePath(req) + "; HttpOnly; SameSite=Lax; Max-Age=0" + (req.isSecure() ? "; Secure" : ""));
+        if ("/api/auth/logout".equals(path)) {
+            AuthSession.end(req, resp, session);
             resp.setStatus(204);
             return;
         }
@@ -87,12 +88,14 @@ public final class AuthServlet extends HttpServlet {
         try { body = JsonRequests.object(req); }
         catch (JsonRequests.InvalidJson invalid) { error(resp, 400, "JSON_INVALID"); return; }
         try {
-            if (path.endsWith("/register")) register(resp, body);
-            else if (path.endsWith("/login")) login(req, resp, body);
-            else if (path.endsWith("/forgot-password")) forgotPassword(req, resp, body);
-            else if (path.endsWith("/verify-reset-otp")) verifyResetOtp(req, resp, body);
-            else if (path.endsWith("/reset-password")) resetPassword(req, resp, body);
-            else error(resp, 404, "RESOURCE_NOT_FOUND");
+            switch (path) {
+                case "/api/auth/register" -> register(resp, body);
+                case "/api/auth/login" -> login(req, resp, body);
+                case "/api/auth/forgot-password" -> forgotPassword(req, resp, body);
+                case "/api/auth/verify-reset-otp" -> verifyResetOtp(req, resp, body);
+                case "/api/auth/reset-password" -> resetPassword(req, resp, body);
+                default -> error(resp, 404, "RESOURCE_NOT_FOUND");
+            }
         } catch (PasswordRecoveryService.RecoveryException failure) {
             error(resp, failure.status(), failure.code());
         } catch (RuntimeException failure) {
@@ -102,33 +105,24 @@ public final class AuthServlet extends HttpServlet {
     }
 
     private void register(HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, Set.of("hoTen", "soDienThoai", "password", "email", "diaChiMacDinh"))) {
+        if (!fields(body, REGISTER_FIELDS) || !validRegistration(body)) {
             error(resp, 400, "VALIDATION_ERROR"); return;
         }
-        String name = value(body, "hoTen"), phone = value(body, "soDienThoai"), password = value(body, "password");
-        String email = value(body, "email"), address = value(body, "diaChiMacDinh");
-        if (name == null || name.isBlank() || name.trim().length() > 100 || AuthService.normalizePhone(phone) == null
-                || password == null || password.length() < 8 || password.isBlank()
-                || password.getBytes(StandardCharsets.UTF_8).length > 72
-                || invalidOptional(body, "email") || invalidOptional(body, "diaChiMacDinh")
-                || email == null || email.trim().length() > 150
-                || !email.trim().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
-                || (address != null && address.length() > 255)) {
-            error(resp, 400, "VALIDATION_ERROR"); return;
-        }
+        String name = value(body, "hoTen").trim();
+        String phone = value(body, "soDienThoai");
+        String password = value(body, "password");
+        String email = value(body, "email").trim().toLowerCase(Locale.ROOT);
+        String address = value(body, "diaChiMacDinh");
         try {
-            send(resp, 201, service().register(new RegisterRequest(name.trim(), phone, password,
-                    email.trim().toLowerCase(java.util.Locale.ROOT), address)));
+            send(resp, 201, service().register(new RegisterRequest(name, phone, password, email, address)));
         } catch (AuthService.AccountExistsException duplicate) { error(resp, 409, "ACCOUNT_ALREADY_EXISTS"); }
     }
 
     private void login(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, Set.of("username", "password"))) { error(resp, 400, "VALIDATION_ERROR"); return; }
-        String username = value(body, "username"), password = value(body, "password");
-        if (username == null || username.isBlank() || username.length() > 50 || password == null || password.isBlank()
-                || password.getBytes(StandardCharsets.UTF_8).length > 72) {
+        if (!fields(body, LOGIN_FIELDS) || !validLogin(body)) {
             error(resp, 400, "VALIDATION_ERROR"); return;
         }
+        String username = value(body, "username"), password = value(body, "password");
         var result = service().login(new LoginRequest(username, password));
         if (result.status() == AuthService.LoginStatus.INVALID_CREDENTIALS) {
             error(resp, 401, "INVALID_CREDENTIALS"); return;
@@ -136,33 +130,55 @@ public final class AuthServlet extends HttpServlet {
         if (result.status() == AuthService.LoginStatus.ACCOUNT_LOCKED) {
             error(resp, 403, "ACCOUNT_LOCKED"); return;
         }
-        HttpSession old = req.getSession(false);
-        if (old != null) old.invalidate();
-        HttpSession session = req.getSession(true);
-        session.setMaxInactiveInterval(1800);
-        session.setAttribute(USER_ID, result.user().maNguoiDung());
-        session.setAttribute("auth.version", result.authVersion());
-        session.setAttribute(CSRF, token());
+        AuthSession.start(req, result.user().maNguoiDung(), result.authVersion());
         send(resp, 200, result.user());
     }
 
     private void forgotPassword(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, Set.of("soDienThoai", "email"))) { error(resp, 400, "VALIDATION_ERROR"); return; }
+        if (!fields(body, FORGOT_FIELDS)) { error(resp, 400, "VALIDATION_ERROR"); return; }
         recovery().request(value(body, "soDienThoai"), value(body, "email"), req.getRemoteAddr());
-        send(resp, 200, java.util.Map.of("message", "Neu thong tin khop tai khoan, ma OTP se duoc gui qua email."));
+        send(resp, 200, Map.of("message", "Neu thong tin khop tai khoan, ma OTP se duoc gui qua email."));
     }
     private void verifyResetOtp(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, Set.of("soDienThoai", "email", "otp"))) { error(resp, 400, "VALIDATION_ERROR"); return; }
+        if (!fields(body, VERIFY_FIELDS)) { error(resp, 400, "VALIDATION_ERROR"); return; }
         String token = recovery().verify(value(body, "soDienThoai"), value(body, "email"), value(body, "otp"), req.getRemoteAddr());
-        send(resp, 200, java.util.Map.of("resetToken", token));
+        send(resp, 200, Map.of("resetToken", token));
     }
     private void resetPassword(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        if (!fields(body, Set.of("soDienThoai", "email", "resetToken", "newPassword"))) {
+        if (!fields(body, RESET_FIELDS)) {
             error(resp, 400, "VALIDATION_ERROR"); return;
         }
         recovery().reset(value(body, "soDienThoai"), value(body, "email"), value(body, "resetToken"),
                 value(body, "newPassword"), req.getRemoteAddr());
-        send(resp, 200, java.util.Map.of("message", "Mat khau da duoc thay doi."));
+        send(resp, 200, Map.of("message", "Mat khau da duoc thay doi."));
+    }
+
+    private static boolean validRegistration(JsonNode body) {
+        String name = value(body, "hoTen");
+        String phone = value(body, "soDienThoai");
+        String password = value(body, "password");
+        String email = value(body, "email");
+        String address = value(body, "diaChiMacDinh");
+        return name != null && !name.isBlank() && name.trim().length() <= 100
+                && AuthService.normalizePhone(phone) != null
+                && validPassword(password)
+                && email != null && email.trim().length() <= 150
+                && email.trim().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+                && !invalidOptional(body, "diaChiMacDinh")
+                && (address == null || address.length() <= 255);
+    }
+
+    private static boolean validLogin(JsonNode body) {
+        String username = value(body, "username");
+        String password = value(body, "password");
+        return username != null && !username.isBlank() && username.length() <= 50
+                && password != null && !password.isBlank()
+                && password.getBytes(StandardCharsets.UTF_8).length <= 72;
+    }
+
+    private static boolean validPassword(String password) {
+        return password != null && password.length() >= 8 && !password.isBlank()
+                && password.getBytes(StandardCharsets.UTF_8).length <= 72;
     }
 
     private static boolean fields(JsonNode body, Set<String> allowed) {
@@ -174,18 +190,6 @@ public final class AuthServlet extends HttpServlet {
     private static boolean invalidOptional(JsonNode body, String name) {
         JsonNode field = body.get(name);
         return field != null && !field.isTextual();
-    }
-    private static String token() {
-        byte[] bytes = new byte[32]; RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-    private static String cookiePath(HttpServletRequest req) {
-        return req.getContextPath().isEmpty() ? "/" : req.getContextPath();
-    }
-    private static String missingSessionCode(HttpServletRequest req) {
-        if (req.getCookies() != null) for (var cookie : req.getCookies())
-            if ("JSESSIONID".equals(cookie.getName())) return "SESSION_EXPIRED";
-        return "AUTH_REQUIRED";
     }
     private static void noStore(HttpServletResponse resp) { resp.setHeader("Cache-Control", "no-store"); }
     private static void send(HttpServletResponse resp, int status, Object body) throws IOException {

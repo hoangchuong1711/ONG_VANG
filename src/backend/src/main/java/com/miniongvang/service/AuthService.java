@@ -1,23 +1,25 @@
 package com.miniongvang.service;
-import com.miniongvang.dto.auth.AuthDtos.User;
-import com.miniongvang.dto.auth.AuthDtos.RegisterRequest;
-import com.miniongvang.dto.auth.AuthDtos.LoginRequest;
-import com.miniongvang.security.ActorContext;
 
 import com.miniongvang.dao.TaiKhoanDAO;
+import com.miniongvang.dto.auth.AuthDtos.LoginRequest;
+import com.miniongvang.dto.auth.AuthDtos.RegisterRequest;
+import com.miniongvang.dto.auth.AuthDtos.User;
 import com.miniongvang.entity.KhachHang;
 import com.miniongvang.entity.TaiKhoan;
 import com.miniongvang.entity.enums.AccountRole;
 import com.miniongvang.entity.enums.AccountStatus;
+import com.miniongvang.security.ActorContext;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceException;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 public final class AuthService {
     private static final Pattern PHONE = Pattern.compile("0[0-9]{9}");
+    private static final Logger LOG = Logger.getLogger(AuthService.class.getName());
     private final EntityManagerFactory factory;
     private final EmailSender mail;
 
@@ -43,35 +45,47 @@ public final class AuthService {
             User created = new TransactionRunner(factory).run(em -> {
                 if (new TaiKhoanDAO(em).findByUsername(normalized).isPresent())
                     throw new AccountExistsException();
-                TaiKhoan account = new TaiKhoan();
-                account.setId(UUID.randomUUID().toString());
-                account.setUsername(normalized);
-                account.setHoTen(name);
-                account.setSoDienThoai(normalized);
-                account.setEmail(email);
-                account.setMatKhauHash(PasswordHasher.hash(password));
-                account.setVaiTro(AccountRole.KHACH_HANG);
-                account.setTrangThai(AccountStatus.HOAT_DONG);
-                account.setNgayTao(Instant.now());
+                TaiKhoan account = newCustomerAccount(name, normalized, password, email);
                 em.persist(account);
-                KhachHang customer = new KhachHang();
-                customer.setId(UUID.randomUUID().toString());
-                customer.setTaiKhoan(account);
-                customer.setDiaChiMacDinh(address);
+                KhachHang customer = newCustomerProfile(account, address);
                 em.persist(customer);
                 return new User(account.getId(), name, AccountRole.KHACH_HANG,
                         customer.getId(), null);
             });
-            if (email != null && !email.isBlank()) {
-                try { mail.welcome(email, name); }
-                catch (RuntimeException failure) { java.util.logging.Logger.getLogger(AuthService.class.getName())
-                        .warning("Welcome email delivery failed"); }
-            }
+            sendWelcomeEmail(email, name);
             return created;
         } catch (PersistenceException failure) {
             if (isUniqueViolation(failure)) throw new AccountExistsException();
             throw failure;
         }
+    }
+
+    private static TaiKhoan newCustomerAccount(String name, String phone, String password, String email) {
+        TaiKhoan account = new TaiKhoan();
+        account.setId(UUID.randomUUID().toString());
+        account.setUsername(phone);
+        account.setHoTen(name);
+        account.setSoDienThoai(phone);
+        account.setEmail(email);
+        account.setMatKhauHash(PasswordHasher.hash(password));
+        account.setVaiTro(AccountRole.KHACH_HANG);
+        account.setTrangThai(AccountStatus.HOAT_DONG);
+        account.setNgayTao(Instant.now());
+        return account;
+    }
+
+    private static KhachHang newCustomerProfile(TaiKhoan account, String address) {
+        KhachHang customer = new KhachHang();
+        customer.setId(UUID.randomUUID().toString());
+        customer.setTaiKhoan(account);
+        customer.setDiaChiMacDinh(address);
+        return customer;
+    }
+
+    private void sendWelcomeEmail(String email, String name) {
+        if (email == null || email.isBlank()) return;
+        try { mail.welcome(email, name); }
+        catch (RuntimeException failure) { LOG.warning("Welcome email delivery failed"); }
     }
 
     public LoginResult login(String username, String password) {
