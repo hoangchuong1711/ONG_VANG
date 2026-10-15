@@ -61,9 +61,9 @@ public final class VnpayPaymentService {
         return transactions.run(em -> {
             String hash=digest(evidence);
             SuKienThanhToan previous=findEvent(em,source,hash);
-            if (previous!=null) return new Result(previous.getKetQuaXuLy(),true);
+            if (previous!=null) return new Result(previous.getKetQuaXuLy(),true,null);
             event(em,source,hash,null,false,PaymentEventResult.KHONG_HOP_LE,Map.of("raw",evidence));
-            return new Result(PaymentEventResult.KHONG_HOP_LE,false);
+            return new Result(PaymentEventResult.KHONG_HOP_LE,false,null);
         });
     }
 
@@ -82,13 +82,16 @@ public final class VnpayPaymentService {
                 em.refresh(payment);
             }
             SuKienThanhToan previous=findEvent(em,source,hash);
-            if (previous!=null) return new Result(previous.getKetQuaXuLy(),true);
+            String returnOrderId=signature && payment!=null
+                    && VnpayGateway.orderInfo(payment.getDonHang().getId()).equals(snapshot.get("vnp_OrderInfo"))
+                    ? payment.getDonHang().getId() : null;
+            if (previous!=null) return new Result(previous.getKetQuaXuLy(),true,returnOrderId);
             PaymentEventResult result;
             if (!signature) result=PaymentEventResult.KHONG_HOP_LE;
             else result=verified(em,payment,snapshot,source);
             event(em,source,hash,payment,signature,result,snapshot);
             em.flush();
-            return new Result(result,false);
+            return new Result(result,false,returnOrderId);
         });
     }
 
@@ -256,5 +259,5 @@ public final class VnpayPaymentService {
                 .digest(value.getBytes(StandardCharsets.UTF_8))); }
         catch (Exception impossible) { throw new IllegalStateException(impossible); }
     }
-    public record Result(PaymentEventResult result,boolean duplicate) {}
+    public record Result(PaymentEventResult result,boolean duplicate,String returnOrderId) {}
 }

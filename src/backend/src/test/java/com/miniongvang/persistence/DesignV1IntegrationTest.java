@@ -1215,7 +1215,10 @@ class DesignV1IntegrationTest {
         var payment=payments.createOnline(driver(),order,"online-once","127.0.0.1",gateway);
         assertEquals(payment.paymentUrl(),payments.createOnline(driver(),order,"online-once","127.0.0.1",gateway).paymentUrl());
         var message=signedIpn(payment,new BigDecimal(payment.soTien()).movePointRight(2).toBigIntegerExact().toString(),"00","VNP-1");
-        assertEquals(PaymentEventResult.DA_AP_DUNG,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_RETURN,message).result());
+        var browserReturn=service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_RETURN,message);
+        assertEquals(PaymentEventResult.DA_AP_DUNG,browserReturn.result());
+        assertEquals(order,browserReturn.returnOrderId());
+        assertEquals(order,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_RETURN,message).returnOrderId());
         assertTrue(payments.get(customer(1),payment.maGiaoDich()).daXacNhanDu());
         assertEquals(PaymentEventResult.KHONG_THAY_DOI,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,message).result());
         assertTrue(service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,message).duplicate());
@@ -1246,9 +1249,13 @@ class DesignV1IntegrationTest {
         String cents=new BigDecimal(first.soTien()).movePointRight(2).toBigIntegerExact().toString();
         var forged=new TreeMap<>(signedIpn(first,cents,"00","VNP-FORGED"));
         forged.put("vnp_Amount","99900");
-        assertEquals(PaymentEventResult.KHONG_HOP_LE,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,forged).result());
-        assertEquals(PaymentEventResult.KHONG_KHOP,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,
-                signedIpn(first,cents,"00","VNP-1","other order")).result());
+        var invalidReturn=service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_RETURN,forged);
+        assertEquals(PaymentEventResult.KHONG_HOP_LE,invalidReturn.result());
+        assertNull(invalidReturn.returnOrderId());
+        var mismatchedReturn=service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_RETURN,
+                signedIpn(first,cents,"00","VNP-1","other order"));
+        assertEquals(PaymentEventResult.KHONG_KHOP,mismatchedReturn.result());
+        assertNull(mismatchedReturn.returnOrderId());
         assertEquals("CHUA_RO_KET_QUA",service.reconcile(customer(1),first.maGiaoDich()).trangThai().name());
         assertThrows(NoSuchElementException.class,() -> service.reconcile(customer(2),first.maGiaoDich()));
         assertEquals(PaymentEventResult.CAN_DOI_SOAT,service.apply(com.miniongvang.entity.enums.PaymentEventSource.VNPAY_IPN,
