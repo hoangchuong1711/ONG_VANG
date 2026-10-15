@@ -4,6 +4,9 @@ import com.miniongvang.dto.auth.AuthDtos.User;
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.service.AuthService;
 import com.miniongvang.service.PasswordHasher;
+import com.miniongvang.service.PasswordRecoveryService;
+import com.miniongvang.service.EmailSender;
+import java.time.Clock;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -96,6 +99,72 @@ class AuthServiceIntegrationTest {
                 assertEquals(1, count(phone));
             } finally { cleanup((a == null ? b : a).maNguoiDung()); }
         }
+    }
+
+    @Test void emailOtpResetsPasswordOnceAndRevokesOldSessionVersion() throws Exception {
+        String phone = freshPhone();
+        String email = "account-" + UUID.randomUUID() + "@example.test";
+        class FakeMail implements EmailSender {
+            String code;
+            int welcomeCount;
+            public boolean enabled() { return true; }
+            public void welcome(String address, String name) { welcomeCount++; }
+            public void otp(String address, String value) { assertEquals(email, address); code = value; }
+            public void passwordChanged(String address) { assertEquals(email, address); }
+        }
+        FakeMail mail = new FakeMail();
+        String ip = "test-" + UUID.randomUUID();
+        AuthService configuredAuth = new AuthService(persistence.entityManagerFactory(), mail);
+        User user = configuredAuth.register("Khach thu", phone, "secret123", email, null);
+        try {
+            assertEquals(1, mail.welcomeCount);
+            assertTrue(configuredAuth.sessionValid(user.maNguoiDung(), 0L));
+            var recovery = new PasswordRecoveryService(persistence.entityManagerFactory(), mail, Clock.systemUTC());
+            recovery.request(phone, " " + email.toUpperCase() + " ", ip);
+            assertNotNull(mail.code);
+            assertThrows(PasswordRecoveryService.RecoveryException.class,
+                    () -> recovery.verify(phone, email, "999999".equals(mail.code) ? "000000" : "999999", ip));
+            String token = recovery.verify(phone, email, mail.code, ip);
+            assertThrows(PasswordRecoveryService.RecoveryException.class,
+                    () -> recovery.verify(phone, email, mail.code, ip));
+            recovery.reset(phone, email, token, "newSecret123", ip);
+            assertThrows(PasswordRecoveryService.RecoveryException.class,
+                    () -> recovery.reset(phone, email, token, "anotherSecret123", ip));
+            assertFalse(configuredAuth.sessionValid(user.maNguoiDung(), 0L));
+            assertEquals(AuthService.LoginStatus.INVALID_CREDENTIALS, configuredAuth.login(phone, "secret123").status());
+            assertEquals(AuthService.LoginStatus.SUCCESS, configuredAuth.login(phone, "newSecret123").status());
+        } finally { cleanup(user.maNguoiDung()); }
+    }
+
+    @Test void failedOtpDeliveryDoesNotLeaveChallengeOrConsumeCooldown() throws Exception {
+        String phone = freshPhone();
+        String email = "account-" + UUID.randomUUID() + "@example.test";
+        String ip = "test-" + UUID.randomUUID();
+        class FakeMail implements EmailSender {
+            boolean fail = true;
+            String code;
+            public boolean enabled() { return true; }
+            public void welcome(String address, String name) { }
+            public void otp(String address, String value) {
+                if (fail) throw new IllegalStateException("provider unavailable");
+                code = value;
+            }
+            public void passwordChanged(String address) { }
+        }
+        FakeMail mail = new FakeMail();
+        User user = new AuthService(persistence.entityManagerFactory(), mail)
+                .register("Khach thu", phone, "secret123", email, null);
+        try {
+            var recovery = new PasswordRecoveryService(persistence.entityManagerFactory(), mail, Clock.systemUTC());
+            var failure = assertThrows(PasswordRecoveryService.RecoveryException.class,
+                    () -> recovery.request(phone, email, ip));
+            assertEquals(503, failure.status());
+            assertEquals("MAIL_UNAVAILABLE", failure.code());
+            mail.fail = false;
+            recovery.request(phone, email, ip);
+            assertNotNull(mail.code);
+            assertNotNull(recovery.verify(phone, email, mail.code, ip));
+        } finally { cleanup(user.maNguoiDung()); }
     }
 
     private static User attempt(String phone) {

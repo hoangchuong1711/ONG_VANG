@@ -58,8 +58,20 @@ export async function login(username: string, password: string): Promise<AuthUse
   return user;
 }
 
-export async function register(hoTen: string, soDienThoai: string, password: string): Promise<AuthUser> {
-  return post<AuthUser>("/api/auth/register", { hoTen, soDienThoai, password });
+export async function register(hoTen: string, soDienThoai: string, email: string, password: string): Promise<AuthUser> {
+  return post<AuthUser>("/api/auth/register", { hoTen, soDienThoai, email, password });
+}
+
+export async function requestPasswordReset(soDienThoai: string, email: string): Promise<{ message: string }> {
+  return post("/api/auth/forgot-password", { soDienThoai, email });
+}
+
+export async function verifyResetOtp(soDienThoai: string, email: string, otp: string): Promise<{ resetToken: string }> {
+  return post("/api/auth/verify-reset-otp", { soDienThoai, email, otp });
+}
+
+export async function resetPassword(soDienThoai: string, email: string, resetToken: string, newPassword: string): Promise<void> {
+  await post("/api/auth/reset-password", { soDienThoai, email, resetToken, newPassword });
 }
 
 export async function currentUser(): Promise<AuthUser | null> {

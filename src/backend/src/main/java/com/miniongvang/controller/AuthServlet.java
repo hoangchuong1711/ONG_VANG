@@ -9,6 +9,8 @@ import tools.jackson.databind.JsonNode;
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
 import com.miniongvang.service.AuthService;
+import com.miniongvang.service.PasswordRecoveryService;
+import com.miniongvang.service.BrevoEmailSender;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +23,8 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Set;
 
-@WebServlet({"/api/auth/csrf", "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout"})
+@WebServlet({"/api/auth/csrf", "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout",
+        "/api/auth/forgot-password", "/api/auth/verify-reset-otp", "/api/auth/reset-password"})
 public final class AuthServlet extends HttpServlet {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String USER_ID = "auth.userId";
@@ -30,6 +33,10 @@ public final class AuthServlet extends HttpServlet {
     private AuthService service() {
         PersistenceContext persistence = (PersistenceContext) getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
         return new AuthService(persistence.entityManagerFactory());
+    }
+    private PasswordRecoveryService recovery() {
+        PersistenceContext persistence = (PersistenceContext) getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
+        return new PasswordRecoveryService(persistence.entityManagerFactory(), BrevoEmailSender.fromEnvironment(), java.time.Clock.systemUTC());
     }
 
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -44,6 +51,9 @@ public final class AuthServlet extends HttpServlet {
             HttpSession session = req.getSession(false);
             String id = session == null ? null : (String) session.getAttribute(USER_ID);
             if (id == null) { error(resp, 401, missingSessionCode(req)); return; }
+            if (!service().sessionValid(id, (Long) session.getAttribute("auth.version"))) {
+                session.invalidate(); error(resp, 401, "SESSION_EXPIRED"); return;
+            }
             User user = service().current(id);
             if (user == null) { session.invalidate(); error(resp, 403, "FORBIDDEN"); return; }
             send(resp, 200, user);
@@ -79,7 +89,12 @@ public final class AuthServlet extends HttpServlet {
         try {
             if (path.endsWith("/register")) register(resp, body);
             else if (path.endsWith("/login")) login(req, resp, body);
+            else if (path.endsWith("/forgot-password")) forgotPassword(req, resp, body);
+            else if (path.endsWith("/verify-reset-otp")) verifyResetOtp(req, resp, body);
+            else if (path.endsWith("/reset-password")) resetPassword(req, resp, body);
             else error(resp, 404, "RESOURCE_NOT_FOUND");
+        } catch (PasswordRecoveryService.RecoveryException failure) {
+            error(resp, failure.status(), failure.code());
         } catch (RuntimeException failure) {
             getServletContext().log("Auth POST failed", failure);
             if (!resp.isCommitted()) error(resp, 500, "INTERNAL_ERROR");
@@ -96,12 +111,14 @@ public final class AuthServlet extends HttpServlet {
                 || password == null || password.length() < 8 || password.isBlank()
                 || password.getBytes(StandardCharsets.UTF_8).length > 72
                 || invalidOptional(body, "email") || invalidOptional(body, "diaChiMacDinh")
-                || (email != null && (email.length() > 150 || !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")))
+                || email == null || email.trim().length() > 150
+                || !email.trim().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
                 || (address != null && address.length() > 255)) {
             error(resp, 400, "VALIDATION_ERROR"); return;
         }
         try {
-            send(resp, 201, service().register(new RegisterRequest(name.trim(), phone, password, email, address)));
+            send(resp, 201, service().register(new RegisterRequest(name.trim(), phone, password,
+                    email.trim().toLowerCase(java.util.Locale.ROOT), address)));
         } catch (AuthService.AccountExistsException duplicate) { error(resp, 409, "ACCOUNT_ALREADY_EXISTS"); }
     }
 
@@ -124,8 +141,28 @@ public final class AuthServlet extends HttpServlet {
         HttpSession session = req.getSession(true);
         session.setMaxInactiveInterval(1800);
         session.setAttribute(USER_ID, result.user().maNguoiDung());
+        session.setAttribute("auth.version", result.authVersion());
         session.setAttribute(CSRF, token());
         send(resp, 200, result.user());
+    }
+
+    private void forgotPassword(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
+        if (!fields(body, Set.of("soDienThoai", "email"))) { error(resp, 400, "VALIDATION_ERROR"); return; }
+        recovery().request(value(body, "soDienThoai"), value(body, "email"), req.getRemoteAddr());
+        send(resp, 200, java.util.Map.of("message", "Neu thong tin khop tai khoan, ma OTP se duoc gui qua email."));
+    }
+    private void verifyResetOtp(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
+        if (!fields(body, Set.of("soDienThoai", "email", "otp"))) { error(resp, 400, "VALIDATION_ERROR"); return; }
+        String token = recovery().verify(value(body, "soDienThoai"), value(body, "email"), value(body, "otp"), req.getRemoteAddr());
+        send(resp, 200, java.util.Map.of("resetToken", token));
+    }
+    private void resetPassword(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
+        if (!fields(body, Set.of("soDienThoai", "email", "resetToken", "newPassword"))) {
+            error(resp, 400, "VALIDATION_ERROR"); return;
+        }
+        recovery().reset(value(body, "soDienThoai"), value(body, "email"), value(body, "resetToken"),
+                value(body, "newPassword"), req.getRemoteAddr());
+        send(resp, 200, java.util.Map.of("message", "Mat khau da duoc thay doi."));
     }
 
     private static boolean fields(JsonNode body, Set<String> allowed) {

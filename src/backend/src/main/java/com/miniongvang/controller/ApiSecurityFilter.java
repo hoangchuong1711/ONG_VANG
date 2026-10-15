@@ -43,15 +43,23 @@ public final class ApiSecurityFilter implements Filter {
         }
         String path = req.getServletPath() + (req.getPathInfo() == null ? "" : req.getPathInfo());
         if (path.equals("/api/health") || path.equals("/api/auth/csrf") || path.equals("/api/auth/login")
-                || path.equals("/api/auth/register") || path.equals("/api/payments/vnpay/ipn")
+                || path.equals("/api/auth/register") || path.equals("/api/auth/forgot-password")
+                || path.equals("/api/auth/verify-reset-otp") || path.equals("/api/auth/reset-password")
+                || path.equals("/api/payments/vnpay/ipn")
                 || path.equals("/api/payments/vnpay/return") || path.equals("/api/auth/logout")
                 || path.equals("/api/auth/me")) {
             chain.doFilter(request, response); return;
         }
         EnumSet<AccountRole> roles = roles(req.getMethod(), path);
-        if (roles == null) { chain.doFilter(request, response); return; }
         HttpSession session = req.getSession(false);
         String id = session == null ? null : (String) session.getAttribute("auth.userId");
+        if (id != null) {
+            PersistenceContext persistence = (PersistenceContext) req.getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
+            if (!new AuthService(persistence.entityManagerFactory()).sessionValid(id, (Long) session.getAttribute("auth.version"))) {
+                session.invalidate(); error(resp, 401, "SESSION_EXPIRED"); return;
+            }
+        }
+        if (roles == null) { chain.doFilter(request, response); return; }
         if (id == null) { error(resp, 401, missingSessionCode(req)); return; }
         PersistenceContext persistence = (PersistenceContext) req.getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
         User user = new AuthService(persistence.entityManagerFactory()).current(id);

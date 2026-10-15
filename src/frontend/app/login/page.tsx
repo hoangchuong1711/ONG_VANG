@@ -20,6 +20,7 @@ function AuthForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState(params.get("reason") === "session" ? "Phiên đăng nhập đã hết hoặc bạn cần đăng nhập để tiếp tục." : "");
   const [busy, setBusy] = useState(false);
 
@@ -32,7 +33,7 @@ function AuthForm() {
     if (password.length < 8) { setError("Mật khẩu cần ít nhất 8 ký tự."); return; }
     setBusy(true);
     try {
-      if (tab === "register") await register(name.trim(), username.trim(), password);
+      if (tab === "register") await register(name.trim(), username.trim(), email.trim(), password);
       const user = await login(username.trim(), password);
       router.replace(homeForRole[user.vaiTro]);
       router.refresh();
@@ -54,12 +55,16 @@ function AuthForm() {
         {tab === "register" && <label className="block text-sm font-semibold">Họ và tên
           <input className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3" value={name} onChange={e => setName(e.target.value)} maxLength={100} autoComplete="name" required />
         </label>}
+        {tab === "register" && <label className="block text-sm font-semibold">Email
+          <input className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3" type="email" value={email} onChange={e => setEmail(e.target.value)} maxLength={150} autoComplete="email" required />
+        </label>}
         <label className="block text-sm font-semibold">{tab === "login" ? "Số điện thoại hoặc tên đăng nhập" : "Số điện thoại"}
           <input className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3" value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" required />
         </label>
         <label className="block text-sm font-semibold">Mật khẩu
           <input className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete={tab === "login" ? "current-password" : "new-password"} required />
         </label>
+        {tab === "login" && <Link href="/forgot-password" className="block text-right text-sm font-semibold text-amber-800 hover:underline">Quên mật khẩu?</Link>}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
         <button type="submit" disabled={busy} className="w-full rounded-xl bg-amber-400 px-4 py-3 font-extrabold hover:bg-amber-300 disabled:opacity-60">{busy ? "Đang xử lý..." : tab === "login" ? "Đăng nhập" : "Đăng ký và đăng nhập"}</button>
       </form>

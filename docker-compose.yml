@@ -53,6 +53,9 @@ services:
       VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-}
       DISPATCHER_RETURN_URL: ${DISPATCHER_RETURN_URL:-http://localhost:3001/dispatcher/reports}
       VNPAY_QUERY_IP: ${VNPAY_QUERY_IP:-}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Mini Ong Vang}
 
     ports:
       - "8081:8080"
