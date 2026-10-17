@@ -10,32 +10,34 @@ Ngày cập nhật: 17/10/2026. **BẢN DỰ THẢO ĐỂ DUYỆT**, thay toàn 
 | Hoàn tất giao hàng | Tài xế được phân công xác nhận đã giao và đã thu đủ cước đã chốt. Không gọi VNPay và không đợi VNPay để hoàn tất. Nếu chưa thu đủ thì chưa hoàn tất theo phạm vi này. |
 | Chia thu nhập | Theo từng đơn hoàn tất: công ty hưởng 20% cước cuối cùng sau giảm giá và phụ thu; tài xế hưởng phần còn lại. Không xét phí cổng thanh toán. |
 | Nộp tiền công ty | Tài xế tự bấm thanh toán bất cứ lúc nào; cộng dồn qua ngày, không hạn nộp, không chặn nhận đơn vì còn phải nộp. VNPay Sandbox chỉ dành cho tài xế → công ty. |
-| Đợt nộp | Gom toàn bộ khoản dương chưa thuộc đợt nào. Một tài xế tối đa một đợt chưa hoàn tất. Không nhập số tiền tùy ý, không trả một phần đơn, không hủy/tách đợt. |
-| Thử thanh toán lại | Giữ đợt cũ và các đơn của nó; tạo lần thử mới chỉ sau khi lần trước được xác minh không thu. Hết thời gian trên màn hình không đủ kết luận không thu. |
+| Nút Thanh toán | Một nút ngay cạnh số Cần nộp công ty. Backend tự tạo giao dịch, gắn các khoản chưa nộp và trả URL mở VNPay trong cùng thao tác người dùng. Không có màn/bước tạo đợt; không nhập số tiền tùy ý hay trả một phần đơn. |
+| Thử thanh toán lại | Một tài xế tối đa một giao dịch chưa giải quyết. Nếu đang chờ thì tiếp tục/tra cứu giao dịch cũ. Chỉ sau khi xác minh KHONG_THU mới giải phóng các khoản để lần bấm sau thanh toán toàn bộ khoản chưa nộp lúc đó, kể cả khoản mới. |
 | Điều phối | Giữ tạo hộ/gán/từ chối/gán lại/theo dõi; bỏ thu COD và xác nhận tài xế nộp tiền. |
 | Tài khoản | Giữ đăng nhập, phân quyền, đổi mật khẩu khi đăng nhập; bỏ quên mật khẩu/OTP/email reset. Giữ hash và auth_version để vô hiệu phiên cũ. |
 | Giá/thành viên | Giữ giá theo km/kg, phụ thu, hạng và chính sách thành viên. Không tính lại đơn cũ theo giá mới. |
 | Báo giá | Không lưu bảng báo giá tạm; tính xem trước, khi tạo đơn tính lại và yêu cầu người dùng chấp thuận nếu giá thay đổi. |
 | Ngoài phạm vi | Tiền hàng thu hộ người bán, trả góp, hoàn tiền, công ty trả lương/chuyển tiền tài xế, ví điện tử, đánh giá khách hàng, GPS trực tiếp. Vị trí demo/bản đồ có thể giữ. |
 
-**Ví dụ:** ba đơn có tổng cước 300.000đ → tài xế hưởng 240.000đ, phải nộp 60.000đ. Bấm nộp tạo đợt 60.000đ. Chạy thêm đơn 100.000đ trong lúc chờ → phát sinh mới 20.000đ; đợt cũ vẫn 60.000đ. Khi trả thành công, còn phải nộp 20.000đ. Thu nhập tài xế không bị trừ thêm 60.000đ.
+**Ví dụ chính:** ba đơn tổng cước 300.000đ → thu nhập tài xế 240.000đ, màn hình hiện **Cần nộp công ty: 60.000đ** và nút **Thanh toán**. Chưa trả thì tiếp tục chạy và cộng dồn. Bấm nút → mở VNPay ngay → trả thành công → số cần nộp về **0đ** nếu không có khoản mới phát sinh. Không tạo đợt rồi bấm trả lần hai.
+
+**Trường hợp đồng thời:** nếu đã mở VNPay cho 60.000đ mà phát sinh thêm khoản 20.000đ, thanh toán thành công chỉ giải quyết 60.000đ đã chốt; màn hình còn 20.000đ. Không gán số nợ bằng 0 vô điều kiện. Thu nhập 80% không bị trừ thêm khi nộp phần công ty.
 
 Phân biệt: tiền khách được tài xế **khai báo đã thu**; tiền công ty **được hưởng**; tiền công ty **đã nhận qua VNPay**. Không gọi 20% là lợi nhuận ròng. Thu nhập lọc theo ngày hoàn tất; khoản còn phải nộp tính toàn lịch sử, không reset theo ngày/bộ lọc.
 
 ### 1.1. Bảng/cột bỏ, gộp, thay
 
 - Bỏ `thanh_toan`, `xac_nhan_thanh_toan_don_hang` và bộ sự kiện thanh toán của khách.
-- Đổi nhóm `dot_nop_cod`, `khoan_cod_trong_dot`, `lan_nop_cod`, `su_kien_nop_cod` thành `dot_nop_tien`, `chi_tiet_dot_nop`, `giao_dich_nop_tien`, `su_kien_thanh_toan`. Chi tiết đợt trỏ khoản chia cước, không trỏ giao dịch khách. Bỏ người điều phối nộp tiền.
-- Giữ nhưng thiết kế lại `phan_chia_cuoc`; không FK tới thanh toán khách.
+- Bỏ mô hình đợt/chi tiết COD và hai bảng `dot_nop_tien`, `chi_tiet_dot_nop` của bản dự thảo trước. Chỉ giữ `giao_dich_nop_tien` và `su_kien_thanh_toan` cho VNPay tài xế → công ty; bỏ người điều phối nộp tiền.
+- Giữ `phan_chia_cuoc`, thêm `ma_giao_dich_nop` nullable trỏ trực tiếp giao dịch nộp. NULL là chưa đưa vào thanh toán; liên kết giao dịch đang chờ là đang xử lý; liên kết giao dịch thành công là đã nộp. KHONG_THU thì xóa liên kết trong cùng transaction xử lý kết quả, không xóa giao dịch.
 - Bỏ `password_reset_challenge`, `auth_rate_limit` của luồng reset.
 - Gộp `cuoc_don_hang` vào `don_hang`; bỏ cột phiên bản biểu phí lặp lại và không lưu tổng cước độc lập.
 - Bỏ `bao_gia`. Chọn phương án gọn: bỏ `yeu_cau_tao_don`, thay bằng khóa yêu cầu + hash nội dung trên đơn. Khóa chỉ duy nhất theo người tạo; cùng khóa nhưng khác nội dung phải từ chối.
 - Bỏ `ben_thanh_toan`, `phuong_thuc_thanh_toan`. Giữ lịch sử phân công, kiện, phụ thu, nhật ký đơn và kiểm toán.
-- Bảng Flyway/seed/công cụ không tính trong 18 bảng nghiệp vụ và không tạo ở bản này.
+- Bảng Flyway/seed/công cụ không tính trong 16 bảng nghiệp vụ và không tạo ở bản này.
 
 ## 2. Mô hình quan hệ và lựa chọn thiết kế
 
-18 bảng: `tai_khoan`, `khach_hang`, `tai_xe`, `phuong_tien`, `cau_hinh_cuoc`, `chinh_sach_thanh_vien`, `cau_hinh_phu_thu`, `don_hang`, `chi_tiet_kien_hang`, `phu_thu_don_hang`, `phan_cong_don_hang`, `nhat_ky_don_hang`, `nhat_ky_kiem_toan`, `phan_chia_cuoc`, `dot_nop_tien`, `chi_tiet_dot_nop`, `giao_dich_nop_tien`, `su_kien_thanh_toan`.
+16 bảng: `tai_khoan`, `khach_hang`, `tai_xe`, `phuong_tien`, `cau_hinh_cuoc`, `chinh_sach_thanh_vien`, `cau_hinh_phu_thu`, `don_hang`, `chi_tiet_kien_hang`, `phu_thu_don_hang`, `phan_cong_don_hang`, `nhat_ky_don_hang`, `nhat_ky_kiem_toan`, `phan_chia_cuoc`, `giao_dich_nop_tien`, `su_kien_thanh_toan`.
 
 | Quan hệ | Bội số / ý nghĩa |
 |---|---|
@@ -47,16 +49,15 @@ Phân biệt: tiền khách được tài xế **khai báo đã thu**; tiền c�
 | Biểu phí/chính sách → đơn | 1–N; chính sách giảm có thể NULL |
 | Đơn → khoản chia | 1–0..1; chỉ phát sinh khi hoàn tất và xác nhận thu đủ |
 | Phân công → khoản chia | 1–0..1; FK ghép bảo đảm phân công thuộc đúng đơn |
-| Tài xế → đợt nộp | 1–N; tối đa một đợt chưa nộp xong |
-| Đợt → chi tiết | 1–N theo thủ tục; khoản chia thuộc tối đa một đợt vĩnh viễn |
-| Đợt → lần thử VNPay | 1–N; tối đa một lần chưa giải quyết, tối đa một thành công |
+| Tài xế → giao dịch nộp | 1–N; tối đa một giao dịch chưa giải quyết, có thể nhiều giao dịch thành công cho các khoản khác nhau |
+| Giao dịch → khoản chia | 1–N khi đang chờ/thành công; khoản chia trỏ tối đa một giao dịch hiện tại. Sau KHONG_THU giải phóng liên kết, không giữ lịch sử ghép từng đơn của lần thất bại |
 | Giao dịch → sự kiện | 1–N; sự kiện không nhận diện được giao dịch có FK NULL |
 
 ### 2.1. Chuẩn hóa và dữ liệu chốt
 
 Khóa dùng UNIQUEIDENTIFIER trong **đề xuất mới**; đây là thay đổi kiểu so với NVARCHAR(36) hiện tại, cần đổi mapping Java hoặc giữ kiểu cũ đồng bộ khi triển khai. Tiền dùng DECIMAL(15,0), không FLOAT; thời gian UTC DATETIME2(3), hiển thị UTC+7. Khoảng thời gian lọc là [từ, đến).
 
-Không lưu ma_tx trên đơn; suy từ phân công. Không lưu số dư tài xế độc lập. Không lưu tỷ lệ 20% có thể sửa: công thức cố định trong View/hàm. Khoản chia chỉ giữ khóa đơn, phân công và thời điểm; số tiền lấy từ giá đơn bất biến. Tổng đợt tính từ chi tiết; số tiền yêu cầu trong giao dịch là dữ liệu chốt gửi đối tác, phải đối chiếu tổng đợt.
+Không lưu ma_tx trên đơn; suy từ phân công. Không lưu số dư tài xế độc lập. Không lưu tỷ lệ 20% có thể sửa: công thức cố định trong View/hàm. Khoản chia giữ khóa đơn, phân công, thời điểm và FK giao dịch nộp nullable; số tiền suy từ giá đơn bất biến. Giao dịch lưu số tiền chốt gửi VNPay. Khi đang chờ hoặc thành công, tổng phần công ty của các khoản liên kết phải bằng số tiền đó. Giao dịch KHONG_THU vẫn lưu số tiền/kết quả nhưng không còn liên kết đơn; đây là đánh đổi chủ động để giảm hai bảng, không tuyên bố giữ toàn bộ lịch sử ghép đơn thất bại.
 
 Các cột cuoc_km, cuoc_kg, tien_giam trên đơn là kết quả định giá chốt khi tạo, không phải giá hiện hành. Không lặp tong_khoi_luong, tong_phu_thu, tong_cuoc thành cột vật lý. Phụ thu tham chiếu phiên bản bất biến. Địa chỉ/người nhận là thông tin của lần giao, không phụ thuộc địa chỉ mặc định mới của khách. Các bản ghi kỹ thuật JSON chỉ là chứng cứ trao đổi/audit, không thay dữ liệu quan hệ cốt lõi. Đây là cơ sở phân tích 3NF; snapshot và các cột kỹ thuật cần giải thích riêng, không khẳng định mọi dữ liệu dẫn xuất tự động đạt 3NF.
 
@@ -230,23 +231,11 @@ CREATE TABLE dbo.phan_chia_cuoc (
  ghi_nhan_luc DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
  CONSTRAINT fk_chia_pc FOREIGN KEY(ma_don,ma_phan_cong) REFERENCES dbo.phan_cong_don_hang(ma_don,ma_phan_cong)
 );
-CREATE TABLE dbo.dot_nop_tien (
- ma_dot UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID() PRIMARY KEY,
- ma_tx UNIQUEIDENTIFIER NOT NULL REFERENCES dbo.tai_xe(ma_tx),
- trang_thai VARCHAR(15) NOT NULL DEFAULT 'CHUA_NOP',
- tao_luc DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(), thanh_toan_luc DATETIME2(3) NULL,
- CONSTRAINT ck_dot_status CHECK(
-  (trang_thai='CHUA_NOP' AND thanh_toan_luc IS NULL) OR
-  (trang_thai='DA_NOP' AND thanh_toan_luc IS NOT NULL AND thanh_toan_luc>=tao_luc))
-);
-CREATE TABLE dbo.chi_tiet_dot_nop (
- ma_dot UNIQUEIDENTIFIER NOT NULL REFERENCES dbo.dot_nop_tien(ma_dot),
- ma_don UNIQUEIDENTIFIER NOT NULL UNIQUE REFERENCES dbo.phan_chia_cuoc(ma_don),
- PRIMARY KEY(ma_dot,ma_don)
-);
 CREATE TABLE dbo.giao_dich_nop_tien (
  ma_giao_dich UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID() PRIMARY KEY,
- ma_dot UNIQUEIDENTIFIER NOT NULL REFERENCES dbo.dot_nop_tien(ma_dot),
+ ma_tx UNIQUEIDENTIFIER NOT NULL REFERENCES dbo.tai_xe(ma_tx),
+ khoa_yeu_cau VARCHAR(100) NOT NULL,
+ CONSTRAINT uq_gd_request UNIQUE(ma_tx,khoa_yeu_cau),
  ma_tham_chieu VARCHAR(100) NOT NULL UNIQUE,
  so_tien_yeu_cau DECIMAL(15,0) NOT NULL CHECK(so_tien_yeu_cau>0),
  trang_thai VARCHAR(20) NOT NULL DEFAULT 'CHO_XU_LY',
@@ -259,6 +248,8 @@ CREATE TABLE dbo.giao_dich_nop_tien (
   (trang_thai='THANH_CONG' AND giai_quyet_luc IS NOT NULL AND ma_giao_dich_doi_tac IS NOT NULL AND so_tien_thuc_nhan IS NOT NULL AND so_tien_thuc_nhan=so_tien_yeu_cau)),
  CONSTRAINT ck_gd_time CHECK(giai_quyet_luc IS NULL OR giai_quyet_luc>=tao_luc)
 );
+ALTER TABLE dbo.phan_chia_cuoc ADD ma_giao_dich_nop UNIQUEIDENTIFIER NULL
+ CONSTRAINT fk_chia_gd REFERENCES dbo.giao_dich_nop_tien(ma_giao_dich);
 CREATE TABLE dbo.su_kien_thanh_toan (
  ma_su_kien BIGINT IDENTITY PRIMARY KEY,
  ma_giao_dich UNIQUEIDENTIFIER NULL REFERENCES dbo.giao_dich_nop_tien(ma_giao_dich),
@@ -282,18 +273,16 @@ CREATE UNIQUE INDEX ux_tk_phone ON dbo.tai_khoan(so_dien_thoai) WHERE so_dien_th
 CREATE UNIQUE INDEX ux_pc_open_order ON dbo.phan_cong_don_hang(ma_don) WHERE ket_thuc_luc IS NULL;
 CREATE UNIQUE INDEX ux_pc_open_driver ON dbo.phan_cong_don_hang(ma_tx) WHERE ket_thuc_luc IS NULL;
 CREATE UNIQUE INDEX ux_pc_done ON dbo.phan_cong_don_hang(ma_don) WHERE ket_qua='HOAN_TAT';
-CREATE UNIQUE INDEX ux_dot_open ON dbo.dot_nop_tien(ma_tx) WHERE trang_thai='CHUA_NOP';
 -- Một filter IS NULL bao phủ cả hai trạng thái chưa giải quyết, không dùng hai index rời.
-CREATE UNIQUE INDEX ux_gd_open ON dbo.giao_dich_nop_tien(ma_dot) WHERE giai_quyet_luc IS NULL;
-CREATE UNIQUE INDEX ux_gd_success ON dbo.giao_dich_nop_tien(ma_dot) WHERE trang_thai='THANH_CONG';
+CREATE UNIQUE INDEX ux_gd_open ON dbo.giao_dich_nop_tien(ma_tx) WHERE giai_quyet_luc IS NULL;
 CREATE UNIQUE INDEX ux_gd_partner ON dbo.giao_dich_nop_tien(ma_giao_dich_doi_tac) WHERE ma_giao_dich_doi_tac IS NOT NULL;
 CREATE UNIQUE INDEX ux_arrival ON dbo.nhat_ky_don_hang(ma_don) WHERE loai='DEN_DIEM_NHAN';
 CREATE INDEX ix_don_customer_time ON dbo.don_hang(ma_kh,tao_luc DESC) INCLUDE(trang_thai);
 CREATE INDEX ix_don_queue ON dbo.don_hang(trang_thai,tao_luc) INCLUDE(ma_kh);
 CREATE INDEX ix_pc_driver_time ON dbo.phan_cong_don_hang(ma_tx,bat_dau_luc DESC) INCLUDE(ma_don,ket_qua);
 CREATE INDEX ix_log_order_time ON dbo.nhat_ky_don_hang(ma_don,thoi_gian,ma_su_kien);
-CREATE INDEX ix_dot_driver_time ON dbo.dot_nop_tien(ma_tx,tao_luc DESC) INCLUDE(trang_thai);
-CREATE INDEX ix_gd_batch_time ON dbo.giao_dich_nop_tien(ma_dot,tao_luc DESC) INCLUDE(trang_thai,so_tien_yeu_cau);
+CREATE INDEX ix_gd_driver_time ON dbo.giao_dich_nop_tien(ma_tx,tao_luc DESC) INCLUDE(trang_thai,so_tien_yeu_cau);
+CREATE INDEX ix_chia_payment ON dbo.phan_chia_cuoc(ma_giao_dich_nop) INCLUDE(ma_phan_cong);
 CREATE INDEX ix_audit_object ON dbo.nhat_ky_kiem_toan(doi_tuong,ma_doi_tuong,thoi_gian DESC);
 GO
 ```
@@ -330,31 +319,30 @@ FROM dbo.don_hang d OUTER APPLY (
 ) p;
 GO
 CREATE OR ALTER VIEW dbo.v_chia_cuoc AS
-SELECT c.ma_don,p.ma_tx,c.ghi_nhan_luc,v.tong_cuoc,
+SELECT c.ma_don,p.ma_tx,c.ghi_nhan_luc,c.ma_giao_dich_nop,v.tong_cuoc,
  dbo.fn_phan_cong_ty(v.tong_cuoc) AS tien_cong_ty,
  v.tong_cuoc-dbo.fn_phan_cong_ty(v.tong_cuoc) AS tien_tai_xe
 FROM dbo.phan_chia_cuoc c JOIN dbo.phan_cong_don_hang p ON p.ma_phan_cong=c.ma_phan_cong
 JOIN dbo.v_cuoc_don v ON v.ma_don=c.ma_don;
 GO
-CREATE OR ALTER VIEW dbo.v_tong_dot_nop AS
-SELECT d.ma_dot,d.ma_tx,d.trang_thai,d.tao_luc,d.thanh_toan_luc,
- COUNT(c.ma_don) AS so_don,COALESCE(SUM(c.tien_cong_ty),0) AS tong_tien
-FROM dbo.dot_nop_tien d LEFT JOIN dbo.chi_tiet_dot_nop x ON x.ma_dot=d.ma_dot
-LEFT JOIN dbo.v_chia_cuoc c ON c.ma_don=x.ma_don
-GROUP BY d.ma_dot,d.ma_tx,d.trang_thai,d.tao_luc,d.thanh_toan_luc;
+CREATE OR ALTER VIEW dbo.v_giao_dich_nop AS
+SELECT g.ma_giao_dich,g.ma_tx,g.ma_tham_chieu,g.trang_thai,g.tao_luc,g.giai_quyet_luc,
+ g.so_tien_yeu_cau,g.so_tien_thuc_nhan,COUNT(c.ma_don) AS so_don_dang_lien_ket,
+ COALESCE(SUM(c.tien_cong_ty),0) AS tong_khoan_lien_ket
+FROM dbo.giao_dich_nop_tien g LEFT JOIN dbo.v_chia_cuoc c ON c.ma_giao_dich_nop=g.ma_giao_dich
+GROUP BY g.ma_giao_dich,g.ma_tx,g.ma_tham_chieu,g.trang_thai,g.tao_luc,g.giai_quyet_luc,g.so_tien_yeu_cau,g.so_tien_thuc_nhan;
 GO
 CREATE OR ALTER VIEW dbo.v_so_du_tai_xe AS
 SELECT t.ma_tx,
  COALESCE(SUM(c.tong_cuoc),0) AS tong_cuoc_da_thu,
  COALESCE(SUM(c.tien_tai_xe),0) AS thu_nhap_tai_xe,
  COALESCE(SUM(c.tien_cong_ty),0) AS cong_ty_duoc_huong,
- COALESCE(SUM(CASE WHEN d.trang_thai='DA_NOP' THEN c.tien_cong_ty ELSE 0 END),0) AS da_nop,
- COALESCE(SUM(CASE WHEN d.trang_thai='DA_NOP' THEN 0 ELSE c.tien_cong_ty END),0) AS con_phai_nop,
- COALESCE(SUM(CASE WHEN d.trang_thai='CHUA_NOP' THEN c.tien_cong_ty ELSE 0 END),0) AS dang_trong_dot,
- COALESCE(SUM(CASE WHEN x.ma_dot IS NULL THEN c.tien_cong_ty ELSE 0 END),0) AS phat_sinh_moi
+ COALESCE(SUM(CASE WHEN g.trang_thai='THANH_CONG' THEN c.tien_cong_ty ELSE 0 END),0) AS da_nop,
+ COALESCE(SUM(CASE WHEN g.trang_thai='THANH_CONG' THEN 0 ELSE c.tien_cong_ty END),0) AS con_phai_nop,
+ COALESCE(SUM(CASE WHEN g.giai_quyet_luc IS NULL AND g.ma_giao_dich IS NOT NULL THEN c.tien_cong_ty ELSE 0 END),0) AS dang_thanh_toan,
+ COALESCE(SUM(CASE WHEN c.ma_giao_dich_nop IS NULL THEN c.tien_cong_ty ELSE 0 END),0) AS chua_dua_vao_thanh_toan
 FROM dbo.tai_xe t LEFT JOIN dbo.v_chia_cuoc c ON c.ma_tx=t.ma_tx
-LEFT JOIN dbo.chi_tiet_dot_nop x ON x.ma_don=c.ma_don
-LEFT JOIN dbo.dot_nop_tien d ON d.ma_dot=x.ma_dot GROUP BY t.ma_tx;
+LEFT JOIN dbo.giao_dich_nop_tien g ON g.ma_giao_dich=c.ma_giao_dich_nop GROUP BY t.ma_tx;
 GO
 CREATE OR ALTER VIEW dbo.v_don_cho_dieu_phoi AS
 SELECT ma_don,ma_kh,diem_lay,diem_giao,tao_luc FROM dbo.don_hang WHERE trang_thai='CHO_GAN';
@@ -381,7 +369,7 @@ RETURNS TABLE AS RETURN (
 GO
 ```
 
-Ứng dụng gọi ba hàm giá khi báo giá/tạo đơn; View chia cước dùng fn_phan_cong_ty; màn thu nhập gọi TVF fn_thu_nhap_tai_xe. Màn công nợ dùng v_so_du_tai_xe không lọc ngày. View tổng đợt không JOIN trực tiếp các lần thử VNPay để tránh nhân số tiền do nhiều lần thử.
+Ứng dụng gọi ba hàm giá khi báo giá/tạo đơn; View chia cước dùng fn_phan_cong_ty; màn thu nhập gọi TVF fn_thu_nhap_tai_xe. Màn công nợ dùng v_so_du_tai_xe không lọc ngày. View công nợ JOIN mỗi khoản chia với tối đa một giao dịch để không nhân số tiền. Giao diện chính chỉ cần số Cần nộp và nút Thanh toán; các cột đang xử lý phục vụ giải thích khi có thanh toán chưa rõ. Không cần màn quản lý đợt.
 
 ## 6. Trigger và ranh giới toàn vẹn
 
@@ -442,37 +430,47 @@ GO
 CREATE OR ALTER TRIGGER dbo.tr_chia_hop_le ON dbo.phan_chia_cuoc AFTER INSERT,UPDATE,DELETE AS
 BEGIN
  SET NOCOUNT ON;
- IF EXISTS(SELECT 1 FROM deleted) THROW 51008,N'Khoản chia đã ghi nhận không sửa/xóa',1;
+ IF EXISTS(SELECT 1 FROM deleted d LEFT JOIN inserted i ON i.ma_don=d.ma_don WHERE i.ma_don IS NULL)
+  THROW 51008,N'Không xóa khoản chia',1;
+ IF EXISTS(SELECT 1 FROM inserted i JOIN deleted d ON d.ma_don=i.ma_don
+  WHERE i.ma_phan_cong<>d.ma_phan_cong OR i.ghi_nhan_luc<>d.ghi_nhan_luc)
+  THROW 51009,N'Không sửa nguồn/thời điểm khoản chia',1;
  IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.don_hang d ON d.ma_don=i.ma_don
   JOIN dbo.phan_cong_don_hang p ON p.ma_phan_cong=i.ma_phan_cong
   WHERE d.trang_thai<>'HOAN_TAT' OR p.ket_qua IS NULL OR p.ket_qua<>'HOAN_TAT')
-  THROW 51009,N'Chỉ ghi nhận chia cước cho phân công hoàn tất',1;
-END;
-GO
-CREATE OR ALTER TRIGGER dbo.tr_chi_tiet_dot ON dbo.chi_tiet_dot_nop AFTER INSERT,UPDATE,DELETE AS
-BEGIN
- SET NOCOUNT ON;
- IF EXISTS(SELECT 1 FROM deleted) THROW 51010,N'Không sửa/xóa khoản đã gom vào đợt',1;
- IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.dot_nop_tien d ON d.ma_dot=i.ma_dot
+  THROW 51010,N'Chỉ chia cước cho phân công hoàn tất',1;
+ -- Không chuyển trực tiếp liên kết giữa hai giao dịch. Chỉ tháo sau KHONG_THU.
+ IF EXISTS(SELECT 1 FROM deleted d JOIN inserted i ON i.ma_don=d.ma_don
+  JOIN dbo.giao_dich_nop_tien g ON g.ma_giao_dich=d.ma_giao_dich_nop
+  WHERE (i.ma_giao_dich_nop IS NULL OR i.ma_giao_dich_nop<>d.ma_giao_dich_nop)
+   AND (i.ma_giao_dich_nop IS NOT NULL OR g.trang_thai<>'KHONG_THU'))
+  THROW 51011,N'Không tháo khoản đang chờ hoặc đã nộp',1;
+ IF EXISTS(SELECT 1 FROM inserted i LEFT JOIN deleted d ON d.ma_don=i.ma_don
+  JOIN dbo.giao_dich_nop_tien g ON g.ma_giao_dich=i.ma_giao_dich_nop
   JOIN dbo.v_chia_cuoc c ON c.ma_don=i.ma_don
-  WHERE c.ma_tx<>d.ma_tx OR c.tien_cong_ty<=0 OR d.trang_thai<>'CHUA_NOP'
-   OR EXISTS(SELECT 1 FROM dbo.giao_dich_nop_tien g WHERE g.ma_dot=d.ma_dot))
-  THROW 51011,N'Khoản nộp sai tài xế hoặc đợt đã chốt',1;
+  WHERE (d.ma_don IS NULL OR d.ma_giao_dich_nop IS NULL)
+   AND (g.giai_quyet_luc IS NOT NULL OR g.ma_tx<>c.ma_tx OR c.tien_cong_ty<=0))
+  THROW 51012,N'Liên kết giao dịch sai tài xế/trạng thái/số tiền',1;
 END;
 GO
 CREATE OR ALTER TRIGGER dbo.tr_gd_bao_ve ON dbo.giao_dich_nop_tien AFTER INSERT,UPDATE,DELETE AS
 BEGIN
  SET NOCOUNT ON;
  IF EXISTS(SELECT 1 FROM deleted d LEFT JOIN inserted i ON i.ma_giao_dich=d.ma_giao_dich WHERE i.ma_giao_dich IS NULL)
-  THROW 51012,N'Không xóa giao dịch',1;
+  THROW 51013,N'Không xóa giao dịch',1;
+ IF EXISTS(SELECT 1 FROM inserted i LEFT JOIN deleted d ON d.ma_giao_dich=i.ma_giao_dich
+  WHERE d.ma_giao_dich IS NULL AND i.trang_thai<>'CHO_XU_LY')
+  THROW 51014,N'Giao dịch mới phải chờ xử lý',1;
  IF EXISTS(SELECT 1 FROM inserted i JOIN deleted d ON d.ma_giao_dich=i.ma_giao_dich
-  WHERE i.ma_dot<>d.ma_dot OR i.ma_tham_chieu<>d.ma_tham_chieu OR i.so_tien_yeu_cau<>d.so_tien_yeu_cau
+  WHERE i.ma_tx<>d.ma_tx OR i.khoa_yeu_cau<>d.khoa_yeu_cau OR i.ma_tham_chieu<>d.ma_tham_chieu OR i.so_tien_yeu_cau<>d.so_tien_yeu_cau OR i.tao_luc<>d.tao_luc
    OR (d.giai_quyet_luc IS NOT NULL AND EXISTS(SELECT i.trang_thai,i.giai_quyet_luc,i.ma_giao_dich_doi_tac,i.so_tien_thuc_nhan
      EXCEPT SELECT d.trang_thai,d.giai_quyet_luc,d.ma_giao_dich_doi_tac,d.so_tien_thuc_nhan)))
-  THROW 51013,N'Không đổi định danh/số tiền/kết quả đã chốt',1;
- IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.v_tong_dot_nop v ON v.ma_dot=i.ma_dot
-  WHERE i.so_tien_yeu_cau<>v.tong_tien OR v.so_don=0)
-  THROW 51014,N'Số tiền giao dịch không khớp chi tiết đợt',1;
+  THROW 51016,N'Không đổi định danh/số tiền/kết quả đã chốt',1;
+ -- INSERT giao dịch xảy ra trước khi gắn khoản chia trong cùng TX4.
+ -- Khi thành công bắt buộc các khoản đang gắn khớp số tiền đã yêu cầu.
+ IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.v_giao_dich_nop v ON v.ma_giao_dich=i.ma_giao_dich
+  WHERE i.trang_thai='THANH_CONG' AND (v.so_don_dang_lien_ket=0 OR v.tong_khoan_lien_ket<>i.so_tien_yeu_cau))
+  THROW 51017,N'Số tiền thành công không khớp các khoản chia',1;
 END;
 GO
 ```
@@ -515,11 +513,11 @@ END;
 GO
 ```
 
-Đã có 10 trigger có mã cụ thể. Các FK/CHECK không thay kiểm tra quyền trên từng dòng. Quy tắc “đơn có ít nhất một kiện”, “mọi đơn hoàn tất có khoản chia”, “đợt luôn có chi tiết”, và “DA_NOP có đúng giao dịch thành công” phải được giữ bởi thủ tục transaction và chặn DML trực tiếp; không tuyên bố FK một chiều tự bảo đảm những điều này.
+Đã có 9 trigger có mã cụ thể. FK/CHECK không thay kiểm tra quyền trên từng dòng. Quy tắc “đơn có ít nhất một kiện”, “đơn hoàn tất có khoản chia”, “giao dịch chưa giải quyết/thành công liên kết đúng tổng tiền”, “KHONG_THU không giữ khoản chia” cần thủ tục transaction và chặn DML trực tiếp. Không có trigger tổng tiền lúc INSERT giao dịch vì các khoản được gắn ngay sau đó trong cùng TX4.
 
 ## 7. Stored Procedure và transaction
 
-Các thủ tục ghi bên dưới tự sở hữu transaction, không gọi bên trong transaction Java đang mở. JDBC gọi ở chế độ phù hợp và không giữ khóa trong lúc người dùng mở VNPay. Cùng tài xế dùng khóa `nop:<ma_tx>` cho gom đợt, thử thanh toán, ghi nhận hoàn tất và callback. Luồng điều phối dùng khóa `dieu-phoi` trước rồi mới lấy khóa tài chính tài xế; không đảo thứ tự. Đây là phương án ưu tiên dễ chứng minh cho bài học, chấp nhận tuần tự hóa điều phối; sau này có thể thay khóa toàn cục bằng khóa theo đơn/tài xế có thứ tự cố định.
+Các thủ tục ghi bên dưới tự sở hữu transaction, không gọi bên trong transaction Java đang mở. JDBC gọi ở chế độ phù hợp và không giữ khóa trong lúc người dùng mở VNPay. Cùng tài xế dùng khóa `nop:<ma_tx>` cho bắt đầu thanh toán, ghi nhận hoàn tất và callback. Luồng điều phối dùng khóa `dieu-phoi` trước rồi mới lấy khóa tài chính tài xế; không đảo thứ tự. Đây là phương án ưu tiên dễ chứng minh cho bài học, chấp nhận tuần tự hóa điều phối; sau này có thể thay khóa toàn cục bằng khóa theo đơn/tài xế có thứ tự cố định.
 
 Các tham số được coi là dữ liệu đầu vào; danh tính actor luôn từ kết nối backend đã xác thực. Các thủ tục kiểm tra vai trò và quyền sở hữu bổ sung. Role SQL giới hạn ai được EXECUTE; backend không đưa mật khẩu DB cho trình duyệt.
 
@@ -697,68 +695,40 @@ END;
 GO
 ```
 
-### 7.4. Gom đợt nộp — TX4
+### 7.4. Bấm Thanh toán → tạo giao dịch và mở VNPay — TX4
+
+Một lần bấm gọi usp_bat_dau_thanh_toan (không có ma_dot). Thủ tục lấy tài xế từ phiên, trả giao dịch chưa giải quyết nếu có; nếu không thì gom toàn bộ khoản chưa nộp vào giao dịch mới. Backend sau COMMIT ký URL và mở VNPay ngay. Không thêm bước xác nhận đợt. Nếu ký URL/HTTP lỗi, retry cùng khoa_yeu_cau trả đúng giao dịch cũ, kể cả kết quả đã giải quyết; lần bấm mới có chủ đích dùng khóa mới. Không tự chuyển sang giao dịch mới chỉ vì mất phản hồi. Backend không được cấp URL mới cho giao dịch đã giải quyết; trả trạng thái và số dư mới thay thế.
 
 ```sql
-CREATE OR ALTER PROCEDURE dbo.usp_tao_dot_nop AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20),@tx UNIQUEIDENTIFIER,@dot UNIQUEIDENTIFIER;
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role<>'TAI_XE' THROW 51401,N'Chỉ tài xế tự tạo đợt',1;
-  SELECT @tx=ma_tx FROM dbo.tai_xe WHERE ma_tk=@actor;
-  IF @tx IS NULL THROW 51402,N'Thiếu hồ sơ tài xế',1;
-  DECLARE @lock NVARCHAR(255)=N'nop:'+CONVERT(NVARCHAR(36),@tx);
-  EXEC dbo.usp_khoa @lock;
-  SELECT @dot=ma_dot FROM dbo.dot_nop_tien WHERE ma_tx=@tx AND trang_thai='CHUA_NOP';
-  IF @dot IS NULL
-  BEGIN
-   SET @dot=NEWID();
-   INSERT dbo.dot_nop_tien(ma_dot,ma_tx) VALUES(@dot,@tx);
-   INSERT dbo.chi_tiet_dot_nop(ma_dot,ma_don)
-   SELECT @dot,c.ma_don FROM dbo.v_chia_cuoc c WHERE c.ma_tx=@tx AND c.tien_cong_ty>0
-    AND NOT EXISTS(SELECT 1 FROM dbo.chi_tiet_dot_nop x WHERE x.ma_don=c.ma_don);
-   IF @@ROWCOUNT=0 THROW 51403,N'Không có khoản mới phải nộp',1;
-  END;
-  COMMIT; SELECT * FROM dbo.v_tong_dot_nop WHERE ma_dot=@dot;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-```
-
-### 7.5. Tạo lần thử VNPay — TX5
-
-Mỗi đợt đã thanh toán không tạo thêm lần thử. Lần chưa rõ kết quả trả về để tiếp tục/tra cứu, không tự tạo lần mới. Backend ký URL sau COMMIT; nếu ký/tạo URL lỗi thì khôi phục URL từ cùng mã tham chiếu, không mở lần thử khác. payment_url có thể không lưu và được tái tạo bởi backend; trường hiện tại là tùy chọn.
-
-```sql
-CREATE OR ALTER PROCEDURE dbo.usp_tao_lan_nop @ma_dot UNIQUEIDENTIFIER AS
+CREATE OR ALTER PROCEDURE dbo.usp_bat_dau_thanh_toan @khoa_yeu_cau VARCHAR(100) AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
  BEGIN TRY
   BEGIN TRAN;
   DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20),@tx UNIQUEIDENTIFIER,@gd UNIQUEIDENTIFIER,@tien DECIMAL(15,0);
   EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role<>'TAI_XE' THROW 51501,N'Chỉ tài xế thanh toán',1;
+  IF @role<>'TAI_XE' OR @khoa_yeu_cau IS NULL OR LEN(LTRIM(RTRIM(@khoa_yeu_cau)))=0
+   THROW 51401,N'Chỉ tài xế thanh toán; cần khóa yêu cầu',1;
   SELECT @tx=ma_tx FROM dbo.tai_xe WHERE ma_tk=@actor;
-  IF @tx IS NULL THROW 51502,N'Thiếu hồ sơ tài xế',1;
+  IF @tx IS NULL THROW 51402,N'Thiếu hồ sơ tài xế',1;
   DECLARE @lock NVARCHAR(255)=N'nop:'+CONVERT(NVARCHAR(36),@tx);
   EXEC dbo.usp_khoa @lock;
-  IF NOT EXISTS(SELECT 1 FROM dbo.dot_nop_tien WHERE ma_dot=@ma_dot AND ma_tx=@tx AND trang_thai='CHUA_NOP')
-   THROW 51503,N'Đợt không thuộc tài xế hoặc đã nộp',1;
-  SELECT @gd=ma_giao_dich FROM dbo.giao_dich_nop_tien WHERE ma_dot=@ma_dot AND giai_quyet_luc IS NULL;
+  SELECT @gd=ma_giao_dich FROM dbo.giao_dich_nop_tien WHERE ma_tx=@tx AND khoa_yeu_cau=@khoa_yeu_cau;
+  IF @gd IS NULL
+   SELECT @gd=ma_giao_dich FROM dbo.giao_dich_nop_tien WHERE ma_tx=@tx AND giai_quyet_luc IS NULL;
   IF @gd IS NULL
   BEGIN
-   SELECT @tien=tong_tien FROM dbo.v_tong_dot_nop WHERE ma_dot=@ma_dot;
-   IF @tien IS NULL OR @tien<=0 THROW 51504,N'Đợt không có khoản phải nộp',1;
+   DECLARE @chon TABLE(ma_don UNIQUEIDENTIFIER PRIMARY KEY,tien DECIMAL(15,0));
+   INSERT @chon SELECT ma_don,tien_cong_ty FROM dbo.v_chia_cuoc
+    WHERE ma_tx=@tx AND ma_giao_dich_nop IS NULL AND tien_cong_ty>0;
+   SELECT @tien=SUM(tien) FROM @chon;
+   IF @tien IS NULL OR @tien<=0 THROW 51403,N'Không có tiền cần nộp',1;
    SET @gd=NEWID();
-   INSERT dbo.giao_dich_nop_tien(ma_giao_dich,ma_dot,ma_tham_chieu,so_tien_yeu_cau)
-    VALUES(@gd,@ma_dot,REPLACE(CONVERT(VARCHAR(36),@gd),'-',''),@tien);
+   INSERT dbo.giao_dich_nop_tien(ma_giao_dich,ma_tx,khoa_yeu_cau,ma_tham_chieu,so_tien_yeu_cau)
+    VALUES(@gd,@tx,@khoa_yeu_cau,REPLACE(CONVERT(VARCHAR(36),@gd),'-',''),@tien);
+   UPDATE c SET ma_giao_dich_nop=@gd FROM dbo.phan_chia_cuoc c JOIN @chon x ON x.ma_don=c.ma_don;
+   IF NOT EXISTS(SELECT 1 FROM dbo.v_giao_dich_nop WHERE ma_giao_dich=@gd AND tong_khoan_lien_ket=@tien AND so_don_dang_lien_ket>0)
+    THROW 51404,N'Khoản thanh toán không khớp; rollback',1;
   END;
   COMMIT; SELECT * FROM dbo.giao_dich_nop_tien WHERE ma_giao_dich=@gd;
  END TRY
@@ -770,7 +740,7 @@ END;
 GO
 ```
 
-### 7.6. Áp dụng kết quả VNPay đã được backend xác minh — TX6
+### 7.5. Áp dụng kết quả VNPay đã được backend xác minh — TX5
 
 Thủ tục nội bộ này chỉ cấp EXECUTE cho tài khoản worker thanh toán, không cho bốn role người dùng. Backend trước đó phải kiểm tra chữ ký, merchant, mã tham chiếu, mã phản hồi/trạng thái đối tác, đơn vị tiền và số tiền. Tham số @thanh_cong=0 chỉ dùng khi có bằng chứng chắc chắn KHONG_THU; timeout/Return đóng cửa sổ không được gọi nhánh này. @so_tien là số tiền yêu cầu do đối tác trả về, đã đổi về VND. Return không được dùng để quyết toán.
 
@@ -785,10 +755,9 @@ BEGIN
   BEGIN TRAN;
   IF @nguon IS NULL OR @nguon NOT IN ('IPN','QUERY') OR @thanh_cong IS NULL OR @so_tien IS NULL
    OR @khoa IS NULL OR ISNULL(ISJSON(@json),0)<>1 THROW 51601,N'Kết quả xác minh không hợp lệ',1;
-  DECLARE @gd UNIQUEIDENTIFIER,@dot UNIQUEIDENTIFIER,@tx UNIQUEIDENTIFIER,@expected DECIMAL(15,0),
+  DECLARE @gd UNIQUEIDENTIFIER,@tx UNIQUEIDENTIFIER,@expected DECIMAL(15,0),
    @status VARCHAR(20),@partner VARCHAR(100),@now DATETIME2(3)=SYSUTCDATETIME();
-  SELECT @gd=g.ma_giao_dich,@dot=g.ma_dot,@tx=d.ma_tx FROM dbo.giao_dich_nop_tien g
-   JOIN dbo.dot_nop_tien d ON d.ma_dot=g.ma_dot WHERE g.ma_tham_chieu=@ma_tham_chieu;
+  SELECT @gd=ma_giao_dich,@tx=ma_tx FROM dbo.giao_dich_nop_tien WHERE ma_tham_chieu=@ma_tham_chieu;
   IF @gd IS NULL THROW 51602,N'Không tìm thấy giao dịch; backend ghi sự kiện không khớp riêng',1;
   DECLARE @lock NVARCHAR(255)=N'nop:'+CONVERT(NVARCHAR(36),@tx);
   EXEC dbo.usp_khoa @lock;
@@ -813,7 +782,8 @@ BEGIN
   UPDATE dbo.giao_dich_nop_tien SET trang_thai=CASE WHEN @thanh_cong=1 THEN 'THANH_CONG' ELSE 'KHONG_THU' END,
    giai_quyet_luc=@now,so_tien_thuc_nhan=CASE WHEN @thanh_cong=1 THEN @so_tien END,
    ma_giao_dich_doi_tac=CASE WHEN @thanh_cong=1 THEN @ma_doi_tac END WHERE ma_giao_dich=@gd;
-  IF @thanh_cong=1 UPDATE dbo.dot_nop_tien SET trang_thai='DA_NOP',thanh_toan_luc=@now WHERE ma_dot=@dot;
+  IF @thanh_cong=0 UPDATE dbo.phan_chia_cuoc SET ma_giao_dich_nop=NULL WHERE ma_giao_dich_nop=@gd;
+  -- Thành công giữ liên kết vĩnh viễn; công nợ tự giảm qua View, không SET số dư=0.
   INSERT dbo.su_kien_thanh_toan(ma_giao_dich,nguon,khoa_su_kien,chu_ky_hop_le,ket_qua,noi_dung_json)
    VALUES(@gd,@nguon,@khoa,1,'DA_AP_DUNG',@json);
   COMMIT; SELECT 'DA_AP_DUNG' AS ket_qua;
@@ -828,7 +798,7 @@ GO
 
 Sự kiện sai chữ ký/không tìm thấy mã tham chiếu phải ghi bằng đường ghi log riêng đã giới hạn quyền; không gọi thủ tục áp dụng kết quả. Hash sự kiện do backend tính từ payload đã chuẩn hóa + nguồn, không nhận khóa chống trùng do người dùng tự đặt. Sự kiện mâu thuẫn cần cảnh báo đối soát, không tự đảo khoản nộp, không tự hoàn tiền. Nếu lỗi UNIQUE mã đối tác giữa hai giao dịch, rollback và ghi sự kiện cảnh báo trong transaction riêng sau rollback.
 
-### 7.7. Tiến trình giao / từ chối — TX7
+### 7.6. Tiến trình giao / từ chối — TX6
 
 ```sql
 CREATE OR ALTER PROCEDURE dbo.usp_tien_trinh @ma_don UNIQUEIDENTIFIER,@hanh_dong VARCHAR(25),@ghi_chu NVARCHAR(500)=NULL AS
@@ -874,7 +844,7 @@ END;
 GO
 ```
 
-### 7.8. Hủy trước lấy hàng — TX8
+### 7.7. Hủy trước lấy hàng — TX7
 
 ```sql
 CREATE OR ALTER PROCEDURE dbo.usp_huy_don @ma_don UNIQUEIDENTIFIER,@ly_do NVARCHAR(500) AS
@@ -905,7 +875,7 @@ END;
 GO
 ```
 
-### 7.9. Báo cáo của tài xế
+### 7.8. Báo cáo của tài xế
 
 ```sql
 CREATE OR ALTER PROCEDURE dbo.usp_thu_nhap_cua_toi @tu DATETIME2(3),@den DATETIME2(3) AS
@@ -927,17 +897,17 @@ GO
 |---|---|---|
 | Xác nhận khách đã trả | TX3 ghi hoàn tất + khoản chia | UI yêu cầu xác nhận rõ; không khẳng định đã xác minh ngân hàng khách |
 | Giá lịch sử | Giá chốt trên đơn; trigger policy; trigger không đổi giá đơn | Chặn INSERT/UPDATE/DELETE kiện và phụ thu ngoài TX1. Không cấp DML trực tiếp. Nếu bổ sung sửa đơn sau này phải thiết kế lại cơ chế chốt, không chỉ mở quyền UPDATE |
-| Khoản chia phụ thuộc giá bất biến | View suy tiền từ đơn/chính sách | Cấm thay phân công đã kết thúc, cấm sửa/xóa khoản chia và tài liệu nguồn; chỉ cho phép các đường thủ tục định nghĩa |
-| Đợt giữ nguyên | Chi tiết không sửa/xóa, không thêm khi đã có lần thử | Khi chưa có lần thử, chỉ TX4 được phép thêm chi tiết. Không mở endpoint thêm đơn vào đợt đã tạo |
-| Đúng trạng thái đợt | TX6 đổi giao dịch + đợt trong một transaction | Không mở API sửa trạng thái đợt thủ công |
+| Khoản chia phụ thuộc giá bất biến | View suy tiền từ đơn/chính sách | Cấm sửa nguồn/phân công/thời điểm/xóa khoản chia. Chỉ TX4 gắn FK giao dịch; TX5 tháo FK sau KHONG_THU. Không cấp DML trực tiếp |
+| Khoản đang thanh toán giữ nguyên | TX4 chốt các khoản và số tiền trong một transaction | Không thêm khoản vào giao dịch đã trả về URL; đơn mới vẫn có FK NULL. Không có API ghép khoản thủ công |
+| Giao dịch thất bại và thành công | TX5 ghi kết quả + sự kiện; KHONG_THU còn tháo liên kết cùng transaction | Thành công giữ liên kết để xác định đã nộp. Không đặt công nợ = 0 trực tiếp; không giữ lịch sử ghép từng đơn với giao dịch thất bại |
 | Chính sách không chồng | TX1 phát hiện biểu phí/thành viên thiếu/chồng tại thời điểm dùng | Viết usp_cong_bo_chinh_sach lấy khóa chinh-sach giống TX1, kiểm tra overlap `a.tu < b.den AND b.tu < a.den` với NULL là vô hạn, đóng bản cũ trong tương lai và ghi audit cùng transaction. Chưa có mã thủ tục công bố đầy đủ ở bản này |
 | Đăng ký/hồ sơ | FK unique + trigger đúng vai trò | Thủ tục đăng ký tạo tài khoản + hồ sơ cùng transaction, bcrypt/Argon2 ở Java; tuyệt đối không lưu mật khẩu rõ. Chưa có SQL CRUD auth đầy đủ |
 | Đổi mật khẩu | Cột hash/auth_version | Xác minh mật khẩu cũ ở Java; cập nhật hash + tăng auth_version theo điều kiện phiên bản cũ; kiểm tra phiên bản ở mỗi phiên. Không log hash |
 | Quyền người dùng | Role SQL + kiểm tra vai trò/sở hữu trong các SP | Backend tự gắn ma_tk từ session vào SESSION_CONTEXT trước mỗi request, xóa khi trả connection về pool; không cho người dùng tự chọn actor. Kiểm tra auth_version và CSRF ở ứng dụng |
 | Thay đổi trạng thái tài xế/xe | TX2 kiểm tra sẵn sàng | Các thủ tục đổi trực/khóa tài khoản/đổi xe dùng khóa dieu-phoi; cấm đổi xe hoặc khóa hồ sơ đang có phân công nếu không có quy trình xử lý. Chưa có CRUD quản trị đầy đủ |
-| VNPay | Giao dịch, sự kiện, số tiền, mã tham chiếu unique, TX6 | Xác minh chữ ký/merchant/currency/response code; IPN/query đáng tin mới ghi thành công; Return chỉ hiển thị/tra cứu. Dùng đơn vị số tiền đúng tài liệu VNPay khi chuyển VND ↔ payload |
+| VNPay | Giao dịch, sự kiện, số tiền, mã tham chiếu unique, TX5 | Xác minh chữ ký/merchant/currency/response code; IPN/query đáng tin mới ghi thành công; Return chỉ hiển thị/tra cứu. Dùng đơn vị số tiền đúng tài liệu VNPay khi chuyển VND ↔ payload |
 | Timeout và retry | ux_gd_open chặn lần chưa giải quyết thứ hai | Worker đánh dấu CHUA_RO_KET_QUA và query; chỉ KHONG_THU sau bằng chứng. Không mở lại chỉ vì thời gian trôi qua. Chưa có job/endpoint query trong tài liệu |
-| Lỗi giữa DB commit và gửi HTTP | Mã tham chiếu cố định, khóa request tạo đơn, đợt mở tái sử dụng | Retry phải trả cùng đối tượng; không bấm lại thành giao dịch mới khi kết quả chưa rõ |
+| Lỗi giữa DB commit và gửi HTTP | Mã tham chiếu cố định, khóa request tạo đơn/thanh toán, giao dịch chưa giải quyết tái sử dụng | Retry phải trả cùng đối tượng; không bấm lại thành giao dịch mới khi kết quả chưa rõ |
 | Sự kiện mâu thuẫn | CAN_DOI_SOAT, không đảo kết quả | Hiện cảnh báo cho chủ đội xe; nghiệp vụ hoàn tiền/điều chỉnh không tự triển khai trong phạm vi này |
 | CRUD báo cáo môn học | Schema + các nghiệp vụ chính đủ chỗ tích hợp | Bổ sung SP thêm/sửa/xóa danh mục NHAP/xe chưa dùng/hồ sơ chưa phát sinh theo FK; tra cứu có phân trang và giới hạn theo actor. Không coi UI localStorage hiện tại là CRUD SQL Server |
 
@@ -975,15 +945,14 @@ GRANT SELECT ON dbo.v_don_cho_dieu_phoi TO r_tong_dai;
 GRANT SELECT ON dbo.v_tai_xe_san_sang TO r_tong_dai;
 GRANT EXECUTE ON dbo.usp_tien_trinh TO r_tai_xe;
 GRANT EXECUTE ON dbo.usp_hoan_tat TO r_tai_xe;
-GRANT EXECUTE ON dbo.usp_tao_dot_nop TO r_tai_xe;
-GRANT EXECUTE ON dbo.usp_tao_lan_nop TO r_tai_xe;
+GRANT EXECUTE ON dbo.usp_bat_dau_thanh_toan TO r_tai_xe;
 GRANT EXECUTE ON dbo.usp_thu_nhap_cua_toi TO r_tai_xe;
 GRANT EXECUTE ON dbo.usp_tao_don TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_phan_cong TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_huy_don TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_chia_cuoc TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_so_du_tai_xe TO r_chu_doi_xe;
-GRANT SELECT ON dbo.v_tong_dot_nop TO r_chu_doi_xe;
+GRANT SELECT ON dbo.v_giao_dich_nop TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_cong_ty_thuc_nhan_ngay TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_ap_dung_ket_qua_nop TO r_payment_worker;
 DENY SELECT ON dbo.tai_khoan TO r_khach_hang;
@@ -996,9 +965,9 @@ DENY INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_tong_dai;
 DENY INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_chu_doi_xe;
 DENY INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_payment_worker;
 GO
--- Ví dụ cấp tạm quyền xem tổng đợt cho tổng đài rồi thu hồi (trạng thái cuối: không có quyền).
-GRANT SELECT ON dbo.v_tong_dot_nop TO r_tong_dai;
-REVOKE SELECT ON dbo.v_tong_dot_nop FROM r_tong_dai;
+-- Ví dụ cấp tạm quyền xem lịch sử giao dịch nộp cho tổng đài rồi thu hồi (trạng thái cuối: không có quyền).
+GRANT SELECT ON dbo.v_giao_dich_nop TO r_tong_dai;
+REVOKE SELECT ON dbo.v_giao_dich_nop FROM r_tong_dai;
 GO
 ```
 
@@ -1015,11 +984,10 @@ Các bước dưới là **kế hoạch kiểm thử**, chưa chạy và chưa c
 | TX1 tạo đơn | Đơn + kiện + phụ thu + log trigger | Trùng thứ tự kiện / sai phụ thu / giá thay đổi → không có đơn mồ côi |
 | TX2 phân công | Phân công + trạng thái đơn + hàng đợi tài xế + log | Tài xế bận → không đổi đơn; cố tình gây lỗi sau INSERT phân công trong bản test → rollback tất cả |
 | TX3 hoàn tất | Kết thúc phân công + hoàn tất đơn + chia cước + tài xế rảnh + log | Chưa đến điểm nhận/không xác nhận thu đủ → không có thu nhập; lỗi trước COMMIT → không hoàn tất dở |
-| TX4 tạo đợt | Header + toàn bộ chi tiết tại thời điểm chốt | Không có khoản mới → không lưu đợt rỗng; hai request → cùng đợt mở |
-| TX5 tạo lần thử | Kiểm tra đợt + tạo giao dịch hoặc tái dùng giao dịch chưa giải quyết | Giao dịch còn chờ → không tạo thêm; lỗi tạo URL không mở lần thử thứ hai |
-| TX6 áp dụng VNPay | Kết quả giao dịch + trạng thái đợt + sự kiện | Sai số tiền → chỉ lưu cảnh báo; lỗi cập nhật đợt → rollback thành công giao dịch |
-| TX7 tiến trình | Trạng thái + log; từ chối còn đóng phân công và trả tài xế rảnh | Sai tài xế/thứ tự → không đổi dữ liệu |
-| TX8 hủy | Hủy đơn + đóng phân công + giải phóng tài xế + log | Đã lấy hàng → từ chối, không ảnh hưởng thu nhập |
+| TX4 bấm thanh toán | Giao dịch + liên kết các khoản đang chưa nộp | Không có khoản dương → không tạo giao dịch rỗng; hai request → chỉ một giao dịch chưa giải quyết |
+| TX5 áp dụng VNPay | Kết quả giao dịch + sự kiện; nếu KHONG_THU thì tháo FK khoản chia | Sai số tiền → chỉ cảnh báo; lỗi tháo liên kết/ghi log → rollback toàn bộ; thành công không tháo FK |
+| TX6 tiến trình | Trạng thái + log; từ chối còn đóng phân công và trả tài xế rảnh | Sai tài xế/thứ tự → không đổi dữ liệu |
+| TX7 hủy | Hủy đơn + đóng phân công + giải phóng tài xế + log | Đã lấy hàng → từ chối, không ảnh hưởng thu nhập |
 
 ### 10.1. Demo hai tổng đài cùng gán
 
@@ -1033,40 +1001,46 @@ Các bước dưới là **kế hoạch kiểm thử**, chưa chạy và chưa c
 
 ### 10.2. Demo tài chính bắt buộc
 
-- Ba đơn chia 60.000đ → tạo một đợt 60.000đ. Hoàn tất thêm đơn chia 20.000đ → tổng còn phải nộp 80.000đ, đợt cũ 60.000đ, phát sinh mới 20.000đ.
-- Callback thành công hai lần (cùng hash và khác hash) → chỉ một thành công, không cộng tiền hai lần; trả cùng kết quả nghiệp vụ.
-- Callback sai tiền/chữ ký/merchant → không chuyển DA_NOP.
-- Đóng tab/hết hạn URL → không tự thành KHONG_THU; vẫn chặn tạo lần thử mới đến khi tra cứu chắc chắn.
-- Sau KHONG_THU đã xác minh → tạo lần thử mới cùng đợt, vẫn 60.000đ. Nếu xuất hiện kết quả mâu thuẫn muộn → CAN_DOI_SOAT, không tự đảo nợ.
-- Callback và tạo lần thử đồng thời → khóa cùng tài xế + unique index giữ một kết quả hợp lệ.
-- Nộp 60.000đ xong → còn 20.000đ, thu nhập tài xế không đổi. Ngày hôm sau vẫn còn 20.000đ.
-- Người khác gọi ma_dot/ma_don không thuộc mình → từ chối. Vai trò tổng đài không EXECUTE thủ tục áp dụng kết quả thanh toán.
+- Ba đơn tổng cước 300.000đ → hiện Cần nộp 60.000đ; một lần bấm mở VNPay, không màn tạo/chọn đợt. Trả thành công, không có đơn mới → còn 0đ, thu nhập 240.000đ không đổi.
+- Không bấm trả, hoàn tất thêm đơn 100.000đ → số cần nộp cộng thành 80.000đ. Khi bấm, VNPay yêu cầu 80.000đ.
+- Đã mở VNPay cho 60.000đ rồi mới phát sinh 20.000đ → giao dịch vẫn 60.000đ. Trả thành công → còn 20.000đ. Ngày hôm sau khoản này vẫn còn.
+- Bấm hai lần/gửi hai request đồng thời → cùng một giao dịch chưa giải quyết. Frontend dùng khoa_yeu_cau chuẩn trả về cùng giao dịch cho các retry tiếp theo; không tự sinh khóa mới khi retry mạng.
+- Callback thành công lặp (cùng hash và khác hash) → không nộp hai lần, không giải quyết các đơn mới ngoài giao dịch.
+- Callback sai tiền/chữ ký/merchant → không thành công, công nợ chưa giảm.
+- Đóng tab/hết hạn URL/timeout → không tự KHONG_THU, không tháo liên kết, không tạo lần mới cho đến khi tra cứu chắc chắn.
+- Sau KHONG_THU đã xác minh → FK của các khoản trở về NULL, giao dịch thất bại vẫn còn nguyên số tiền và sự kiện. Lần bấm mới thanh toán toàn bộ khoản chưa nộp lúc đó (có thể lớn hơn lần trước vì có đơn mới).
+- Callback mâu thuẫn muộn sau KHONG_THU → CAN_DOI_SOAT; không tự đánh dấu các khoản đã chuyển sang giao dịch mới là đã nộp, không tự đảo nợ.
+- Callback/hoàn tất đơn/bấm thanh toán đồng thời → cùng khóa tài xế giữ ranh giới nhất quán.
+- Mất HTTP response sau khi giao dịch đã thành công: retry khóa yêu cầu cũ trả giao dịch thành công cũ, không tự lấy khoản mới để thanh toán.
+- Người khác gọi ma_don/ma_giao_dich không thuộc mình → từ chối; API đọc/tra cứu phải kiểm tra sở hữu. Tổng đài không EXECUTE thủ tục áp dụng kết quả.
 - Insert/update nhiều dòng để kiểm tra trigger; không chỉ test từng dòng.
 
 ### 10.3. Truy vấn đối chiếu bất biến sau kiểm thử
 
 ```sql
--- Kỳ vọng 0 dòng cho từng SELECT dưới đây.
+-- Kỳ vọng 0 dòng cho từng SELECT dưới đây, sau khi các transaction đã kết thúc.
 SELECT d.ma_don FROM dbo.don_hang d WHERE d.trang_thai='HOAN_TAT'
  AND NOT EXISTS(SELECT 1 FROM dbo.phan_chia_cuoc c WHERE c.ma_don=d.ma_don);
 SELECT d.ma_don FROM dbo.don_hang d
  WHERE NOT EXISTS(SELECT 1 FROM dbo.chi_tiet_kien_hang k WHERE k.ma_don=d.ma_don);
-SELECT d.ma_dot FROM dbo.dot_nop_tien d
- WHERE NOT EXISTS(SELECT 1 FROM dbo.chi_tiet_dot_nop x WHERE x.ma_dot=d.ma_dot);
-SELECT d.ma_dot FROM dbo.dot_nop_tien d WHERE
- (d.trang_thai='DA_NOP' AND NOT EXISTS(SELECT 1 FROM dbo.giao_dich_nop_tien g WHERE g.ma_dot=d.ma_dot AND g.trang_thai='THANH_CONG')) OR
- (d.trang_thai='CHUA_NOP' AND EXISTS(SELECT 1 FROM dbo.giao_dich_nop_tien g WHERE g.ma_dot=d.ma_dot AND g.trang_thai='THANH_CONG'));
-SELECT x.ma_dot,x.ma_don FROM dbo.chi_tiet_dot_nop x JOIN dbo.dot_nop_tien d ON d.ma_dot=x.ma_dot
- JOIN dbo.v_chia_cuoc c ON c.ma_don=x.ma_don WHERE d.ma_tx<>c.ma_tx OR c.tien_cong_ty<=0;
-SELECT * FROM dbo.v_so_du_tai_xe WHERE con_phai_nop<0 OR con_phai_nop<>dang_trong_dot+phat_sinh_moi
+SELECT c.ma_don FROM dbo.v_chia_cuoc c JOIN dbo.giao_dich_nop_tien g ON g.ma_giao_dich=c.ma_giao_dich_nop
+ WHERE c.ma_tx<>g.ma_tx OR c.tien_cong_ty<=0 OR g.trang_thai='KHONG_THU';
+SELECT * FROM dbo.v_giao_dich_nop
+ WHERE (trang_thai<>'KHONG_THU' AND (so_don_dang_lien_ket=0 OR tong_khoan_lien_ket<>so_tien_yeu_cau))
+ OR (trang_thai='KHONG_THU' AND so_don_dang_lien_ket<>0);
+SELECT * FROM dbo.v_so_du_tai_xe WHERE con_phai_nop<0
+ OR con_phai_nop<>dang_thanh_toan+chua_dua_vao_thanh_toan
  OR cong_ty_duoc_huong<>da_nop+con_phai_nop;
-SELECT g.ma_giao_dich FROM dbo.giao_dich_nop_tien g JOIN dbo.v_tong_dot_nop v ON v.ma_dot=g.ma_dot
- WHERE g.so_tien_yeu_cau<>v.tong_tien;
+-- Đối chiếu tiền đã nhận theo giao dịch với phần công ty của các đơn đã nộp.
+SELECT t.ma_tx FROM dbo.v_so_du_tai_xe t OUTER APPLY (
+ SELECT SUM(g.so_tien_thuc_nhan) AS tong FROM dbo.giao_dich_nop_tien g
+ WHERE g.ma_tx=t.ma_tx AND g.trang_thai='THANH_CONG'
+) x WHERE t.da_nop<>COALESCE(x.tong,0);
 ```
 
 ## 11. Minh chứng index và đối chiếu rubric
 
-Chọn ít nhất năm truy vấn: lịch sử đơn của khách (ix_don_customer_time), hàng đợi (ix_don_queue), lịch sử tài xế (ix_pc_driver_time), nhật ký đơn (ix_log_order_time), lịch sử đợt (ix_dot_driver_time). Seed dữ liệu đủ lớn/phân bố hợp lý trong DB test, cập nhật statistics, dùng cùng tham số và cùng dữ liệu trước/sau. Bật Actual Execution Plan và SET STATISTICS IO, TIME ON; ghi logical reads, CPU, elapsed time, scan/seek. Chạy vài lượt để phân biệt warm cache; không kết luận từ một lần đo.
+Chọn ít nhất năm truy vấn: lịch sử đơn của khách (ix_don_customer_time), hàng đợi (ix_don_queue), lịch sử tài xế (ix_pc_driver_time), nhật ký đơn (ix_log_order_time), lịch sử nộp tiền của tài xế (ix_gd_driver_time). Seed dữ liệu đủ lớn/phân bố hợp lý trong DB test, cập nhật statistics, dùng cùng tham số và cùng dữ liệu trước/sau. Bật Actual Execution Plan và SET STATISTICS IO, TIME ON; ghi logical reads, CPU, elapsed time, scan/seek. Chạy vài lượt để phân biệt warm cache; không kết luận từ một lần đo.
 
 Ví dụ truy vấn đo (thay UUID bằng khách đã seed):
 
@@ -1084,15 +1058,15 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 
 | Yêu cầu đề bài | Nội dung bản đề xuất | Trạng thái |
 |---|---|---|
-| ≥8 bảng có quan hệ, phân tích 3NF | 18 bảng, bảng quan hệ mục 2, PK/FK mục 3 | Có thiết kế; cần vẽ ERD từ bản đã duyệt |
+| ≥8 bảng có quan hệ, phân tích 3NF | 16 bảng, bảng quan hệ mục 2, PK/FK mục 3 | Có thiết kế; cần vẽ ERD từ bản đã duyệt |
 | ≥5 CHECK/UNIQUE/DEFAULT | Vai trò, trạng thái, tiền, kg, thời gian, mã tham chiếu, số điện thoại… | Có SQL |
-| ≥5 trigger | 10 trigger ở mục 6 | Có SQL; chưa chạy multi-row/rollback test |
+| ≥5 trigger | 9 trigger ở mục 6 | Có SQL; chưa chạy multi-row/rollback test |
 | ≥5 view | 7 view ở mục 5 | Có SQL; cần tích hợp màn hình |
 | ≥5 index, có non-PK và đo hiệu năng | Unique + 7 index tra cứu thường ở mục 4 | Có SQL; chưa có kết quả đo |
-| ≥5 SP, TRY/CATCH | 8 SP transaction, SP thu nhập, 2 helper | Có SQL; CRUD/auth/chính sách còn cần bổ sung |
+| ≥5 SP, TRY/CATCH | 7 SP transaction, SP thu nhập, 2 helper | Có SQL; CRUD/auth/chính sách còn cần bổ sung |
 | ≥5 UDF | 4 scalar + 1 inline TVF | Có SQL và vị trí sử dụng |
-| ≥5 nghiệp vụ transaction | TX1–TX8 | Có SQL; chưa có bằng chứng chạy |
-| Tranh chấp đồng thời | Gán đơn, gom đợt, callback/retry | Có kịch bản; chưa demo |
+| ≥5 nghiệp vụ transaction | TX1–TX7 | Có SQL; chưa có bằng chứng chạy |
+| Tranh chấp đồng thời | Gán đơn, bắt đầu thanh toán, callback/retry | Có kịch bản; chưa demo |
 | ≥4 Role/Login | 4 role nghiệp vụ + worker, 5 user WITHOUT LOGIN cho demo | Có SQL role/user; login thực cấu hình sau |
 | GRANT/REVOKE/DENY | Mục 9 | Có SQL; cần test EXECUTE AS/ứng dụng |
 | App gọi SP/Function, CRUD/search/report | Kiến trúc đích gọi các SP/View/UDF, mục 8 | Chưa sửa code, không ghi đã hoàn thành |
@@ -1100,7 +1074,7 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 
 ## 12. Lộ trình chuyển code sau khi duyệt
 
-1. Duyệt tên bảng/cột, kiểu UUID, quy tắc đợt không hủy, giá bất biến và phạm vi CRUD. Vẽ ERD/lược đồ quan hệ từ 18 bảng này.
+1. Duyệt tên bảng/cột, kiểu UUID, quy tắc thanh toán một nút và giải phóng khoản sau KHONG_THU, giá bất biến và phạm vi CRUD. Vẽ ERD/lược đồ quan hệ từ 16 bảng này.
 2. Tạo nhánh/DB thử riêng và script tạo mới được kiểm thử; không sửa migration đã áp dụng. Chuyển dữ liệu cũ cần kế hoạch riêng, không tự coi thanh toán cũ là khoản tài xế đã thu theo luồng mới.
 3. Đổi entity/DAO và đưa từng nghiệp vụ vào SP; tránh Java vừa tự ghi cùng bảng vừa gọi SP để ghi lặp. Không lồng transaction tùy tiện.
 4. Bỏ UI lựa chọn phương thức/người trả, thanh toán khách, COD điều phối, quên mật khẩu. Thêm xác nhận đã giao + thu đủ và màn công nợ tài xế.
@@ -1111,6 +1085,6 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 ### Tài liệu kỹ thuật đối chiếu
 
 - Microsoft Learn — [DML trigger xử lý nhiều dòng](https://learn.microsoft.com/en-us/sql/relational-databases/triggers/create-dml-triggers-to-handle-multiple-rows-of-data?view=sql-server-ver17): căn cứ thiết kế inserted/deleted theo tập.
-- Microsoft Learn — [Filtered indexes](https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-filtered-indexes?view=sql-server-ver17): căn cứ index chỉ một phân công/đợt/lần thử đang mở; không dùng computed column trong filter.
+- Microsoft Learn — [Filtered indexes](https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-filtered-indexes?view=sql-server-ver17): căn cứ index chỉ một phân công/giao dịch đang mở; không dùng computed column trong filter.
 - Microsoft Learn — [sp_getapplock](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-getapplock-transact-sql?view=sql-server-ver17): khóa theo transaction và kiểm tra mã trả về.
 - Nguồn nghiệp vụ cũ: migration designV1 V1–V12 và nội dung csdl.md trước lần viết lại. Nguồn yêu cầu môn học: hướng dẫn/rubric DBMS330284 do người dùng cung cấp. Tài liệu VNPay cụ thể cần đối chiếu lại khi triển khai adapter; phần này chưa khẳng định payload/API sandbox đã được cập nhật hay kiểm thử.
