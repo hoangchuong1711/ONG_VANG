@@ -1,5 +1,8 @@
 package com.miniongvang.controller;
 
+import java.io.IOException;
+import java.util.Map;
+
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
 import com.miniongvang.dto.auth.AuthDtos.Csrf;
@@ -10,22 +13,23 @@ import com.miniongvang.service.BrevoEmailSender;
 import com.miniongvang.service.PasswordRecoveryService;
 import com.miniongvang.web.AuthRequests;
 import com.miniongvang.web.JsonRequests;
+
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import tools.jackson.databind.JsonNode;
-import java.io.IOException;
-import java.util.Map;
 
 @WebServlet({"/api/auth/csrf", "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout",
         "/api/auth/forgot-password", "/api/auth/verify-reset-otp", "/api/auth/reset-password"})
 public final class AuthServlet extends HttpServlet {
+    //lấy ra service để xử lý các request liên quan đến auth và password recovery
     private AuthService service() {
         PersistenceContext persistence = (PersistenceContext) getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
         return new AuthService(persistence.entityManagerFactory());
     }
+    //lấy ra service để xử lý các request liên quan đến password recovery
     private PasswordRecoveryService recovery() {
         PersistenceContext persistence = (PersistenceContext) getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
         return new PasswordRecoveryService(persistence.entityManagerFactory(), BrevoEmailSender.fromEnvironment(), java.time.Clock.systemUTC());

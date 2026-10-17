@@ -55,7 +55,7 @@ Folder `03 - Negative fixtures` có assertion HTTP + code cụ thể:
 - otherOrderId: phải là đơn của một khách khác đã seed, đăng nhập khách hiện tại; mong đợi 404.
 - expiredOrderId: đơn CHO_GAN/DA_GAN của khách hiện tại; dùng clock fixture đúng 300 giây cho boundary, hoặc seed đơn quá hạn để test expired nói chung. Không lấy thời gian thao tác tay làm bằng chứng biên chính xác.
 
-Các case 299/301 giây, số tiền sai, callback lặp/muộn, gán đồng thời, rollback và toàn bộ Alternative Flow được theo dõi tại [coverage](../../docs/api/coverage.md), triển khai JUnit/integration trong task BE tương ứng. Postman đơn lẻ không chứng minh an toàn đồng thời.
+Các case biên, callback lặp/muộn, gán đồng thời, rollback và Alternative Flow được ghi trong [T20 acceptance](../T20-acceptance.md) và [T19 validation](../T19-validation.md), triển khai bằng JUnit/integration. Postman đơn lẻ không chứng minh an toàn đồng thời.
 
 IPN/return trong folder VNPay là mẫu hợp đồng, không tự tạo chữ ký hợp lệ. Điền query **nguyên bản** của callback sandbox đã ký; không sửa amount/reference sau ký. Trường optional từ callback nếu có phải bật lại query tương ứng. Không đặt secret ký VNPay trong collection/environment. Request mẫu không thay bằng chứng IPN thực từ cổng.
 
@@ -72,8 +72,8 @@ Không chỉnh tay file JSON sinh tự động. Đổi cách sinh/assertion ở 
 
 ## T10 tạo đơn
 
-`createOrder` đã implemented và không còn bị planned guard bỏ qua. Sau login lấy CSRF mới, chạy `createQuote` rồi `createOrder`; collection tự lấy quoteId/orderId. Giữ orderIdempotencyKey khi retry; xóa biến này để tạo ý định đặt đơn mới. Tổng đài thêm maKh đúng khách ở cả hai request. Xem [báo cáo M1](../../docs/database/designV1-M1-audit-2026-10-11.md).
+`createOrder` đã implemented và không còn bị planned guard bỏ qua. Sau login lấy CSRF mới, chạy `createQuote` rồi `createOrder`; collection tự lấy quoteId/orderId. Giữ orderIdempotencyKey khi retry; xóa biến này để tạo ý định đặt đơn mới. Tổng đài thêm maKh đúng khách ở cả hai request. Xem [T19 validation](../T19-validation.md).
 
 ## T11 điều phối
 
-6 operation T11 đã implemented. Tổng đài đăng nhập, lấy CSRF mới, chọn orderId của đơn CHO_GAN, chạy suggestDrivers và chọn driverId rồi assignDriver. Đổi sang tài khoản tài xế được gán, đăng nhập/lấy CSRF mới để xem getOrder và rejectOrder với lý do. Không chạy toàn bộ thư mục bằng một vai trò. Gợi ý rỗng là kết quả hợp lệ. Xem [thiết kế](../../docs/T11-driver-dispatch.md) và [báo cáo M1](../../docs/database/designV1-M1-audit-2026-10-11.md).
+6 operation T11 đã implemented. Tổng đài đăng nhập, lấy CSRF mới, chọn orderId của đơn CHO_GAN, chạy suggestDrivers và chọn driverId rồi assignDriver. Đổi sang tài khoản tài xế được gán, đăng nhập/lấy CSRF mới để xem getOrder và rejectOrder với lý do. Không chạy toàn bộ thư mục bằng một vai trò. Gợi ý rỗng là kết quả hợp lệ. Xem [tổng quan chức năng](../../docs/features.md) và [T19 validation](../T19-validation.md).

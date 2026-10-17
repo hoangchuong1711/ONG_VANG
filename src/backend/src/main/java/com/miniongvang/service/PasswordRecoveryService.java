@@ -1,12 +1,5 @@
 package com.miniongvang.service;
 
-import com.miniongvang.dao.PasswordResetChallengeDAO;
-import com.miniongvang.dao.TaiKhoanDAO;
-import com.miniongvang.entity.PasswordResetChallenge;
-import com.miniongvang.entity.TaiKhoan;
-import com.miniongvang.entity.enums.AccountStatus;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -15,6 +8,15 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.logging.Logger;
+
+import com.miniongvang.dao.PasswordResetChallengeDAO;
+import com.miniongvang.dao.TaiKhoanDAO;
+import com.miniongvang.entity.PasswordResetChallenge;
+import com.miniongvang.entity.TaiKhoan;
+import com.miniongvang.entity.enums.AccountStatus;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 
 public final class PasswordRecoveryService {
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -81,6 +83,7 @@ public final class PasswordRecoveryService {
             return null;
         });
     }
+    // xác thực mã OTP được gửi đến email của người dùng và trả về token để reset password
     public String verify(String rawPhone, String rawEmail, String otp, String ip) {
         String phone = phone(rawPhone), email = email(rawEmail);
         if (otp == null || !otp.matches("[0-9]{6}")) throw invalidOtp();

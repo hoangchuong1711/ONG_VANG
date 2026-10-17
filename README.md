@@ -1,34 +1,15 @@
 # Mini Ong Vang
 
-## Tài liệu và kiểm thử API (T04)
+## Tài liệu
 
-Hiện `/api/health` và nghiệp vụ T06–T17 đã triển khai trên designV1, gồm tiền mặt/VNPay, lịch sử đơn và báo cáo/Excel. T20 bổ sung tìm khách cho tổng đài; xem trạng thái từng operation trong OpenAPI và [báo cáo nghiệm thu T20](tests/T20-acceptance.md).
+Mini Ong Vang là hệ thống web giao hàng gồm Next.js, Java Servlet và SQL Server. Backend có các luồng đặt đơn, điều phối, giao hàng, thanh toán, lịch sử và báo cáo.
 
-Xem [hướng dẫn T04](docs/api/README.md), [ánh xạ designV1 với API](docs/api/schema-mapping.md)
-và [Postman collection/hướng dẫn chạy](tests/postman/README.md).
-
-T10: [thiết kế và cách tạo đơn](docs/T10-order-creation.md).
-
-T11: [thiết kế điều phối/gán/từ chối](docs/T11-driver-dispatch.md).
-
-TX4: Bàn `/dispatcher` và màn hình tài xế lấy đơn, tài xế từ API/DB. Sau migration V6, vị trí demo của tài xế được lưu trong `tai_xe` với nguồn `DEMO_CO_DINH`, tọa độ và thời điểm cấu hình. Khi `DEMO_SEED=true` và có `GOONG_API_KEY`, seeder geocode ba địa danh trước khi ghi vị trí; nếu thiếu key thì vị trí để trống và gợi ý ghi rõ `DU_PHONG_RANH_TU`. Tổng đài có thể cấu hình từng tài xế qua `POST /api/drivers/{maTx}/demo-position` với JSON `{ "diaChi": "..." }`; backend xác minh địa chỉ qua Goong trước khi lưu. `GET /api/orders/{maDon}/driver-suggestions` trả km, giây, nguồn tuyến đến điểm lấy khi định tuyến thành công; lỗi hoặc vị trí chưa được cấu hình chuyển cả danh sách sang thứ tự dự phòng có nhãn. API gán đơn giữ kiểm tra và khóa giao dịch khi ghi.
-
-TX5: Tài xế xem đơn được gán và từ chối trước khi lấy hàng; không có API chấp nhận riêng. Các bước là `DA_GAN` → xác nhận đã lấy (`DA_LAY_HANG`) → bắt đầu giao (`DANG_GIAO`) → `POST /api/orders/{maDon}/arrival` ghi sự kiện `DEN_DIEM_NHAN` → hoàn tất (`HOAN_TAT`). Backend kiểm tra đúng tài xế, thứ tự và khóa giao dịch; migration V7 lưu mốc đến điểm nhận. `GET /api/orders/{maDon}/driver-route` chỉ cho tài xế đang được gán (hoặc đã hoàn tất) xem ba tọa độ và polyline Goong của hai chặng. Chặng tài xế đi lấy hàng chỉ để chỉ đường, không cộng vào km tính cước. Bản đồ dùng `GOONG_API_MAPTILES_KEY` từ `.env` gốc qua Docker Compose; đây là Maptiles Key hiển thị trên trình duyệt, nên giới hạn domain trong Goong. `GOONG_API_KEY` REST vẫn chỉ ở backend. Thiếu key, hết quota hoặc lỗi tải bản đồ được báo trên màn hình; các thao tác đơn vẫn dùng được. Sau khi thay key, chạy lại frontend để nhận biến môi trường.
-
-T12: [thiết kế tiến trình/sự cố/hoàn tất](docs/T12-delivery-progress.md).
-T13: [thiết kế hủy đơn](docs/T13-order-cancellation.md), [phạm vi kiểm thử](tests/T13-validation.md).
-T14: [nghiệp vụ thanh toán tiền mặt](docs/T14-payment.md).
-T15: [tích hợp VNPay Sandbox](docs/T15-vnpay.md).
-T16: [lịch sử và chi tiết đơn hàng](docs/T16-order-history.md).
-T17: [báo cáo doanh thu và xuất Excel](docs/T17-revenue-reports.md).
-
-T18: [đối chiếu tài liệu và phạm vi hoãn tới khi deploy](docs/T18-sandbox-api.md).
-T19: [báo cáo hồi quy backend trên designV1](tests/T19-validation.md).
-T20: [đối chiếu mốc nghiệm thu backend](tests/T20-acceptance.md).
-
-Schema và migration hiện hành: [designV1](docs/database/designV1.md), [hướng dẫn CSDL/seed/reset](docs/database/README.md). Kết quả kiểm tra local cho T06–T12 trên schema mới: [báo cáo M1](docs/database/designV1-M1-audit-2026-10-11.md).
-
-Mini Ong Vang là dự án môn Công nghệ Phần mềm về hệ thống đặt xe và giao hàng. Hệ thống gồm giao diện web, backend Java xử lý nghiệp vụ và cơ sở dữ liệu SQL Server. Repo có Docker cho FE/BE/DB; backend đã triển khai T06–T17, các chức năng tiếp theo theo [kế hoạch dự án](docs/project_brief.md).
+- [Tổng quan chức năng](docs/features.md)
+- [API, OpenAPI và Swagger](docs/api/README.md)
+- [Đề xuất thiết kế CSDL cho môn DBMS](docs/database/csdl.md)
+- [Chạy/reset database](docs/database/README.md)
+- [Kế hoạch dự án](docs/project_brief.md)
+- [Kiểm thử Postman](tests/postman/README.md), [T19](tests/T19-validation.md), [T20](tests/T20-acceptance.md)
 
 ## Công nghệ và phiên bản
 
@@ -79,7 +60,7 @@ Copy-Item .env.example .env # Chỉ khi chưa có .env; giữ cấu hình cục 
 
 Đặt `MSSQL_SA_PASSWORD` trong `.env` bằng mật khẩu riêng đủ mạnh; dùng `MSSQL_DATABASE=mini_ong_vang_design_v1`. SQL Server Developer chỉ dùng cho phát triển/test. Xem [cách kết nối SSMS và xử lý lỗi](#kết-nối-database-bằng-ssms) bên dưới và [hướng dẫn database designV1](docs/database/README.md).
 
-T07 mặc định dùng `ROUTE_PROVIDER=fake`: thử `Quận 1, TP.HCM` → `Quận 3, TP.HCM` để nhận 5.00 km, 900 giây. Các địa chỉ mẫu khác là Quận 5, TP.HCM và Hà Nội (ngoài phạm vi). Có thể dùng tên `Điểm mẫu A/B/C`. Khoảng cách tối đa mặc định là `ROUTE_MAX_DISTANCE_KM=30`. Khi có Goong API key, đặt `ROUTE_PROVIDER=goong` và `GOONG_API_KEY` trong `.env`, rồi tạo lại backend bằng `docker compose up --build -d backend`; Goong dùng `GOONG_TIMEOUT_MS=5000` và `GOONG_VEHICLE=car` mặc định. Tuyến ô tô chỉ là ước tính tạm thời cho giao hàng xe máy vì Goong hiện trả HTTP 400 với `motorcycle` ở Directions V2. Thiếu key ở chế độ Goong làm backend từ chối khởi động; lỗi Goong không chuyển sang kết quả mẫu. Xem [hướng dẫn T07](docs/T07-route-provider.md) và [hướng dẫn T09](docs/T09-quote.md).
+T07 mặc định dùng `ROUTE_PROVIDER=fake`; địa chỉ fixture và Goong là tùy chọn. Cấu hình Goong cùng giới hạn demo được tóm tắt trong [tổng quan chức năng](docs/features.md).
 
 ## Chạy toàn bộ hệ thống bằng Docker
 
@@ -133,7 +114,7 @@ Hướng dẫn dưới đây đã có từ T15, được giữ để tham khảo
 3. Dùng tài khoản demo để đi theo luồng `getCsrf` → `login` → `getCsrf` → `createQuote` → `createOrder` → tổng đài `assignDriver` → tài xế chuyển đơn đến `HOAN_TAT` → khách `createPayment`. Khi đổi vai trò, đăng xuất rồi đăng nhập/lấy CSRF mới. Mỗi người tạo **đơn mới và Idempotency-Key mới**, tránh dùng chung mã đơn/lần thanh toán.
 4. Mở `paymentUrl` từ `createPayment`, thanh toán bằng thẻ Sandbox, rồi gọi `getPayment` bằng `maGiaoDich`. Chỉ coi là đã thu khi backend báo `trangThai=THANH_CONG`, `daXacNhanDu=true` và đơn `DA_THANH_TOAN`; trang Return của VNPay không tự xác nhận thanh toán. Nếu chưa có IPN, báo người host kiểm tra ngrok và dùng `reconcilePayment` để tra cứu khi cần.
 
-Đây là **một database test chung**: nên test theo lượt hoặc dùng tài khoản/đơn riêng để tránh làm thay đổi dữ liệu của nhau. Khi máy host hoặc tunnel tắt, nhóm không test Sandbox trực tiếp được. Xem [hướng dẫn T15](docs/T15-vnpay.md) và [hướng dẫn Postman](tests/postman/README.md) để biết chi tiết request, tài khoản demo và cách kiểm tra IPN.
+Đây là **một database test chung**: nên test theo lượt hoặc dùng tài khoản/đơn riêng để tránh làm thay đổi dữ liệu của nhau. Khi máy host hoặc tunnel tắt, nhóm không test Sandbox trực tiếp được. Xem [tổng quan chức năng](docs/features.md) và [hướng dẫn Postman](tests/postman/README.md) để biết cách kiểm tra IPN.
 
 ## Kết nối database bằng SSMS
 

@@ -2,7 +2,7 @@ Kế hoạch triển khai dự án báo cáo môn Công nghệ Phần mềm SOEN
 
 Mục tiêu: hoàn thành 12 Use Case theo đề Hệ thống đặt xe / giao hàng Mini Ong Vàng, bảo đảm kiến trúc 3 tầng và truy vết từ yêu cầu đến thiết kế, code và test. Triển khai backend trước; chỉ bắt đầu thiết kế và lập trình frontend nghiệp vụ sau khi backend đạt mốc nghiệm thu. Khởi tạo khung cả hai ngay từ đầu.
 
-> **Bổ sung TX1 ngày 14/10/2026:** các mục T01–T32 và designV1 bên dưới ghi kế hoạch/baseline đã xây dựng, trong đó có quy tắc cũ “thu cước sau hoàn tất” và biểu phí chưa theo kg. Yêu cầu mới của nhóm cho các luồng tạo đơn, điều phối, giao hàng, thu cước và đối soát được chốt tại [backlog TX](TX-change-tasks.md), [thiết kế nghiệp vụ–ERD–Class–Sequence đích](database/designTX.md) và [API contract đích](api/TX1-contract.md). Khi hai quy tắc khác nhau, các task TX triển khai theo thiết kế đích; không suy ra BE/FE hiện tại đã có hành vi mới. `openapi.json` tiếp tục mô tả API đang chạy và sẽ được cập nhật từng phần cùng code/test của TX3–TX7.
+> Ghi chú: các mục T01–T32 là kế hoạch dự án và có thể cũ so với code. Trạng thái chức năng hiện tại xem [tổng quan chức năng](features.md), API đang chạy xem [OpenAPI](../src/backend/src/main/webapp/openapi.json), và mô hình DB xem [csdl.md](database/csdl.md).
 
 ## 1. Phạm vi và cơ sở lập kế hoạch
 
@@ -111,7 +111,7 @@ Nhóm tự nhận task đủ điều kiện, không chia sáu luồng cố đị
 
 Mọi task phát triển phải kèm test phù hợp, cập nhật API/thiết kế/truy vết và được một thành viên khác review. Phụ thuộc là điều kiện hoàn tất chính; có thể chuẩn bị dữ liệu/đặc tả trước. Không khởi công các task FE T21–T28 trước khi T20 đạt. T02 chỉ khởi tạo khung FE.
 
-Từ sau đợt đổi CSDL, [designV1](database/designV1.md) là nguồn chuẩn cho bảng, quan hệ và ràng buộc; [kế hoạch triển khai designV1](database/designV1-implementation-plan.md) ghi các kiểm thử chi tiết. Giữ mã T01–T32 và phạm vi 12 UC; P10/P11 là gói công việc chuyển đổi tương ứng T13–T20, không phải task mới.
+Tài liệu DB hiện tại là [csdl.md](database/csdl.md); hướng dẫn vận hành là [database README](database/README.md). Giữ mã T01–T32 và phạm vi 12 UC như kế hoạch gốc.
 
 ### A. Nền tảng và thiết kế nền
 
@@ -139,7 +139,7 @@ Từ sau đợt đổi CSDL, [designV1](database/designV1.md) là nguồn chuẩ
 | T15 | BE tích hợp VNPay Sandbox — UC-10 | Khó / Cao | T14 | Tạo URL/reference; xác thực IPN hoặc kết quả truy vấn theo chữ ký, số tiền, mã đơn và trạng thái. Ghi `su_kien_thanh_toan` để khử lặp và giữ bằng chứng callback sai/không khớp; cập nhật lần thanh toán và xác nhận đủ tiền trong transaction. Return chỉ phục vụ hiển thị/chờ kiểm tra, không tự xác nhận đã thu. Test callback lặp/sai/đến muộn, timeout chưa rõ kết quả, hai khoản thu thành công và đối soát. |
 | T16 | BE lịch sử và chi tiết — UC-19 | Trung bình / Vừa | T10, T12, T13, T14 | Lọc/phân trang đơn thuộc đúng khách; chi tiết ghép cước đã chốt từ `cuoc_don_hang` và các phiên bản chính sách, phân công, xác nhận thanh toán và `nhat_ky_don_hang` theo `thu_tu`. Test ngày sai, đơn người khác, nhiều sự kiện cùng thời điểm và truy vấn không nhân bản đơn/cước. |
 | T17 | BE báo cáo và xuất Excel — UC-15 | Trung bình / Vừa | T12, T13, T14 | Tách giá trị đơn hoàn tất theo thời điểm hoàn tất, tiền thực thu theo `thu_luc`, khoản thu chưa phân bổ và công nợ tại mốc báo cáo; Excel dùng cùng quy tắc/bộ lọc với API. Phân quyền quản trị; test kỳ rỗng, thu ở kỳ sau, join nhiều kiện/phụ thu/payment event không nhân tiền và lỗi xuất. |
-| T18 | Hoàn thiện môi trường sandbox và API | Trung bình / Cao | T05, T15 | Kiểm tra URL HTTPS nhận IPN từ cổng, cấu hình từng môi trường, README/OpenAPI/Postman theo contract designV1. Seed demo gồm đơn miễn cước, chưa thu, khoản thu lỗi/đến muộn; thử timeout và cách chạy lại. Goong là mở rộng tùy chọn, không chặn mốc BE. **Đợt 12/10/2026 chỉ đồng bộ tài liệu; seed và kiểm thử thanh toán chưa thực hiện thêm, Sandbox dùng chung hoãn tới khi dự án hoàn thiện/deploy.** Xem [phạm vi cập nhật](T18-sandbox-api.md). |
+| T18 | Hoàn thiện môi trường sandbox và API | Trung bình / Cao | T05, T15 | Kiểm tra URL HTTPS nhận IPN từ cổng, cấu hình từng môi trường, README/OpenAPI/Postman theo contract designV1. Seed demo gồm đơn miễn cước, chưa thu, khoản thu lỗi/đến muộn; thử timeout và cách chạy lại. Goong là mở rộng tùy chọn, không chặn mốc BE. **Đợt 12/10/2026 chỉ đồng bộ tài liệu; seed và kiểm thử thanh toán chưa thực hiện thêm, Sandbox dùng chung hoãn tới khi dự án hoàn thiện/deploy.** Xem [tổng quan chức năng hiện tại](features.md).
 | T19 | Kiểm thử tích hợp BE và sửa lỗi | Khó / Cao | T06–T18 | Chạy chuỗi 12 UC trên SQL Server với schema designV1; kiểm tra transaction, quyền, đồng thời, callback và các ca DT01–DT27 áp dụng. Ghi Expected/Actual/PASS-FAIL, bug/retest và đối chiếu dữ liệu; không lấy kết quả trên schema cũ làm bằng chứng. |
 | T20 | Mốc nghiệm thu backend | Trung bình / Cao | T19 | Đối chiếu tiêu chí mục 7; API đủ cho các màn hình theo DTO mới, Postman chạy xuyên suốt, sandbox có bằng chứng, build/test và kiểm tra bất biến DB đạt. Không còn lỗi chặn FE; nhóm review và ghi kết luận trước khi mở giai đoạn C. |
 

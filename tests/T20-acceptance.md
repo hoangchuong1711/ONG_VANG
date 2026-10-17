@@ -12,7 +12,7 @@ Không ghi nhận bug Critical/High chưa xử lý trong các ca đã chạy. `l
 
 | Tiêu chí | Kết quả / bằng chứng | Trạng thái |
 | --- | --- | --- |
-| T06–T18 và 12 UC kiểm thử độc lập FE | [T19](T19-validation.md) ghi DT01–DT27, 73 Java tests và 348 HTTP checks ở bản trước; commit T19 `242290b` đã vào `develop`. T18 chỉ đồng bộ tài liệu, chưa hoàn tất seed demo và môi trường Sandbox theo [phạm vi T18](../docs/T18-sandbox-api.md). Lượt T20 dưới đây chạy lại 74 tests và 357 HTTP checks, trừ Sandbox thật. | ĐẠT phần BE nội bộ; T18/Sandbox còn hoãn |
+| T06–T18 và 12 UC kiểm thử độc lập FE | [T19](T19-validation.md) ghi kết quả hồi quy trước; lượt T20 dưới đây chạy lại 74 tests và 357 HTTP checks, trừ Sandbox thật. Seed demo và Sandbox dùng chung còn hoãn; xem [tổng quan](../docs/features.md). | ĐẠT phần BE nội bộ; Sandbox thật còn hoãn |
 | Migration/seed/Hibernate/designV1 | Flyway V1–V4 dựng mới trên `mini_ong_vang_test`, seed lại sau reset; 74 Java tests gồm 55 `DesignV1IntegrationTest` đạt. | PASS local |
 | API/DTO đủ cho màn hình | OpenAPI hiện có 29/29 operation `implemented`, 12 UC; bổ sung `GET /api/customers` cho tổng đài chọn `maKh`, tìm tên/SĐT, phân trang và chặn tài khoản khóa. Schema/examples/collection kiểm tra hợp lệ. Bảng ánh xạ bên dưới nêu từng màn hình. | PASS contract và HTTP các luồng đã chạy |
 | Main Flow API/DB thật và Postman xuyên suốt | 357 HTTP checks từ các script smoke trên API/SQL Server thật đạt. Collection Postman được sinh từ OpenAPI và `npm run check` đạt, nhưng [Main Flow trong README Postman](postman/README.md) là kịch bản thủ công theo nhiều vai trò; chưa có log một lượt chạy xuyên suốt bằng Postman. | PARTIAL |
@@ -33,7 +33,7 @@ Không ghi nhận bug Critical/High chưa xử lý trong các ca đã chạy. `l
 | TX-01, TX-02 | `listOrders`, `getOrder`, `rejectOrder`, `transitionOrder`, `recordIncident`, `confirmCash` | Quyền và trạng thái hợp lệ do BE kiểm tra. |
 | QT-02 | `getRevenueReport`, `exportRevenueReport` | Bộ lọc API và Excel dùng cùng quy tắc; các khoản thu/công nợ tách riêng. |
 
-Nguồn chi tiết cho operation, DTO và lỗi: [OpenAPI](../src/backend/src/main/webapp/openapi.json), [coverage](../docs/api/coverage.md), [schema mapping](../docs/api/schema-mapping.md).
+Nguồn chi tiết cho operation, DTO và lỗi: [OpenAPI](../src/backend/src/main/webapp/openapi.json), [tổng quan chức năng](../docs/features.md).
 
 ## Lượt kiểm tra local T20
 

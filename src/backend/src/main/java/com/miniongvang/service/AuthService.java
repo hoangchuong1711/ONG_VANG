@@ -1,5 +1,10 @@
 package com.miniongvang.service;
 
+import java.time.Instant;
+import java.util.UUID;
+import java.util.logging.Logger;
+import java.util.regex.Pattern;
+
 import com.miniongvang.dao.KhachHangDAO;
 import com.miniongvang.dao.TaiKhoanDAO;
 import com.miniongvang.dto.auth.AuthDtos.LoginRequest;
@@ -10,13 +15,10 @@ import com.miniongvang.entity.TaiKhoan;
 import com.miniongvang.entity.enums.AccountRole;
 import com.miniongvang.entity.enums.AccountStatus;
 import com.miniongvang.security.ActorContext;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceException;
-import java.time.Instant;
-import java.util.UUID;
-import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 public final class AuthService {
     private static final Pattern PHONE = Pattern.compile("0[0-9]{9}");

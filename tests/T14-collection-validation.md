@@ -7,6 +7,6 @@
 
 Ma trận tích hợp gồm người gửi/người nhận × tiền mặt/VNPay, mốc tạo yêu cầu, chuyển trạng thái trước thu, khóa chờ IPN, Return không tất toán, callback lặp/đồng thời/đến muộn, thất bại/hủy, chữ ký sai, sai/trùng tiền, QueryDr, timeout, rollback, miễn cước và khoản đã thu khi người nhận từ chối nhận hàng.
 
-VNPay trong test sử dụng secret giả và phản hồi ký tại test. Chưa thực hiện thanh toán qua tài khoản merchant Sandbox thật hoặc kiểm tra callback public do VNPay gửi. Để chạy thử trực tiếp, cấu hình merchant và IPN theo [T15](../docs/T15-vnpay.md).
+VNPay trong test sử dụng secret giả và phản hồi ký tại test. Chưa thực hiện thanh toán qua tài khoản merchant Sandbox thật hoặc kiểm tra callback public do VNPay gửi. Trạng thái vận hành xem [tổng quan chức năng](../docs/features.md).
 
 Các container backend/SQL Server dùng kiểm thử đã được dừng. Không thay đổi DB ứng dụng.
