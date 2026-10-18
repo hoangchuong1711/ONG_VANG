@@ -3,6 +3,7 @@ package com.miniongvang.config;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
+import com.miniongvang.service.DesignV2PaymentService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -11,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 public class PersistenceListener implements ServletContextListener {
     public static final String ATTRIBUTE = PersistenceContext.class.getName();
     private ScheduledExecutorService reconciliationWorker;
+    private final DesignV2PaymentService paymentService = new DesignV2PaymentService();
 
     @Override public void contextInitialized(ServletContextEvent event) {
         event.getServletContext().getSessionCookieConfig().setHttpOnly(true);
@@ -28,7 +30,7 @@ public class PersistenceListener implements ServletContextListener {
                     return thread;
                 });
                 reconciliationWorker.scheduleWithFixedDelay(() -> {
-                    try { com.miniongvang.controller.DesignV2Servlet.reconcilePending(persistence); }
+                    try { paymentService.reconcilePending(persistence); }
                     catch (Exception failure) {
                         event.getServletContext().log("designV2 reconciliation cycle failed", failure);
                     }

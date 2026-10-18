@@ -40,7 +40,7 @@ public final class MembershipPolicyService {
         var matching = new ChinhSachThanhVienDAO(em).findApplicable(tier, at);
         if (matching.size() > 1) throw new com.miniongvang.service.FareCalculator.FareConfigurationException();
         if (matching.isEmpty()) return new Decision(null, BigDecimal.ZERO.setScale(2), false);
-        ChinhSachThanhVien policy = matching.getFirst();
+        ChinhSachThanhVien policy = matching.get(0);
         BigDecimal discount = subtotal.multiply(policy.getTyLeGiam())
                 .movePointLeft(2).setScale(0, RoundingMode.HALF_UP).min(subtotal)
                 .setScale(2);

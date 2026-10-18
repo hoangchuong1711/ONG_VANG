@@ -109,7 +109,7 @@ public final class QuoteService {
         if (customer == null) throw new NoSuchElementException("Customer not found");
         var matchingTariffs = new BieuPhiDAO(em).findApplicable(now, km);
         if (matchingTariffs.size() != 1) throw new com.miniongvang.service.FareCalculator.FareConfigurationException();
-        BieuPhi tariff = matchingTariffs.getFirst();
+        BieuPhi tariff = matchingTariffs.get(0);
         List<ChinhSachPhuThu> extras = new ChinhSachPhuThuDAO(em).findApplicable(now);
         java.util.HashSet<String> types = new java.util.HashSet<>();
         for (ChinhSachPhuThu item : extras)
