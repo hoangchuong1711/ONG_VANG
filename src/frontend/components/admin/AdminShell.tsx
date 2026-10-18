@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChartBar,
   CreditCard,
-  GearSix,
   Motorcycle,
   Package,
   SquaresFour,
@@ -17,8 +16,8 @@ import {
   UsersThree,
   WarningCircle,
 } from "@phosphor-icons/react";
-import { AdminProvider, useAdmin } from "./AdminProvider";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { currentUser, type AuthUser } from "@/lib/auth";
 
 const groups = [
   { label: "Điều hành", items: [
@@ -36,17 +35,21 @@ const groups = [
   ] },
   { label: "Hệ thống", items: [
     { label: "Nhân sự & quyền", href: "/admin/staff", icon: Users },
-    { label: "Cài đặt", href: "/admin/settings", icon: GearSix },
     { label: "Tài khoản", href: "/admin/account", icon: UserCircle },
   ] },
 ];
 
 function ShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { orders, resetDemo } = useAdmin();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const pending = orders.filter((order) => order.status === "CHO_GAN").length;
+  useEffect(() => { currentUser().then(setUser).catch(() => setUser(null)).finally(() => setAuthReady(true)); }, []);
   const current = groups.flatMap((group) => group.items).find((item) => item.href && (item.href === "/admin" ? pathname === item.href : pathname.startsWith(item.href)))?.label ?? "Tổng quan";
+
+  if (!authReady) return <p role="status" className="admin-feedback">Đang kiểm tra phiên đăng nhập...</p>;
+  if (!user) return <p className="admin-feedback">Bạn cần <Link href="/login">đăng nhập</Link> để xem trang quản trị.</p>;
+  if (user.vaiTro !== "CHU_DOI_XE") return <p role="alert" className="admin-feedback error">Tài khoản không có quyền quản trị.</p>;
 
   return <div className="admin-shell">
     <aside className={`admin-sidebar ${mobileOpen ? "is-open" : ""}`} aria-label="Điều hướng quản trị">
@@ -65,7 +68,6 @@ function ShellContent({ children }: { children: React.ReactNode }) {
                 onClick={() => setMobileOpen(false)}
                 className={`admin-nav-item ${active ? "is-active" : ""}`}
               ><item.icon className="admin-nav-icon" size={20} weight={active ? "bold" : "regular"} aria-hidden="true" /><span>{item.label}</span>
-                {item.label === "Đơn hàng" && pending > 0 && <span className="admin-nav-count">{pending}</span>}
               </Link> : null;
             })}
           </nav>
@@ -73,7 +75,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
       </div>
       <Link href="/admin/account" className="admin-sidebar-bottom" aria-label="Mở hồ sơ quản trị viên" aria-current={pathname === "/admin/account" ? "page" : undefined} onClick={() => setMobileOpen(false)}>
         <span className="admin-avatar">CĐ</span>
-        <span><strong>Chủ đội xe</strong><small>Bản xem trước giao diện</small></span>
+        <span><strong>{user.hoTen}</strong><small>Chủ đội xe</small></span>
       </Link>
     </aside>
     {mobileOpen && <button className="admin-scrim" aria-label="Đóng menu" onClick={() => setMobileOpen(false)} />}
@@ -85,8 +87,6 @@ function ShellContent({ children }: { children: React.ReactNode }) {
         </div>
         <div className="admin-topbar-right">
 
-          <span className="admin-demo-pill">Dữ liệu demo</span>
-          <button type="button" className="admin-reset" onClick={() => { if (window.confirm("Đặt lại mọi thay đổi trong cổng quản trị demo?")) resetDemo(); }}>Đặt lại demo</button>
           <LogoutButton className="admin-reset" />
         </div>
       </header>
@@ -96,5 +96,5 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 }
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
-  return <AdminProvider><ShellContent>{children}</ShellContent></AdminProvider>;
+  return <ShellContent>{children}</ShellContent>;
 }

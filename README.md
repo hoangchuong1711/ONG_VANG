@@ -21,7 +21,7 @@ Trong SSMS, dùng lại kết nối SQL Server `127.0.0.1,1433`, rồi chọn da
 
 ### Tài khoản demo SQL
 
-Mật khẩu demo: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
+Mật khẩu của 8 tài khoản demo SQL sau migration V14: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
 tổng đài: `demo_dispatcher`; chủ đội xe: `demo_admin`; tài xế: `0800000001`,
 `0800000002`, `0800000003`. V9 tạo tài khoản và hồ sơ, V13 tạo biểu phí, chính sách, phụ thu và xe demo; không dùng Java seed. DB demo mới bắt đầu với 0 đơn hàng và 0 giao dịch. Do V9/V10 đã thay đổi, DB demo cũ cần được sao lưu và tạo lại trước khi chạy Flyway.
 

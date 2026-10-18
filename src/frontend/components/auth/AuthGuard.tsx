@@ -10,7 +10,7 @@ function requiredRole(path: string): Role | null {
   if (path === "/driver" || path.startsWith("/driver/")) return "TAI_XE";
 
   const customerPages = ["/customer", "/create-order", "/orders", "/account"];
-  const customerDetails = ["/tracking/", "/payment/", "/rating/"];
+  const customerDetails = ["/tracking/", "/payment/"];
   if (customerPages.some(base => path === base || path.startsWith(base + "/"))
       || customerDetails.some(base => path.startsWith(base))) return "KHACH_HANG";
   return null;

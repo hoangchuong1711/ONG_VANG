@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+﻿import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,12 +9,13 @@ const check = process.argv.includes('--check');
 const event = (listen, lines) => ({ listen, script: { type: 'text/javascript', exec: lines } });
 const plannedGuard = event('prerequest', [
   "if (pm.environment.get('runPlanned') !== 'true') {",
-  "  console.warn('SKIPPED: contract only. Set runPlanned=true only after the corresponding BE task is implemented.');",
+  "  console.warn('SKIPPED: guarded request. Set runPlanned=true only with the required role, fixture, and isolated test database.');",
   '  pm.execution.skipRequest();',
   '}'
 ]);
 const variables = {
   maDon: 'orderId', maKh: 'customerId', maTx: 'driverId', maGiaoDich: 'paymentId', maBaoGia: 'quoteId',
+  maTk: 'staffId', matKhau: 'password',
   diemLayHang: 'pickupAddress', diemGiaoHang: 'deliveryAddress', sdtNguoiNhan: 'recipientPhone',
   username: 'username', password: 'password', soTienDaThu: 'amount'
 };
@@ -26,12 +27,12 @@ function templatize(value, key) {
 }
 function makeItem(path, method, operation) {
   const parameters = operation.parameters || [];
-  const headers = [{ key: 'Accept', value: operation.operationId === 'exportRevenueReport' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : operation.operationId === 'vnpayReturn' ? 'text/html' : 'application/json' }];
+  const headers = [{ key: 'Accept', value: ['exportRevenueReport', 'exportV2FinanceReport'].includes(operation.operationId) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : ['vnpayReturn', 'vnpayV2Return'].includes(operation.operationId) ? 'text/html' : 'application/json' }];
   if (operation.security.some(s => 'csrfToken' in s)) headers.push({ key: 'X-CSRF-Token', value: '{{csrfToken}}' });
   for (const p of parameters.filter(p => p.in === 'header')) headers.push({ key: p.name, value: operation.operationId === 'createOrder' ? '{{orderIdempotencyKey}}' : '{{paymentIdempotencyKey}}' });
   const query = parameters.filter(p => p.in === 'query').map(p => ({
     key: p.name,
-    value: p.name.startsWith('vnp_') ? '{{' + p.name + '}}' : p.name === 'tuNgay' ? '{{fromDate}}' : p.name === 'denNgay' ? '{{toDate}}' : String(p.schema.default ?? p.schema.enum?.[0] ?? ''),
+    value: p.name.startsWith('vnp_') ? '{{' + p.name + '}}' : ['tuNgay', 'tu'].includes(p.name) ? '{{fromDate}}' : ['denNgay', 'den'].includes(p.name) ? '{{toDate}}' : String(p.schema.default ?? p.schema.enum?.[0] ?? ''),
     disabled: !p.required && !['page', 'size', 'nhomTheo'].includes(p.name),
     description: p.description
   }));
@@ -39,11 +40,12 @@ function makeItem(path, method, operation) {
   const rawQuery = query.filter(q => !q.disabled).map(q => q.key + '=' + q.value).join('&');
   const url = { raw: '{{baseUrl}}' + route + (rawQuery ? '?' + rawQuery : ''), host: ['{{baseUrl}}'], path: route.slice(1).split('/'), query };
   const request = { method: method.toUpperCase(), header: headers, url, description: `${operation.summary}\n\n${operation.description}\n\nStatus: ${operation['x-implementation-status']}; UC: ${operation['x-uc'].join(', ') || 'infrastructure'}; roles: ${operation['x-roles'].join(', ')}` };
+  if (operation.operationId === 'vnpayV2Return') request.protocolProfileBehavior = { disableRedirects: true };
   if (operation.requestBody) {
     headers.push({ key: 'Content-Type', value: 'application/json' });
     request.body = { mode: 'raw', raw: JSON.stringify(templatize(operation.requestBody.content['application/json'].example), null, 2), options: { raw: { language: 'json' } } };
   }
-  const status = Number(Object.keys(operation.responses).find(s => /^2\d\d$/.test(s)));
+  const status = Number(Object.keys(operation.responses).find(s => /^[23]\d\d$/.test(s)));
   const scripts = [
     `pm.test('Expected HTTP ${status}', () => pm.response.to.have.status(${status}));`
   ];
@@ -52,6 +54,7 @@ function makeItem(path, method, operation) {
     const schemaName = operation.responses[status].content['application/json'].schema.$ref.split('/').at(-1);
     for (const field of spec.components.schemas[schemaName].required || []) scripts.push(`  pm.test('Response has ${field}', () => pm.expect(body).to.have.property('${field}'));`);
     if (operation.operationId === 'getCsrf') scripts.push("  pm.environment.set('csrfToken', body.csrfToken);");
+    if (operation.operationId === 'getV2Csrf') scripts.push("  pm.environment.set('csrfToken', body.token);");
     if (operation.operationId === 'createQuote') scripts.push("  pm.environment.set('quoteId', body.maBaoGia);", "  pm.environment.set('amount', body.cuoc.tongCuoc);");
     if (operation.operationId === 'createOrder') scripts.push("  pm.environment.set('orderId', body.maDon);", "  pm.test('New order waits for assignment', () => pm.expect(body.trangThai).to.eql('CHO_GAN'));");
     if (operation.operationId === 'createPayment') scripts.push("  pm.environment.set('paymentId', body.maGiaoDich);", "  if (body.paymentUrl) pm.environment.set('paymentUrl', body.paymentUrl);");
@@ -60,12 +63,13 @@ function makeItem(path, method, operation) {
     if (expectedState) scripts.push(`  pm.test('Expected order state', () => pm.expect(body.trangThai).to.eql('${expectedState}'));`);
     if (operation.operationId === 'transitionOrder') scripts.push("  pm.test('Requested state reached', () => pm.expect(body.trangThai).to.eql(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)).trangThai));");
     if (operation.operationId === 'confirmCash') scripts.push("  pm.test('Cash recorded once', () => { pm.expect(body.phuongThuc).to.eql('TIEN_MAT'); pm.expect(body.trangThai).to.eql('THANH_CONG'); pm.expect(body.thoiGianThanhToan).to.be.a('string'); });");
-    if (schemaName.endsWith('Page')) scripts.push("  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });");
+    if (schemaName.endsWith('Page') && spec.components.schemas[schemaName].properties?.totalPages) scripts.push("  pm.test('Pagination is coherent', () => { pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(body.size); pm.expect(body.totalPages).to.eql(Math.ceil(body.totalElements / body.size)); });");
     scripts.push('}');
   }
-  if (['login', 'logout'].includes(operation.operationId)) scripts.push("if (pm.response.code >= 200 && pm.response.code < 300) pm.environment.unset('csrfToken');");
+  if (['login', 'logout', 'loginV2', 'logoutV2'].includes(operation.operationId)) scripts.push("if (pm.response.code >= 200 && pm.response.code < 300) pm.environment.unset('csrfToken');");
   const events = [event('test', scripts)];
-  const before = operation['x-implementation-status'] !== 'implemented' ? [...plannedGuard.script.exec] : [];
+  const controlled = operation['x-postman-mode'] === 'controlled';
+  const before = operation['x-implementation-status'] !== 'implemented' || controlled ? [...plannedGuard.script.exec] : [];
   if (parameters.some(p => p.name === 'Idempotency-Key')) {
     const name = operation.operationId === 'createOrder' ? 'orderIdempotencyKey' : 'paymentIdempotencyKey';
     before.push(`if (!pm.environment.get('${name}')) pm.environment.set('${name}', pm.variables.replaceIn('{{$guid}}'));`);
@@ -77,9 +81,9 @@ const implemented = [], planned = new Map(), byId = new Map();
 for (const [path, methods] of Object.entries(spec.paths)) for (const [method, op] of Object.entries(methods)) {
   const item = makeItem(path, method, op);
   byId.set(op.operationId, item);
-  if (op['x-implementation-status'] === 'implemented') implemented.push(item);
+  if (op['x-implementation-status'] === 'implemented' && op['x-postman-mode'] !== 'controlled') implemented.push(item);
   else {
-    const tag = op.tags[0];
+    const tag = op['x-postman-mode'] === 'controlled' ? 'Admin V2 (manual; isolated test DB only)' : op.tags[0];
     if (!planned.has(tag)) planned.set(tag, []);
     planned.get(tag).push(item);
   }
@@ -110,7 +114,7 @@ const collection = {
   info: { name: 'Mini Ong Vang — T04', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json', description: 'Generated from openapi.json. Smoke runs now; planned requests are skipped unless runPlanned=true. Read tests/postman/README.md. Do not run all folders as one business scenario; switch roles and fixtures explicitly.' },
   item: [
     { name: '01 - Implemented smoke', item: [...artifacts, ...implemented] },
-    { name: '02 - Contract reference (planned)', item: [...planned].map(([name, item]) => ({ name, item })) },
+    { name: '02 - Contract and controlled requests', item: [...planned].map(([name, item]) => ({ name, item })) },
     { name: '03 - Negative fixtures (planned)', item: negatives }
   ]
 };
@@ -120,9 +124,9 @@ const environment = {
     baseUrl: 'http://localhost:8081', runPlanned: 'false', username: '', password: '', csrfToken: '',
     customerId: '', driverId: '', quoteId: '', orderId: '', paymentId: '', amount: '', paymentUrl: '',
     pickupAddress: 'Điểm mẫu A', deliveryAddress: 'Điểm mẫu B', recipientPhone: '0901234567',
-    fromDate: '2026-10-05', toDate: '2026-10-06', otherOrderId: '', expiredOrderId: '',
+    fromDate: '2026-10-05', toDate: '2026-10-06', staffId: '', otherOrderId: '', expiredOrderId: '',
     orderIdempotencyKey: '', paymentIdempotencyKey: '',
-    ...Object.fromEntries(['vnp_TmnCode','vnp_Amount','vnp_BankCode','vnp_BankTranNo','vnp_CardType','vnp_PayDate','vnp_OrderInfo','vnp_TransactionNo','vnp_ResponseCode','vnp_TransactionStatus','vnp_TxnRef','vnp_SecureHash'].map(k => [k, '']))
+    ...Object.fromEntries(['vnp_TmnCode','vnp_Amount','vnp_BankCode','vnp_BankTranNo','vnp_CardType','vnp_PayDate','vnp_OrderInfo','vnp_TransactionNo','vnp_ResponseCode','vnp_TransactionStatus','vnp_TxnRef','vnp_CurrCode','vnp_SecureHashType','vnp_SecureHash','vnp_Version','vnp_Command','vnp_Locale','vnp_CreateDate','vnp_IpAddr','vnp_OrderType'].map(k => [k, '']))
   }).map(([key, value]) => ({ key, value, type: ['password','csrfToken','vnp_SecureHash'].includes(key) ? 'secret' : 'default', enabled: true })),
   _postman_variable_scope: 'environment'
 };

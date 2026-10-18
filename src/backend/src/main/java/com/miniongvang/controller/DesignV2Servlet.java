@@ -9,6 +9,8 @@ import com.miniongvang.integration.RouteFailure;
 import com.miniongvang.integration.GoongRouteProvider;
 import com.miniongvang.security.AuthSession;
 import com.miniongvang.service.RouteService;
+import com.miniongvang.service.DesignV2FinanceReportService;
+import com.miniongvang.service.DesignV2FinanceExcelExporter;
 import com.miniongvang.web.JsonRequests;
 import com.miniongvang.web.WebResponses;
 import jakarta.servlet.annotation.WebServlet;
@@ -32,6 +34,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -93,7 +96,10 @@ public final class DesignV2Servlet extends HttpServlet {
                     csrf(req); AuthSession.end(req, resp, req.getSession(false)); resp.setStatus(204); return;
                 }
                 if (path.equals("/auth/change-password") && "POST".equals(req.getMethod())) {
-                    csrf(req); changePassword(connection, req, resp, actor); return;
+                    csrf(req); setActor(connection, actor.id);
+                    try { changePassword(connection, req, resp, actor); }
+                    finally { setActor(connection, null); }
+                    return;
                 }
                 if (!"GET".equals(req.getMethod())) csrf(req);
                 setActor(connection, actor.id);
@@ -248,22 +254,141 @@ public final class DesignV2Servlet extends HttpServlet {
     private static void changePassword(Connection connection, HttpServletRequest req, HttpServletResponse resp, Actor actor) throws Exception {
         JsonNode data = body(req);
         String current = required(data, "matKhauCu"), replacement = required(data, "matKhauMoi");
-        if (replacement.length() < 8) throw new Rejected(400, "VALIDATION_ERROR", "Mật khẩu mới quá ngắn");
+        validatePassword(replacement);
         Map<String,Object> account = one(connection, "SELECT mat_khau_hash FROM dbo.tai_khoan WHERE ma_tk=?", actor.id);
         if (account == null || !BCrypt.checkpw(current, account.get("mat_khau_hash").toString()))
             throw new Rejected(403, "INVALID_CREDENTIALS", "Mật khẩu cũ không đúng");
-        try (PreparedStatement statement = connection.prepareStatement("UPDATE dbo.tai_khoan "
-                + "SET mat_khau_hash=?,auth_version=auth_version+1 WHERE ma_tk=? AND auth_version=?")) {
-            statement.setString(1, BCrypt.hashpw(replacement, BCrypt.gensalt(12)));
-            statement.setString(2, actor.id); statement.setLong(3, actor.version);
-            if (statement.executeUpdate() != 1) throw new Rejected(409, "SESSION_EXPIRED", "Phiên đã thay đổi");
-        }
+        call(connection, "EXEC dbo.usp_doi_mat_khau_tai_khoan ?,?",
+                BCrypt.hashpw(replacement, BCrypt.gensalt(12)), actor.version);
         AuthSession.end(req, resp, req.getSession(false));
         resp.setStatus(204);
     }
 
+    private static void validatePassword(String password) {
+        if (password.length() < 8 || password.getBytes(StandardCharsets.UTF_8).length > 72)
+            throw new Rejected(400, "VALIDATION_ERROR", "Mật khẩu phải có ít nhất 8 ký tự và không vượt quá 72 byte UTF-8");
+    }
+
+    private static void validateStaffProfile(String username, String name, String phone) {
+        if (username == null || !username.matches("[a-z0-9._-]{3,50}") || name == null
+                || name.isBlank() || name.length() > 100
+                || (phone != null && !phone.isBlank() && !phone.matches("0[0-9]{9}")))
+            throw new Rejected(400, "VALIDATION_ERROR", "Tên đăng nhập, họ tên hoặc số điện thoại không hợp lệ");
+    }
+
+    private static Map<String,Object> staffAccount(Connection c, Object id) throws SQLException {
+        Map<String,Object> account = one(c, "SELECT ma_tk,username,ho_ten,so_dien_thoai,email,vai_tro,trang_thai,ngay_tao,auth_version "
+                + "FROM dbo.tai_khoan WHERE ma_tk=? AND vai_tro='TONG_DAI'", id);
+        if (account == null) throw new Rejected(404, "RESOURCE_NOT_FOUND", "Không tìm thấy tài khoản tổng đài");
+        return account;
+    }
+
+    private static List<Map<String,Object>> policyRows(Connection c) throws SQLException {
+        return rows(c, "SELECT 'CUOC' loai,ma_bieu_phi ma,'CUOC' nhom,ten,hieu_luc_tu,hieu_luc_den,trang_thai,"
+                + "cuoc_co_ban,don_gia_km,km_toi_thieu,km_toi_da,kg_bao_gom,kg_toi_da,don_gia_kg,"
+                + "CAST(NULL AS DECIMAL(5,2)) ty_le_giam,CAST(NULL AS VARCHAR(30)) ma_loai,"
+                + "CAST(NULL AS DECIMAL(15,0)) so_tien,CAST(NULL AS BIT) bat_buoc FROM dbo.cau_hinh_cuoc "
+                + "UNION ALL SELECT 'THANH_VIEN',ma_chinh_sach,ma_hang,NULL,hieu_luc_tu,hieu_luc_den,trang_thai,"
+                + "NULL,NULL,NULL,NULL,NULL,NULL,NULL,ty_le_giam,NULL,NULL,NULL FROM dbo.chinh_sach_thanh_vien "
+                + "UNION ALL SELECT 'PHU_THU',ma_phu_thu,ma_loai,ten,hieu_luc_tu,hieu_luc_den,trang_thai,"
+                + "NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,ma_loai,so_tien,bat_buoc FROM dbo.cau_hinh_phu_thu "
+                + "ORDER BY loai,hieu_luc_tu DESC");
+    }
+
     private void route(Connection c, HttpServletRequest req, HttpServletResponse resp, String path, Actor actor) throws Exception {
         String method = req.getMethod();
+        if (path.equals("/admin/drivers") && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            WebResponses.json(resp, 200, Map.of("items", rows(c, "SELECT x.ma_tx,x.ma_tk,k.username,k.ho_ten,k.so_dien_thoai,k.email,"
+                    + "k.trang_thai AS trang_thai_tai_khoan,k.auth_version,x.cccd,x.so_giay_phep,x.ngay_het_han_gplx,"
+                    + "x.trang_thai,x.ranh_tu,p.bien_so,p.loai_xe,p.mau_xe,p.dang_hoat_dong AS xe_hoat_dong,"
+                    + "CAST(CASE WHEN EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang a WHERE a.ma_tx=x.ma_tx AND a.ket_thuc_luc IS NULL) THEN 1 ELSE 0 END AS bit) dang_ban_chuyen "
+                    + "FROM dbo.tai_xe x JOIN dbo.tai_khoan k ON k.ma_tk=x.ma_tk LEFT JOIN dbo.phuong_tien p ON p.ma_tx=x.ma_tx ORDER BY k.ho_ten"))); return;
+        }
+        if (path.equals("/admin/drivers") && method.equals("POST")) {
+            require(actor, "CHU_DOI_XE");
+            JsonNode data = body(req);
+            String username = required(data, "username").toLowerCase(java.util.Locale.ROOT);
+            String password = required(data, "matKhau");
+            String name = required(data, "hoTen"), phone = required(data, "soDienThoai");
+            String email = optionalEmail(field(data, "email"));
+            String cccd = required(data, "cccd"), license = required(data, "soGiayPhep");
+            LocalDate expiry = LocalDate.parse(required(data, "ngayHetHanGPLX"));
+            validateDriverProfile(username, name, phone, cccd, license, expiry);
+            if (password.length() < 8 || password.getBytes(StandardCharsets.UTF_8).length > 72)
+                throw new Rejected(400, "VALIDATION_ERROR", "Mật khẩu phải có ít nhất 8 ký tự và không vượt quá 72 byte UTF-8");
+            String hash = BCrypt.hashpw(password, BCrypt.gensalt(12));
+            Map<String,Object> created = one(c, "EXEC dbo.usp_admin_quan_ly_tai_xe ?,NULL,?,?,?,?,?,?,?,?",
+                    "TAO", username, hash, name, phone, email, cccd, license, java.sql.Date.valueOf(expiry));
+            WebResponses.json(resp, 201, one(c, "SELECT x.ma_tx,x.ma_tk,k.username,k.ho_ten,k.so_dien_thoai,k.email,"
+                    + "k.trang_thai AS trang_thai_tai_khoan,x.cccd,x.so_giay_phep,x.ngay_het_han_gplx,x.trang_thai "
+                    + "FROM dbo.tai_xe x JOIN dbo.tai_khoan k ON k.ma_tk=x.ma_tk WHERE x.ma_tx=?", created.get("ma_tx"))); return;
+        }
+        if (path.matches("/admin/drivers/[0-9a-fA-F-]{36}") && method.equals("PATCH")) {
+            require(actor, "CHU_DOI_XE");
+            String id = UUID.fromString(path.substring("/admin/drivers/".length())).toString();
+            JsonNode data = body(req);
+            String name = required(data, "hoTen"), phone = required(data, "soDienThoai");
+            String email = optionalEmail(field(data, "email")), cccd = required(data, "cccd");
+            String license = required(data, "soGiayPhep");
+            LocalDate expiry = LocalDate.parse(required(data, "ngayHetHanGPLX"));
+            validateDriverProfile("valid", name, phone, cccd, license, expiry);
+            one(c, "EXEC dbo.usp_admin_quan_ly_tai_xe ?,?,?,?,?,?,?,?,?,?", "CAP_NHAT", id,
+                    null, null, name, phone, email, cccd, license, java.sql.Date.valueOf(expiry));
+            WebResponses.json(resp, 200, one(c, "SELECT x.ma_tx,x.ma_tk,k.username,k.ho_ten,k.so_dien_thoai,k.email,"
+                    + "k.trang_thai AS trang_thai_tai_khoan,x.cccd,x.so_giay_phep,x.ngay_het_han_gplx,x.trang_thai "
+                    + "FROM dbo.tai_xe x JOIN dbo.tai_khoan k ON k.ma_tk=x.ma_tk WHERE x.ma_tx=?", id)); return;
+        }
+        if (path.matches("/admin/drivers/[0-9a-fA-F-]{36}/status") && method.equals("POST")) {
+            require(actor, "CHU_DOI_XE");
+            String id = UUID.fromString(path.split("/")[3]).toString();
+            String action = required(body(req), "hanhDong");
+            if (!Set.of("KHOA", "MO_KHOA").contains(action))
+                throw new Rejected(400, "VALIDATION_ERROR", "Hành động trạng thái không hợp lệ");
+            one(c, "EXEC dbo.usp_admin_quan_ly_tai_xe ?,?,?,?,?,?,?,?,?,?", action, id,
+                    null, null, null, null, null, null, null, null);
+            WebResponses.json(resp, 200, one(c, "SELECT x.ma_tx,k.trang_thai AS trang_thai_tai_khoan,x.trang_thai "
+                    + "FROM dbo.tai_xe x JOIN dbo.tai_khoan k ON k.ma_tk=x.ma_tk WHERE x.ma_tx=?", id)); return;
+        }
+        if (path.equals("/admin/customers") && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            WebResponses.json(resp, 200, Map.of("items", rows(c, "SELECT k.ma_kh,k.ma_tk,k.dia_chi_mac_dinh,k.ma_hang,k.thanh_vien_tu,k.thanh_vien_den,"
+                    + "t.username,t.ho_ten,t.so_dien_thoai,t.email,t.trang_thai AS trang_thai_tai_khoan "
+                    + "FROM dbo.khach_hang k JOIN dbo.tai_khoan t ON t.ma_tk=k.ma_tk ORDER BY t.ho_ten"))); return;
+        }
+        if (path.matches("/admin/customers/[0-9a-fA-F-]{36}") && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            String id = UUID.fromString(path.substring("/admin/customers/".length())).toString();
+            int page, size;
+            try {
+                page = req.getParameter("page") == null ? 0 : Integer.parseInt(req.getParameter("page"));
+                size = req.getParameter("size") == null ? 20 : Integer.parseInt(req.getParameter("size"));
+            } catch (NumberFormatException invalid) {
+                throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang đơn khách hàng");
+            }
+            if (page < 0 || page > 1_000_000 || size < 1 || size > 100)
+                throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang đơn khách hàng");
+            Map<String,Object> customer = one(c, "SELECT k.ma_kh,k.ma_tk,k.dia_chi_mac_dinh,k.ma_hang,k.thanh_vien_tu,k.thanh_vien_den,"
+                    + "t.username,t.ho_ten,t.so_dien_thoai,t.email,t.trang_thai AS trang_thai_tai_khoan,t.auth_version "
+                    + "FROM dbo.khach_hang k JOIN dbo.tai_khoan t ON t.ma_tk=k.ma_tk WHERE k.ma_kh=?", id);
+            if (customer == null) throw new Rejected(404, "RESOURCE_NOT_FOUND", "Không tìm thấy khách hàng");
+            customer.put("tong_don", one(c, "SELECT COUNT_BIG(*) AS total FROM dbo.don_hang WHERE ma_kh=?", id).get("total"));
+            customer.put("don_hang", rows(c, "SELECT d.ma_don,d.tao_luc,d.trang_thai,v.tong_cuoc FROM dbo.don_hang d "
+                    + "JOIN dbo.v_cuoc_don v ON v.ma_don=d.ma_don WHERE d.ma_kh=? ORDER BY d.tao_luc DESC,d.ma_don "
+                    + "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", id, (long) page * size, size));
+            customer.put("don_hang_page", page); customer.put("don_hang_size", size);
+            WebResponses.json(resp, 200, customer); return;
+        }
+        if (path.matches("/admin/customers/[0-9a-fA-F-]{36}/status") && method.equals("POST")) {
+            require(actor, "CHU_DOI_XE");
+            String id = UUID.fromString(path.split("/")[3]).toString();
+            String action = required(body(req), "hanhDong");
+            if (!Set.of("KHOA", "MO_KHOA").contains(action))
+                throw new Rejected(400, "VALIDATION_ERROR", "Hành động trạng thái không hợp lệ");
+            call(c, "EXEC dbo.usp_admin_trang_thai_khach ?,?", id, action);
+            WebResponses.json(resp, 200, one(c, "SELECT k.ma_kh,t.trang_thai AS trang_thai_tai_khoan,t.auth_version "
+                    + "FROM dbo.khach_hang k JOIN dbo.tai_khoan t ON t.ma_tk=k.ma_tk WHERE k.ma_kh=?", id)); return;
+        }
         if (path.equals("/customers") && method.equals("GET")) {
             require(actor, "TONG_DAI", "CHU_DOI_XE");
             WebResponses.json(resp, 200, Map.of("items", rows(c, "SELECT k.ma_kh,t.ho_ten,t.so_dien_thoai,k.ma_hang FROM dbo.khach_hang k JOIN dbo.tai_khoan t ON t.ma_tk=k.ma_tk ORDER BY t.ho_ten"))); return;
@@ -283,11 +408,7 @@ public final class DesignV2Servlet extends HttpServlet {
                 throw new Rejected(400, "VALIDATION_ERROR", "Số điện thoại không hợp lệ");
             if (email != null && (email.length() > 150 || !email.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")))
                 throw new Rejected(400, "VALIDATION_ERROR", "Email không hợp lệ");
-            call(c, "BEGIN TRY BEGIN TRAN; UPDATE dbo.tai_khoan SET ho_ten=?,so_dien_thoai=?,email=? WHERE ma_tk=?; "
-                    + "INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong) "
-                    + "VALUES(?,'TAI_KHOAN',?,'CAP_NHAT_HO_SO'); COMMIT; "
-                    + "END TRY BEGIN CATCH IF XACT_STATE()<>0 ROLLBACK; THROW; END CATCH",
-                    name, phone, email, actor.id, actor.id, actor.id);
+            call(c, "EXEC dbo.usp_cap_nhat_ho_so_tai_khoan ?,?,?", name, phone, email);
             WebResponses.json(resp, 200, one(c, "SELECT ma_tk,username,ho_ten,so_dien_thoai,email,vai_tro "
                     + "FROM dbo.tai_khoan WHERE ma_tk=?", actor.id)); return;
         }
@@ -325,6 +446,170 @@ public final class DesignV2Servlet extends HttpServlet {
         }
         if (path.equals("/orders") && method.equals("GET")) {
             WebResponses.json(resp, 200, orderRows(c, req)); return;
+        }
+        if (path.equals("/admin/orders") && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            int page, size;
+            try {
+                page = req.getParameter("page") == null ? 0 : Integer.parseInt(req.getParameter("page"));
+                size = req.getParameter("size") == null ? 20 : Integer.parseInt(req.getParameter("size"));
+            } catch (NumberFormatException invalid) {
+                throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang");
+            }
+            if (page < 0 || page > 1_000_000 || size < 1 || size > 100)
+                throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang");
+            String status = req.getParameter("status");
+            if (status != null && !Set.of("CHO_GAN", "DA_GAN", "DA_LAY_HANG", "DANG_GIAO", "HOAN_TAT", "DA_HUY").contains(status))
+                throw new Rejected(400, "VALIDATION_ERROR", "Trạng thái đơn không hợp lệ");
+            String where = status == null ? "" : " WHERE d.trang_thai=?";
+            Map<String,Object> count = one(c, "SELECT COUNT_BIG(*) AS total FROM dbo.don_hang d" + where,
+                    status == null ? new Object[]{} : new Object[]{status});
+            List<Map<String,Object>> items = status == null
+                    ? rows(c, "SELECT d.*,v.tong_cuoc FROM dbo.don_hang d JOIN dbo.v_cuoc_don v ON v.ma_don=d.ma_don "
+                            + "ORDER BY d.tao_luc DESC,d.ma_don OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", (long) page * size, size)
+                    : rows(c, "SELECT d.*,v.tong_cuoc FROM dbo.don_hang d JOIN dbo.v_cuoc_don v ON v.ma_don=d.ma_don "
+                            + where + " ORDER BY d.tao_luc DESC,d.ma_don OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
+                            status, (long) page * size, size);
+            for (Map<String,Object> item : items) addAssignment(c, item);
+            WebResponses.json(resp, 200, Map.of("items", items, "total", count.get("total"), "page", page, "size", size));
+            return;
+        }
+        if (path.equals("/admin/overview") && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            Map<String,Object> result = one(c, "SELECT COUNT_BIG(*) tong_don, "
+                    + "SUM(CASE WHEN trang_thai='CHO_GAN' THEN 1 ELSE 0 END) cho_gan, "
+                    + "SUM(CASE WHEN trang_thai IN ('DA_GAN','DA_LAY_HANG','DANG_GIAO') THEN 1 ELSE 0 END) dang_xu_ly, "
+                    + "SUM(CASE WHEN trang_thai='HOAN_TAT' THEN 1 ELSE 0 END) hoan_tat, "
+                    + "SUM(CASE WHEN trang_thai='DA_HUY' THEN 1 ELSE 0 END) da_huy FROM dbo.don_hang");
+            result.put("don_gan_day", rows(c, "SELECT TOP (5) d.ma_don,d.tao_luc,d.trang_thai,d.ten_nguoi_nhan,"
+                    + "v.tong_cuoc,p.ma_tx,k.ho_ten AS tai_xe FROM dbo.don_hang d "
+                    + "JOIN dbo.v_cuoc_don v ON v.ma_don=d.ma_don "
+                    + "LEFT JOIN dbo.phan_cong_don_hang p ON p.ma_don=d.ma_don AND p.ket_thuc_luc IS NULL "
+                    + "LEFT JOIN dbo.tai_xe t ON t.ma_tx=p.ma_tx LEFT JOIN dbo.tai_khoan k ON k.ma_tk=t.ma_tk "
+                    + "ORDER BY d.tao_luc DESC,d.ma_don"));
+            result.put("tai_chinh", one(c, "SELECT COALESCE(SUM(cong_ty_duoc_huong),0) cong_ty_duoc_huong,"
+                    + "COALESCE(SUM(da_nop),0) da_nop,COALESCE(SUM(con_phai_nop),0) con_phai_nop "
+                    + "FROM dbo.v_so_du_tai_xe"));
+            WebResponses.json(resp, 200, result); return;
+        }
+        if (path.equals("/admin/incidents") && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            int page, size;
+            try {
+                page = req.getParameter("page") == null ? 0 : Integer.parseInt(req.getParameter("page"));
+                size = req.getParameter("size") == null ? 20 : Integer.parseInt(req.getParameter("size"));
+            } catch (NumberFormatException invalid) {
+                throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang sự cố");
+            }
+            if (page < 0 || page > 1_000_000 || size < 1 || size > 100)
+                throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang sự cố");
+            Map<String,Object> count = one(c, "SELECT COUNT_BIG(*) AS total FROM dbo.nhat_ky_don_hang WHERE loai='SU_CO'");
+            List<Map<String,Object>> items = rows(c, "SELECT n.ma_su_kien,n.ma_don,n.thoi_gian,n.ghi_chu,"
+                    + "d.trang_thai FROM dbo.nhat_ky_don_hang n JOIN dbo.don_hang d ON d.ma_don=n.ma_don "
+                    + "WHERE n.loai='SU_CO' ORDER BY n.thoi_gian DESC,n.ma_su_kien DESC "
+                    + "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", (long) page * size, size);
+            WebResponses.json(resp, 200, Map.of("items", items, "total", count.get("total"), "page", page, "size", size)); return;
+        }
+        if (path.equals("/admin/payments") && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            int page, size;
+            try {
+                page = req.getParameter("page") == null ? 0 : Integer.parseInt(req.getParameter("page"));
+                size = req.getParameter("size") == null ? 20 : Integer.parseInt(req.getParameter("size"));
+            } catch (NumberFormatException invalid) {
+                throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang giao dịch");
+            }
+            if (page < 0 || page > 1_000_000 || size < 1 || size > 100)
+                throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang giao dịch");
+            String status = req.getParameter("status");
+            if (status != null && !Set.of("CHO_XU_LY", "CHUA_RO_KET_QUA", "THANH_CONG", "KHONG_THU", "CAN_DOI_SOAT").contains(status))
+                throw new Rejected(400, "VALIDATION_ERROR", "Trạng thái giao dịch không hợp lệ");
+            String reconciliation = "EXISTS(SELECT 1 FROM dbo.su_kien_thanh_toan x WHERE x.ma_giao_dich=g.ma_giao_dich "
+                    + "AND x.ket_qua IN ('CAN_DOI_SOAT','KHONG_KHOP'))";
+            String filter = status == null ? "" : status.equals("CAN_DOI_SOAT")
+                    ? " WHERE " + reconciliation : " WHERE g.trang_thai=?";
+            Map<String,Object> result = report(c);
+            Map<String,Object> count = status == null || status.equals("CAN_DOI_SOAT")
+                    ? one(c, "SELECT COUNT_BIG(*) AS total FROM dbo.giao_dich_nop_tien g" + filter)
+                    : one(c, "SELECT COUNT_BIG(*) AS total FROM dbo.giao_dich_nop_tien g" + filter, status);
+            result.put("giao_dich_total", count.get("total"));
+            result.put("giao_dich_page", page);
+            result.put("giao_dich_size", size);
+            String sql = "SELECT g.ma_giao_dich,g.ma_tx,k.ho_ten,g.ma_tham_chieu,"
+                    + "g.trang_thai,g.so_tien_yeu_cau,g.so_tien_thuc_nhan,g.tao_luc,g.giai_quyet_luc,"
+                    + "g.so_don_dang_lien_ket,g.tong_khoan_lien_ket,e.nguon AS nguon_xac_minh,"
+                    + "e.ket_qua AS ket_qua_xac_minh,e.nhan_luc AS xac_minh_luc,"
+                    + "CAST(CASE WHEN " + reconciliation + " THEN 1 ELSE 0 END AS bit) can_doi_soat "
+                    + "FROM dbo.v_giao_dich_nop g JOIN dbo.tai_xe t ON t.ma_tx=g.ma_tx "
+                    + "JOIN dbo.tai_khoan k ON k.ma_tk=t.ma_tk OUTER APPLY "
+                    + "(SELECT TOP (1) nguon,ket_qua,nhan_luc FROM dbo.su_kien_thanh_toan x "
+                    + "WHERE x.ma_giao_dich=g.ma_giao_dich ORDER BY x.nhan_luc DESC,x.ma_su_kien DESC) e "
+                    + filter + " ORDER BY g.tao_luc DESC,g.ma_giao_dich DESC "
+                    + "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
+            result.put("giao_dich", status == null || status.equals("CAN_DOI_SOAT")
+                    ? rows(c, sql, (long) page * size, size)
+                    : rows(c, sql, status, (long) page * size, size));
+            WebResponses.json(resp, 200, result); return;
+        }
+        if (path.matches("/admin/payments/[0-9a-fA-F-]{36}/events") && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            String paymentId = path.split("/")[3];
+            if (one(c, "SELECT ma_giao_dich FROM dbo.giao_dich_nop_tien WHERE ma_giao_dich=?", paymentId) == null)
+                throw new Rejected(404, "RESOURCE_NOT_FOUND", "Không tìm thấy giao dịch");
+            WebResponses.json(resp, 200, Map.of("items", rows(c,
+                    "SELECT ma_su_kien,nguon,chu_ky_hop_le,ket_qua,nhan_luc "
+                            + "FROM dbo.su_kien_thanh_toan WHERE ma_giao_dich=? "
+                            + "ORDER BY nhan_luc DESC,ma_su_kien DESC", paymentId)));
+            return;
+        }
+        if (path.equals("/admin/staff") && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            WebResponses.json(resp, 200, Map.of("items", rows(c, "SELECT ma_tk,username,ho_ten,"
+                    + "so_dien_thoai,vai_tro,trang_thai,ngay_tao FROM dbo.tai_khoan "
+                    + "WHERE vai_tro IN ('TONG_DAI','CHU_DOI_XE') ORDER BY vai_tro,ngay_tao"))); return;
+        }
+        if (path.equals("/admin/staff") && method.equals("POST")) {
+            require(actor, "CHU_DOI_XE");
+            JsonNode data = body(req);
+            String username = required(data, "username").toLowerCase(java.util.Locale.ROOT);
+            String password = required(data, "matKhau");
+            String name = required(data, "hoTen"), phone = field(data, "soDienThoai");
+            if (phone != null && phone.isBlank()) phone = null;
+            String email = optionalEmail(field(data, "email"));
+            validateStaffProfile(username, name, phone);
+            validatePassword(password);
+            Map<String,Object> created = one(c, "EXEC dbo.usp_admin_quan_ly_tong_dai ?,NULL,?,?,?,?,?",
+                    "TAO", username, BCrypt.hashpw(password, BCrypt.gensalt(12)), name, phone, email);
+            WebResponses.json(resp, 201, staffAccount(c, created.get("ma_tk"))); return;
+        }
+        if (path.matches("/admin/staff/[0-9a-fA-F-]{36}") && method.equals("PATCH")) {
+            require(actor, "CHU_DOI_XE");
+            String id = UUID.fromString(path.substring("/admin/staff/".length())).toString();
+            JsonNode data = body(req);
+            String name = required(data, "hoTen"), phone = field(data, "soDienThoai");
+            if (phone != null && phone.isBlank()) phone = null;
+            String email = optionalEmail(field(data, "email"));
+            validateStaffProfile("valid", name, phone);
+            call(c, "EXEC dbo.usp_admin_quan_ly_tong_dai ?,?,?,?,?,?,?", "CAP_NHAT", id, null, null, name, phone, email);
+            WebResponses.json(resp, 200, staffAccount(c, id)); return;
+        }
+        if (path.matches("/admin/staff/[0-9a-fA-F-]{36}/status") && method.equals("POST")) {
+            require(actor, "CHU_DOI_XE");
+            String id = UUID.fromString(path.split("/")[3]).toString();
+            String action = required(body(req), "hanhDong");
+            if (!Set.of("KHOA", "MO_KHOA").contains(action))
+                throw new Rejected(400, "VALIDATION_ERROR", "Hành động trạng thái không hợp lệ");
+            call(c, "EXEC dbo.usp_admin_quan_ly_tong_dai ?,?,?,?,?,?,?", action, id, null, null, null, null, null);
+            WebResponses.json(resp, 200, staffAccount(c, id)); return;
+        }
+        if (path.matches("/admin/staff/[0-9a-fA-F-]{36}/password") && method.equals("POST")) {
+            require(actor, "CHU_DOI_XE");
+            String id = UUID.fromString(path.split("/")[3]).toString();
+            String password = required(body(req), "matKhau");
+            validatePassword(password);
+            call(c, "EXEC dbo.usp_admin_quan_ly_tong_dai ?,?,?,?,?,?,?", "DAT_MAT_KHAU", id, null,
+                    BCrypt.hashpw(password, BCrypt.gensalt(12)), null, null, null);
+            WebResponses.json(resp, 200, staffAccount(c, id)); return;
         }
         if (path.matches("/orders/[0-9a-fA-F-]{36}/suggestions") && method.equals("GET")) {
             require(actor, "TONG_DAI", "CHU_DOI_XE");
@@ -390,16 +675,32 @@ public final class DesignV2Servlet extends HttpServlet {
             require(actor, "CHU_DOI_XE");
             WebResponses.json(resp, 200, report(c)); return;
         }
+        if ((path.equals("/admin/reports/finance") || path.equals("/admin/reports/finance.xlsx"))
+                && method.equals("GET")) {
+            require(actor, "CHU_DOI_XE");
+            LocalDate from = reportDate(req, "tu"), until = reportDate(req, "den");
+            if (!until.isAfter(from))
+                throw new Rejected(400, "DATE_RANGE_INVALID", "Ngày kết thúc phải sau ngày bắt đầu");
+            DesignV2FinanceReportService.Report report = new DesignV2FinanceReportService().load(c, from, until);
+            if (path.endsWith(".xlsx")) {
+                byte[] bytes = new DesignV2FinanceExcelExporter().export(report);
+                resp.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                resp.setHeader("Content-Disposition", "attachment; filename=\"finance-v2-" + from + "-" + until + ".xlsx\"");
+                resp.setContentLength(bytes.length);
+                resp.getOutputStream().write(bytes);
+            } else WebResponses.json(resp, 200, report);
+            return;
+        }
         if (path.equals("/policies") && method.equals("GET")) {
             require(actor, "CHU_DOI_XE");
-            WebResponses.json(resp, 200, policies(c)); return;
+            WebResponses.json(resp, 200, Map.of("items", policyRows(c))); return;
         }
         if (path.equals("/policies") && method.equals("POST")) {
             require(actor, "CHU_DOI_XE");
             JsonNode data = body(req);
             call(c, "EXEC dbo.usp_quan_ly_chinh_sach ?,?,?,?,?", required(data, "hanhDong"), required(data, "loai"),
                     field(data, "ma"), data.path("duLieu").isMissingNode() ? null : JSON.writeValueAsString(data.path("duLieu")), field(data, "den"));
-            WebResponses.json(resp, 200, policies(c)); return;
+            WebResponses.json(resp, 200, Map.of("items", policyRows(c))); return;
         }
         if (path.equals("/vehicles") && method.equals("GET")) {
             require(actor, "CHU_DOI_XE", "TONG_DAI");
@@ -750,6 +1051,11 @@ public final class DesignV2Servlet extends HttpServlet {
         addAssignment(c, found);
         found.put("kien_hang", rows(c, "SELECT thu_tu,loai_hang,khoi_luong_kg,ghi_chu FROM dbo.chi_tiet_kien_hang WHERE ma_don=? ORDER BY thu_tu", id));
         found.put("nhat_ky", rows(c, "SELECT ma_su_kien,loai,trang_thai_sau,thoi_gian,ghi_chu FROM dbo.nhat_ky_don_hang WHERE ma_don=? ORDER BY thoi_gian,ma_su_kien", id));
+        found.put("lich_su_phan_cong", rows(c, "SELECT p.ma_phan_cong,p.bat_dau_luc,p.ket_thuc_luc,p.ket_qua,p.ly_do,"
+                + "k.ho_ten AS tai_xe,pt.bien_so FROM dbo.phan_cong_don_hang p "
+                + "JOIN dbo.tai_xe t ON t.ma_tx=p.ma_tx JOIN dbo.tai_khoan k ON k.ma_tk=t.ma_tk "
+                + "LEFT JOIN dbo.phuong_tien pt ON pt.ma_tx=t.ma_tx WHERE p.ma_don=? "
+                + "ORDER BY p.bat_dau_luc,p.ma_phan_cong", id));
         return found;
     }
 
@@ -954,10 +1260,29 @@ public final class DesignV2Servlet extends HttpServlet {
 
     private static Map<String,Object> report(Connection c) throws SQLException {
         Map<String,Object> totals = one(c, "SELECT COALESCE(SUM(cong_ty_duoc_huong),0) cong_ty_duoc_huong, COALESCE(SUM(da_nop),0) da_nop, "
-                + "COALESCE(SUM(con_phai_nop),0) con_phai_nop,COALESCE(SUM(thu_nhap_tai_xe),0) thu_nhap_tai_xe FROM dbo.v_so_du_tai_xe");
-        totals.put("tai_xe", rows(c, "SELECT t.ma_tx,k.ho_ten,s.thu_nhap_tai_xe,s.con_phai_nop,s.dang_thanh_toan,s.da_nop "
-                + "FROM dbo.v_so_du_tai_xe s JOIN dbo.tai_xe t ON t.ma_tx=s.ma_tx JOIN dbo.tai_khoan k ON k.ma_tk=t.ma_tk ORDER BY k.ho_ten"));
+                + "COALESCE(SUM(con_phai_nop),0) con_phai_nop,COALESCE(SUM(thu_nhap_tai_xe),0) thu_nhap_tai_xe,"
+                + "COALESCE(SUM(dang_thanh_toan),0) dang_thanh_toan,"
+                + "COALESCE(SUM(chua_dua_vao_thanh_toan),0) chua_dua_vao_thanh_toan FROM dbo.v_so_du_tai_xe");
+        Map<String,Object> received = one(c, "SELECT COALESCE(SUM(so_tien_thuc_nhan),0) da_nop "
+                + "FROM dbo.giao_dich_nop_tien WHERE trang_thai='THANH_CONG'");
+        totals.put("da_nop", received.get("da_nop"));
+        totals.put("tai_xe", rows(c, "SELECT t.ma_tx,k.ho_ten,s.thu_nhap_tai_xe,s.cong_ty_duoc_huong,"
+                + "s.con_phai_nop,s.dang_thanh_toan,s.chua_dua_vao_thanh_toan,COALESCE(g.da_nop,0) da_nop "
+                + "FROM dbo.v_so_du_tai_xe s JOIN dbo.tai_xe t ON t.ma_tx=s.ma_tx "
+                + "JOIN dbo.tai_khoan k ON k.ma_tk=t.ma_tk LEFT JOIN "
+                + "(SELECT ma_tx,SUM(so_tien_thuc_nhan) da_nop FROM dbo.giao_dich_nop_tien "
+                + "WHERE trang_thai='THANH_CONG' GROUP BY ma_tx) g ON g.ma_tx=t.ma_tx ORDER BY k.ho_ten,t.ma_tx"));
         return totals;
+    }
+
+    private static LocalDate reportDate(HttpServletRequest req, String parameter) {
+        String raw = req.getParameter(parameter);
+        if (raw == null || !raw.matches("\\d{4}-\\d{2}-\\d{2}"))
+            throw new Rejected(400, "DATE_RANGE_INVALID", "Ngày báo cáo không hợp lệ");
+        try { return LocalDate.parse(raw); }
+        catch (DateTimeParseException invalid) {
+            throw new Rejected(400, "DATE_RANGE_INVALID", "Ngày báo cáo không hợp lệ");
+        }
     }
 
     private static void call(Connection c, String sql, Object... args) throws SQLException {
@@ -965,6 +1290,29 @@ public final class DesignV2Servlet extends HttpServlet {
             bind(statement, args); statement.execute();
         }
     }
+    private static String optionalEmail(String value) {
+        if (value == null || value.isBlank()) return null;
+        String email = value.strip();
+        if (email.length() > 150 || !email.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+"))
+            throw new Rejected(400, "VALIDATION_ERROR", "Email không hợp lệ");
+        return email;
+    }
+
+    private static void validateDriverProfile(String username, String name, String phone,
+                                              String cccd, String license, LocalDate expiry) {
+        if (username == null || !username.matches("[a-z0-9._-]{3,50}"))
+            throw new Rejected(400, "VALIDATION_ERROR", "Tên đăng nhập chỉ gồm chữ thường, số, dấu chấm, gạch dưới hoặc gạch ngang (3–50 ký tự)");
+        if (name == null || name.isBlank() || name.length() > 100)
+            throw new Rejected(400, "VALIDATION_ERROR", "Họ tên tài xế không hợp lệ");
+        if (phone == null || !phone.matches("0[0-9]{9}"))
+            throw new Rejected(400, "VALIDATION_ERROR", "Số điện thoại phải có 10 chữ số và bắt đầu bằng 0");
+        if (cccd == null || !cccd.matches("[0-9]{12}"))
+            throw new Rejected(400, "VALIDATION_ERROR", "CCCD phải có đúng 12 chữ số");
+        if (license == null || license.isBlank() || license.length() > 50)
+            throw new Rejected(400, "VALIDATION_ERROR", "Số giấy phép lái xe không hợp lệ");
+        if (expiry == null) throw new Rejected(400, "VALIDATION_ERROR", "Thiếu ngày hết hạn giấy phép lái xe");
+    }
+
     private static Map<String,Object> one(Connection c, String sql, Object... args) throws SQLException {
         try (PreparedStatement statement = c.prepareStatement(sql)) {
             bind(statement, args);

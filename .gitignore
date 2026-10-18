@@ -23,6 +23,7 @@ node_modules/
 # Logs
 *.log
 test-results/
+.local/
 
 # OS
 .DS_Store

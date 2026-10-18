@@ -2,89 +2,77 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { api, type Driver, type OrderDetail } from "@/lib/live-orders";
-import { formatVND } from "@/lib/utils";
+import { useState } from "react";
+import { AdminDialog, AdminHeading } from "@/components/admin/AdminUI";
+import { amount, dateTime, orderStatus, type DriverRow, type OrderRow, useAdminResource } from "@/lib/admin-live";
+import { request } from "@/lib/api-client";
 
 export default function AdminOrderDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const params = useParams<{ id: string }>();
+  const id = params.id;
+  const { data: order, error, loading, refresh } = useAdminResource<OrderRow>(`/orders/${id}`);
+  const { data: drivers } = useAdminResource<{ items: DriverRow[] }>("/drivers");
+  const [action, setAction] = useState<"assign" | "cancel" | null>(null);
   const [driverId, setDriverId] = useState("");
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const refresh = useCallback(async () => {
-    const detail = await api<OrderDetail>(`/orders/${encodeURIComponent(id)}`);
-    setOrder(detail);
-    if (detail.trangThai === "CHO_GAN") {
-      const result = await api<{ items: Driver[] }>(`/orders/${encodeURIComponent(id)}/driver-suggestions`);
-      setDrivers(result.items);
-    } else setDrivers([]);
-  }, [id]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => { void refresh().catch(cause => setError((cause as Error).message)); }, 0);
-    return () => clearTimeout(timer);
-  }, [refresh]);
-
-  async function assign() {
-    if (!driverId || busy) return;
-    setBusy(true); setError("");
+  async function submit() {
+    if (!action) return;
+    setSaving(true); setActionError("");
     try {
-      await api(`/orders/${encodeURIComponent(id)}/assignments`, { method: "POST", body: JSON.stringify({ maTx: driverId }) });
-      await refresh(); setNotice("Đã phân công tài xế trong cơ sở dữ liệu.");
-    } catch (cause) { setError((cause as Error).message); }
-    finally { setBusy(false); }
-  }
-
-  async function cancel() {
-    if (!reason.trim() || busy) return;
-    setBusy(true); setError("");
-    try {
-      await api(`/orders/${encodeURIComponent(id)}/cancel`, { method: "POST", body: JSON.stringify({ lyDo: reason.trim() }) });
-      await refresh(); setNotice("Đã hủy đơn trong cơ sở dữ liệu.");
-    } catch (cause) { setError((cause as Error).message); }
-    finally { setBusy(false); }
+      if (action === "assign") await request(`/orders/${id}/assign`, "POST", { maTx: driverId });
+      else await request(`/orders/${id}/cancel`, "POST", { lyDo: reason.trim() });
+      setAction(null); setDriverId(""); setReason(""); await refresh();
+    } catch (cause) { setActionError(cause instanceof Error ? cause.message : "Không lưu được thay đổi"); }
+    finally { setSaving(false); }
   }
 
   return <>
-    <Link className="admin-back" href="/admin/orders">← Danh sách đơn hàng</Link>
+    <AdminHeading eyebrow="Đơn hàng" title={id} description="Chi tiết, phân công và nhật ký lấy trực tiếp từ designV2."
+      actions={<><Link className="admin-button" href="/admin/orders">← Danh sách</Link><button className="admin-button" onClick={() => void refresh()}>Làm mới</button></>} />
+    {loading && <p role="status" className="admin-feedback">Đang tải đơn...</p>}
     {error && <p role="alert" className="admin-feedback error">{error}</p>}
-    {notice && <p role="status" className="admin-feedback">{notice}</p>}
-    {!order ? <p role="status" className="admin-feedback">Đang tải chi tiết đơn hàng...</p> : <>
-      <div className="admin-page-heading"><div><span className="admin-eyebrow">Chi tiết đơn hàng</span>
-        <h1>{order.maDon}</h1><p>Tạo {new Date(order.thoiGianTao).toLocaleString("vi-VN")}</p></div>
-        <span className="admin-status">{order.trangThai}</span></div>
-      <div className="admin-detail-grid">
-        <section className="admin-panel"><div className="admin-section-head"><h2>Hành trình</h2></div>
-          <div className="admin-detail-body"><div className="admin-detail-card"><small>Điểm lấy</small><p>{order.diemLayHang}</p></div>
-            <div className="admin-detail-card"><small>Điểm giao</small><p>{order.diemGiaoHang}</p></div>
-            <p>{order.quangDuongKm} km · {order.tenNguoiNhan} · {order.sdtNguoiNhan}</p>
-            <p>Tài xế: {order.maTx ?? "Chưa phân công"}</p></div></section>
-        <section className="admin-panel"><div className="admin-section-head"><h2>Cước phí</h2></div>
-          <div className="admin-detail-body"><p>Cước quãng đường: {formatVND(Number(order.cuoc.cuocKm))}</p>
-            <p>Cước khối lượng: {formatVND(Number(order.cuoc.cuocKhoiLuong))}</p>
-            <p>Giảm giá: {formatVND(Number(order.cuoc.tienGiamGia))}</p>
-            <div className="admin-money-total"><span>Tổng cước</span><strong>{formatVND(Number(order.cuoc.tongCuoc))}</strong></div></div></section>
-        <section className="admin-panel"><div className="admin-section-head"><h2>Nhật ký</h2></div>
-          <div className="admin-timeline">{order.nhatKy.map(event => <div className="admin-timeline-item" key={event.thuTu}>
-            <strong>{event.loaiSuKien}</strong><p>{event.trangThaiSau}{event.ghiChu ? ` · ${event.ghiChu}` : ""}</p>
-            <time>{new Date(event.thoiGian).toLocaleString("vi-VN")}</time></div>)}</div></section>
-        <section className="admin-panel"><div className="admin-section-head"><h2>Thao tác</h2></div>
-          <div className="admin-detail-body">
-            {order.trangThai === "CHO_GAN" && <div className="admin-field"><label htmlFor="admin-assign-driver">Tài xế sẵn sàng</label>
-              <select id="admin-assign-driver" value={driverId} onChange={event => setDriverId(event.target.value)}>
-                <option value="">Chọn tài xế</option>
-                {drivers.map(driver => <option key={driver.maTx} value={driver.maTx}>{driver.hoTen} · {driver.phuongTien?.bienSoXe}</option>)}
-              </select><button type="button" className="admin-button primary" disabled={busy || !driverId} onClick={() => void assign()}>Phân công</button></div>}
-            {["CHO_GAN", "DA_GAN"].includes(order.trangThai) && <div className="admin-field"><label htmlFor="admin-cancel-reason">Lý do hủy</label>
-              <textarea id="admin-cancel-reason" value={reason} onChange={event => setReason(event.target.value)} />
-              <button type="button" className="admin-button danger" disabled={busy || !reason.trim()} onClick={() => void cancel()}>Hủy đơn</button></div>}
-          </div></section>
-      </div>
+    {order && <>
+      <section className="admin-panel admin-extra-detail"><div className="admin-section-head"><h2>Thông tin đơn</h2><span>{orderStatus[order.trang_thai] ?? order.trang_thai}</span></div>
+        <div className="admin-detail-body"><div className="admin-summary-grid">
+          <div><small>Cước</small><strong>{amount(order.tong_cuoc)}</strong></div>
+          <div><small>Tạo lúc</small><strong>{dateTime(order.tao_luc)}</strong></div>
+          <div><small>Tài xế</small><strong>{order.phan_cong?.ho_ten ?? "Chưa gán"}</strong></div>
+          <div><small>Quãng đường</small><strong>{order.quang_duong_km ? `${Number(order.quang_duong_km).toLocaleString("vi-VN")} km` : "—"}</strong></div>
+        </div><p><strong>Lấy:</strong> {order.diem_lay}</p><p><strong>Giao:</strong> {order.diem_giao}</p>
+        <p><strong>Người nhận:</strong> {order.ten_nguoi_nhan} · {order.sdt_nguoi_nhan ?? "Chưa có số điện thoại"}</p>
+        {order.ghi_chu && <p><strong>Ghi chú giao hàng:</strong> {order.ghi_chu}</p>}
+        {order.ly_do_huy && <p><strong>Lý do hủy:</strong> {order.ly_do_huy}</p>}
+        <div className="admin-inline-actions">
+          {order.trang_thai === "CHO_GAN" && <button className="admin-button primary" onClick={() => setAction("assign")}>Phân công tài xế</button>}
+          {!["HOAN_TAT", "DA_HUY"].includes(order.trang_thai) && <button className="admin-button danger" onClick={() => setAction("cancel")}>Hủy đơn</button>}
+        </div></div>
+      </section>
+      <section className="admin-panel admin-extra-detail"><div className="admin-section-head"><h2>Kiện hàng</h2><span>{order.kien_hang?.length ?? 0} kiện</span></div>
+        {order.kien_hang?.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>#</th><th>Loại hàng</th><th>Khối lượng</th><th>Ghi chú</th></tr></thead><tbody>
+          {order.kien_hang.map((parcel) => <tr key={parcel.thu_tu}><td>{parcel.thu_tu}</td><td>{parcel.loai_hang}</td><td>{Number(parcel.khoi_luong_kg).toLocaleString("vi-VN")} kg</td><td>{parcel.ghi_chu ?? "—"}</td></tr>)}
+        </tbody></table></div> : <p className="admin-muted">Đơn không có thông tin kiện hàng.</p>}
+      </section>
+      <section className="admin-panel admin-extra-detail"><div className="admin-section-head"><h2>Lịch sử phân công</h2></div>
+        {order.lich_su_phan_cong?.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Tài xế</th><th>Biển số</th><th>Bắt đầu</th><th>Kết thúc</th><th>Kết quả</th><th>Lý do</th></tr></thead><tbody>
+          {order.lich_su_phan_cong.map((assignment) => <tr key={assignment.ma_phan_cong}><td>{assignment.tai_xe}</td><td>{assignment.bien_so ?? "—"}</td><td>{dateTime(assignment.bat_dau_luc)}</td><td>{dateTime(assignment.ket_thuc_luc)}</td><td>{assignment.ket_qua ?? "Đang thực hiện"}</td><td>{assignment.ly_do ?? "—"}</td></tr>)}
+        </tbody></table></div> : <p className="admin-muted">Chưa có lịch sử phân công.</p>}
+      </section>
+      <section className="admin-panel admin-extra-detail"><div className="admin-section-head"><h2>Nhật ký đơn</h2></div>
+        {order.nhat_ky?.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Thời gian</th><th>Sự kiện</th><th>Trạng thái sau</th><th>Ghi chú</th></tr></thead><tbody>
+          {order.nhat_ky.map((event) => <tr key={event.ma_su_kien}><td>{dateTime(event.thoi_gian)}</td><td>{event.loai}</td><td>{orderStatus[event.trang_thai_sau] ?? event.trang_thai_sau}</td><td>{event.ghi_chu ?? "—"}</td></tr>)}
+        </tbody></table></div> : <p className="admin-muted">Chưa có sự kiện.</p>}
+      </section>
     </>}
+    {action && <AdminDialog title={action === "assign" ? "Phân công tài xế" : "Hủy đơn"}
+      description={`Đơn ${id}. Kết quả sẽ được lưu trong DB và nhật ký đơn.`}
+      onClose={() => setAction(null)} onSubmit={() => void submit()} submitLabel={saving ? "Đang lưu..." : "Xác nhận"}
+      submitDisabled={saving || (action === "assign" ? !driverId : reason.trim().length < 8)} error={actionError} danger={action === "cancel"}>
+      {action === "assign" ? <div className="admin-field"><label htmlFor="assign-driver">Tài xế</label><select id="assign-driver" value={driverId} onChange={(event) => setDriverId(event.target.value)}><option value="">Chọn tài xế</option>
+        {drivers?.items.filter((driver) => driver.trang_thai === "ONLINE" && !driver.dang_ban_chuyen && driver.bien_so).map((driver) => <option key={driver.ma_tx} value={driver.ma_tx}>{driver.ho_ten} · {driver.bien_so}</option>)}
+      </select></div> : <div className="admin-field"><label htmlFor="cancel-reason">Lý do hủy</label><textarea id="cancel-reason" value={reason} onChange={(event) => setReason(event.target.value)} /></div>}
+    </AdminDialog>}
   </>;
 }

@@ -1,53 +1,55 @@
 "use client";
 
-import { useState } from "react";
-import { useAdmin } from "@/components/admin/AdminProvider";
-import { AdminDialog, AdminEmpty, AdminHeading, AdminStat, adminActivity } from "@/components/admin/AdminUI";
-import type { AdminStaff } from "@/lib/admin-extras";
+import { useCallback, useEffect, useState } from "react";
+import { AdminHeading } from "@/components/admin/AdminUI";
+import { request } from "@/lib/api-client";
+import { dateTime } from "@/lib/admin-live";
 
-const roleName: Record<AdminStaff["role"], string> = { TONG_DAI: "Tổng đài", DIEU_PHOI: "Điều phối", CHU_DOI_XE: "Chủ đội xe" };
-const permissions = [
-  ["Tiếp nhận & tạo đơn", true, true, true],
-  ["Phân công tài xế", false, true, true],
-  ["Theo dõi sự cố", false, true, true],
-  ["Xem báo cáo tài chính", false, false, true],
-  ["Quản lý nhân sự, biểu phí", false, false, true],
-] as const;
+type Staff = { ma_tk: string; username: string; ho_ten: string; so_dien_thoai: string | null; email: string | null;
+  vai_tro: "TONG_DAI" | "CHU_DOI_XE"; trang_thai: "HOAT_DONG" | "KHOA"; ngay_tao: string };
+const fresh = () => ({ username: "", hoTen: "", soDienThoai: "", email: "", matKhau: "" });
 
 export default function AdminStaffPage() {
-  const { staff, updateDemo } = useAdmin();
-  const [query, setQuery] = useState("");
-  const [role, setRole] = useState("ALL");
-  const [form, setForm] = useState<AdminStaff | null>(null);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const visible = staff.filter((member) => `${member.name} ${member.phone}`.toLocaleLowerCase("vi-VN").includes(query.toLocaleLowerCase("vi-VN")) && (role === "ALL" || member.role === role));
-  const save = () => {
-    if (!form) return;
-    if (form.name.trim().length < 3 || !/^0\d{9}$/.test(form.phone)) { setError("Nhập tên ít nhất 3 ký tự và số điện thoại 10 chữ số."); return; }
-    if (staff.some((member) => member.phone === form.phone && member.id !== form.id)) { setError("Số điện thoại đã được dùng."); return; }
-    const isNew = !form.id;
-    const saved = { ...form, id: form.id || `NV-${String(staff.length + 1).padStart(3, "0")}`, name: form.name.trim(), joinedAt: form.joinedAt || new Date().toLocaleDateString("vi-VN") };
-    updateDemo((previous) => ({ ...previous,
-      staff: isNew ? [...previous.staff, saved] : previous.staff.map((member) => member.id === saved.id ? saved : member),
-      activity: [adminActivity(isNew ? "Thêm nhân viên" : "Sửa nhân viên", `${saved.name} · ${roleName[saved.role]}`), ...previous.activity],
-    }));
-    setForm(null); setNotice("Đã lưu nhân sự trong dữ liệu demo.");
-  };
-  const toggle = (member: AdminStaff) => {
-    if (member.role === "CHU_DOI_XE") return;
-    if (!window.confirm(`${member.active ? "Khóa" : "Mở khóa"} tài khoản ${member.name}?`)) return;
-    updateDemo((previous) => ({ ...previous, staff: previous.staff.map((item) => item.id === member.id ? { ...item, active: !item.active } : item), activity: [adminActivity(member.active ? "Khóa nhân viên" : "Mở khóa nhân viên", member.name), ...previous.activity] }));
-    setNotice(`Đã ${member.active ? "khóa" : "mở khóa"} tài khoản ${member.name}.`);
-  };
+  const [items, setItems] = useState<Staff[]>([]), [form, setForm] = useState(fresh()), [editing, setEditing] = useState<Staff | null>(null);
+  const [passwordTarget, setPasswordTarget] = useState<Staff | null>(null), [newPassword, setNewPassword] = useState("");
+  const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const load = useCallback(async () => { setLoading(true); try { setItems((await request<{items:Staff[]}>("/admin/staff")).items); setError(""); }
+    catch(e) { setItems([]); setError(e instanceof Error ? e.message : "Không tải được danh sách nhân sự"); } finally { setLoading(false); } }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
+  const change = (key: keyof ReturnType<typeof fresh>, value: string) => setForm((old) => ({...old,[key]:value}));
+  const startEdit = (staff: Staff) => { setEditing(staff); setForm({ username:staff.username,hoTen:staff.ho_ten,soDienThoai:staff.so_dien_thoai ?? "",email:staff.email ?? "",matKhau:"" }); };
+  const submit = async (event: React.FormEvent) => { event.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try { const payload = { username:form.username,hoTen:form.hoTen,soDienThoai:form.soDienThoai || null,email:form.email || null,...(!editing ? {matKhau:form.matKhau} : {}) };
+      if (editing) await request(`/admin/staff/${editing.ma_tk}`,"PATCH",payload); else await request("/admin/staff","POST",payload);
+      setNotice(editing ? "Đã cập nhật tài khoản tổng đài." : "Đã tạo tài khoản tổng đài."); setEditing(null); setForm(fresh()); await load();
+    } catch(e) { setError(e instanceof Error ? e.message : "Không lưu được tài khoản"); } finally { setBusy(false); } };
+  const setStatus = async (staff: Staff) => { setBusy(true); setError(""); setNotice(""); try { await request(`/admin/staff/${staff.ma_tk}/status`,"POST",{hanhDong:staff.trang_thai === "HOAT_DONG" ? "KHOA" : "MO_KHOA"});
+      setNotice(staff.trang_thai === "HOAT_DONG" ? "Đã khóa tài khoản và thu hồi các phiên đăng nhập." : "Đã mở khóa tài khoản."); await load(); }
+    catch(e) { setError(e instanceof Error ? e.message : "Không đổi được trạng thái"); } finally { setBusy(false); } };
+  const resetPassword = async (event: React.FormEvent) => { event.preventDefault(); if (!passwordTarget) return; setBusy(true); setError(""); setNotice("");
+    try { await request(`/admin/staff/${passwordTarget.ma_tk}/password`,"POST",{matKhau:newPassword}); setNotice("Đã cấp mật khẩu mới; phiên đăng nhập cũ của nhân viên đã bị thu hồi."); setPasswordTarget(null); setNewPassword(""); await load(); }
+    catch(e) { setError(e instanceof Error ? e.message : "Không cấp lại được mật khẩu"); } finally { setBusy(false); } };
 
   return <>
-    <AdminHeading eyebrow="Quản trị hệ thống" title="Nhân sự & phân quyền" description="Quản lý tài khoản vận hành và xem quyền của từng vai trò." actions={<button className="admin-button primary" onClick={() => { setError(""); setForm({ id: "", name: "", phone: "", role: "TONG_DAI", active: true, joinedAt: "" }); }}>+ Thêm nhân viên</button>} />
-    {notice && <p className="admin-feedback" role="status">{notice}</p>}
-    <div className="admin-stat-grid"><AdminStat label="Tổng nhân sự" value={staff.length} note="Bao gồm chủ đội xe" /><AdminStat label="Điều phối" value={staff.filter((member) => member.role === "DIEU_PHOI").length} note="Phân công và xử lý đơn" tone="accent" /><AdminStat label="Tổng đài" value={staff.filter((member) => member.role === "TONG_DAI").length} note="Tiếp nhận yêu cầu" /><AdminStat label="Đã khóa" value={staff.filter((member) => !member.active).length} note="Không hoạt động" tone="alert" /></div>
-    <section className="admin-panel admin-filter-panel"><div className="admin-filter-grid admin-filter-compact"><div className="admin-field"><label htmlFor="staff-search">Tìm nhân viên</label><input id="staff-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên hoặc số điện thoại" /></div><div className="admin-field"><label htmlFor="staff-role">Vai trò</label><select id="staff-role" value={role} onChange={(event) => setRole(event.target.value)}><option value="ALL">Tất cả</option><option value="TONG_DAI">Tổng đài</option><option value="DIEU_PHOI">Điều phối</option><option value="CHU_DOI_XE">Chủ đội xe</option></select></div></div></section>
-    <section className="admin-panel"><div className="admin-result-bar"><strong>{visible.length} tài khoản</strong><span>Trạng thái nhân sự demo</span></div>{visible.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Nhân viên</th><th>Vai trò</th><th>Tham gia</th><th>Trạng thái</th><th className="action">Thao tác</th></tr></thead><tbody>{visible.map((member) => <tr key={member.id}><td><strong>{member.name}</strong><small>{member.phone} · {member.id}</small></td><td>{roleName[member.role]}</td><td>{member.joinedAt}</td><td><span className={`admin-status ${member.active ? "success" : "danger"}`}>{member.active ? "Hoạt động" : "Đã khóa"}</span></td><td className="action"><button className="admin-text-button" onClick={() => { setError(""); setForm({ ...member }); }}>Sửa</button>{member.role !== "CHU_DOI_XE" && <button className="admin-text-button" onClick={() => toggle(member)}>{member.active ? "Khóa" : "Mở khóa"}</button>}</td></tr>)}</tbody></table></div> : <AdminEmpty title="Không tìm thấy nhân viên" detail="Thử từ khóa hoặc vai trò khác." />}</section>
-    <section className="admin-panel admin-extra-detail"><div className="admin-section-head"><div><h2>Ma trận quyền tham khảo</h2><p>Giao diện mô tả phạm vi từng vai trò; backend sẽ kiểm tra quyền khi tích hợp.</p></div></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Chức năng</th><th>Tổng đài</th><th>Điều phối</th><th>Chủ đội xe</th></tr></thead><tbody>{permissions.map(([name, callCenter, dispatcher, owner]) => <tr key={name}><td><strong>{name}</strong></td><td>{callCenter ? "Có" : "—"}</td><td>{dispatcher ? "Có" : "—"}</td><td>{owner ? "Có" : "—"}</td></tr>)}</tbody></table></div></section>
-    {form && <AdminDialog title={form.id ? "Sửa nhân viên" : "Thêm nhân viên"} description="Thông tin được lưu trong dữ liệu demo của cổng quản trị." onClose={() => setForm(null)} onSubmit={save} submitLabel="Lưu nhân viên" error={error}><div className="admin-form-grid"><div className="admin-field"><label htmlFor="staff-name">Họ tên</label><input id="staff-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></div><div className="admin-field"><label htmlFor="staff-phone">Số điện thoại</label><input id="staff-phone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div><div className="admin-field"><label htmlFor="staff-edit-role">Vai trò</label><select id="staff-edit-role" value={form.role} disabled={form.role === "CHU_DOI_XE"} onChange={(event) => setForm({ ...form, role: event.target.value as AdminStaff["role"] })}><option value="TONG_DAI">Tổng đài</option><option value="DIEU_PHOI">Điều phối</option>{form.role === "CHU_DOI_XE" && <option value="CHU_DOI_XE">Chủ đội xe</option>}</select></div></div></AdminDialog>}
+    <AdminHeading eyebrow="Hệ thống" title="Nhân sự và quyền" description="Quản lý tài khoản tổng đài. Chủ đội xe chỉ được xem và không thể tự khóa qua màn này." actions={<button className="admin-button" onClick={() => void load()}>Làm mới</button>} />
+    {error && <p role="alert" className="admin-feedback error">{error}</p>}{notice && <p role="status" className="admin-feedback">{notice}</p>}
+    <section className="admin-panel admin-staff-form"><div className="admin-section-head"><div><h2>{editing ? "Sửa nhân viên tổng đài" : "Thêm nhân viên tổng đài"}</h2><p>Vai trò được cấp cố định là TONG_DAI. Mật khẩu được lưu dưới dạng BCrypt.</p></div></div>
+      <form className="admin-form-body" onSubmit={submit}><div className="admin-form-grid">
+        <div className="admin-field"><label>Tên đăng nhập</label><input required minLength={3} maxLength={50} pattern="[a-zA-Z0-9._-]+" disabled={Boolean(editing)} value={form.username} onChange={(e)=>change("username",e.target.value.toLowerCase())} /></div>
+        <div className="admin-field"><label>Họ tên</label><input required maxLength={100} value={form.hoTen} onChange={(e)=>change("hoTen",e.target.value)} /></div>
+        <div className="admin-field"><label>Số điện thoại</label><input type="tel" pattern="0[0-9]{9}" title="Nhập 10 chữ số, bắt đầu bằng 0" value={form.soDienThoai} onChange={(e)=>change("soDienThoai",e.target.value)} /></div>
+        <div className="admin-field"><label>Email</label><input type="email" maxLength={150} value={form.email} onChange={(e)=>change("email",e.target.value)} /></div>
+        {!editing && <div className="admin-field"><label>Mật khẩu khởi tạo (ít nhất 8 ký tự)</label><input required minLength={8} maxLength={72} type="password" autoComplete="new-password" value={form.matKhau} onChange={(e)=>change("matKhau",e.target.value)} /></div>}
+      </div><div className="admin-inline-actions"><button className="admin-button primary" disabled={busy}>{busy ? "Đang lưu..." : editing ? "Lưu thay đổi" : "Tạo tài khoản"}</button>{editing && <button type="button" className="admin-button" onClick={()=>{setEditing(null);setForm(fresh());}}>Hủy sửa</button>}</div></form>
+    </section>
+    <section className="admin-panel"><div className="admin-result-bar"><strong>{loading ? "Đang tải..." : `${items.length} tài khoản`}</strong><span>Chủ đội xe đang hoạt động: {items.filter(x=>x.vai_tro==="CHU_DOI_XE" && x.trang_thai==="HOAT_DONG").length}</span></div>
+      {items.length > 0 && <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Tài khoản</th><th>Vai trò</th><th>Liên hệ</th><th>Trạng thái</th><th>Tạo lúc</th><th>Thao tác</th></tr></thead><tbody>{items.map((staff)=><tr key={staff.ma_tk}>
+        <td><strong>{staff.ho_ten}</strong><small>{staff.username}</small></td><td>{staff.vai_tro === "CHU_DOI_XE" ? "Chủ đội xe" : "Tổng đài"}</td>
+        <td>{staff.so_dien_thoai ?? "—"}<small>{staff.email ?? ""}</small></td><td>{staff.trang_thai === "HOAT_DONG" ? "Hoạt động" : "Đã khóa"}</td><td>{dateTime(staff.ngay_tao)}</td>
+        <td>{staff.vai_tro === "TONG_DAI" ? <div className="admin-inline-actions"><button className="admin-text-button" onClick={()=>startEdit(staff)}>Sửa</button><button className="admin-text-button" onClick={()=>{setPasswordTarget(staff);setNewPassword("");}}>Cấp mật khẩu</button><button className="admin-text-button danger" disabled={busy} onClick={()=>void setStatus(staff)}>{staff.trang_thai === "HOAT_DONG" ? "Khóa" : "Mở khóa"}</button></div> : <small>Không thể thay đổi quyền chủ đội xe tại đây</small>}</td>
+      </tr>)}</tbody></table></div>}
+      {!loading && !items.length && <div className="admin-empty"><strong>Chưa có nhân sự</strong><p>Tài khoản sẽ hiển thị sau khi tạo.</p></div>}
+    </section>
+    {passwordTarget && <div className="admin-modal-backdrop" role="presentation"><form className="admin-modal" onSubmit={resetPassword}><h2>Cấp mật khẩu mới</h2><p>Nhân viên {passwordTarget.ho_ten} sẽ phải đăng nhập lại bằng mật khẩu mới.</p><div className="admin-field"><label>Mật khẩu mới</label><input autoFocus required minLength={8} maxLength={72} type="password" autoComplete="new-password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} /></div><div className="admin-modal-actions"><button type="button" className="admin-button" onClick={()=>setPasswordTarget(null)}>Hủy</button><button className="admin-button primary" disabled={busy}>Cấp mật khẩu</button></div></form></div>}
   </>;
 }
