@@ -394,7 +394,7 @@ public final class DesignV2ApiController {
             String status = req.getParameter("status");
             if (status != null && !Set.of("CHO_XU_LY", "CHUA_RO_KET_QUA", "THANH_CONG", "KHONG_THU", "CAN_DOI_SOAT").contains(status))
                 throw new Rejected(400, "VALIDATION_ERROR", "Trạng thái giao dịch không hợp lệ");
-            Map<String,Object> result = report(c);
+            Map<String,Object> result = PAYMENTS.report(c);
             DesignV2PaymentService.PaymentPage payments = PAYMENTS.findAdminPayments(c, status, page, size);
             result.put("giao_dich_total", payments.total());
             result.put("giao_dich_page", page);
