@@ -2,7 +2,7 @@
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo', N'mini_ong_vang_design_v2_test')
+IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo', N'mini_ong_vang_design_v2_test', N'mini_ong_vang_test')
     THROW 52400, N'V9 is restricted to designV2 demo/test databases', 1;
 
 IF EXISTS (SELECT 1 FROM dbo.tai_khoan)

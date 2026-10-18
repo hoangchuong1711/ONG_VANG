@@ -1,7 +1,7 @@
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo',N'mini_ong_vang_design_v2_test')
+IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo',N'mini_ong_vang_design_v2_test',N'mini_ong_vang_test')
     THROW 52400,N'V14 chi chay tren DB demo/test cua schema designV2',1;
 
 DECLARE @hash NVARCHAR(255)=N'$2a$12$g4SKnozNPTfhvGmcbR027eZuc2xPibVo8up0kjlRNTv3oCfbyxJsO';

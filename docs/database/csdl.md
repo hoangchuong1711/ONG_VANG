@@ -49,6 +49,7 @@ không phụ thuộc tùy chọn của kết nối trước. Không chèn SET tr
 - DB demo/test: cấu hình **hai locations**, schema ở trên và
   `classpath:db/designV2/sqlserver/demo` → Flyway sắp số V1 → V9 và tự nạp INSERT.
 - Dùng `mini_ong_vang_design_v2_demo` hoặc `mini_ong_vang_design_v2_test` cho V9;
+  DB CI cô lập `mini_ong_vang_test` cũng được phép để nạp fixture kiểm thử;
   không gọi SeedCommand; backend V2 dùng V9 thay cho Java seed.
 - Không đưa designV1 và designV2 vào cùng locations/history, không chạy designV2 lên DB cũ.
   Không chạy V9 ở DB thật hoặc DB chứa dữ liệu cần giữ. Đã chạy file V nào thì giữ checksum;
@@ -1703,7 +1704,7 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 File đích: `db/designV2/sqlserver/demo/V9__insert_demo_data.sql`.
 Chỉ tách khối SQL mục 13.2 vào file; mục 13.3 là câu truy vấn kiểm tra riêng.
 Chạy sau V1–V8 bằng Flyway trên DB **mới/rỗng** `mini_ong_vang_design_v2_demo`
-hoặc `mini_ong_vang_design_v2_test`. Không gọi DesignV1DemoSeeder/SeedCommand.
+hoặc `mini_ong_vang_design_v2_test`; CI dùng DB cô lập `mini_ong_vang_test`. Không gọi DesignV1DemoSeeder/SeedCommand.
 Giữ đúng 8 username của dự án; không thêm tài khoản đăng nhập khác.
 
 | Username | Vai trò | Hồ sơ |
@@ -1754,7 +1755,7 @@ SET NUMERIC_ROUNDABORT OFF;
 GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
-IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo',N'mini_ong_vang_design_v2_test')
+IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo',N'mini_ong_vang_design_v2_test',N'mini_ong_vang_test')
  THROW 52400,N'V9 chỉ được chạy trên DB demo/test của schema designV2',1;
 IF EXISTS(SELECT 1 FROM dbo.tai_khoan) OR EXISTS(SELECT 1 FROM dbo.don_hang)
  OR EXISTS(SELECT 1 FROM dbo.cau_hinh_cuoc) OR EXISTS(SELECT 1 FROM dbo.chinh_sach_thanh_vien)
