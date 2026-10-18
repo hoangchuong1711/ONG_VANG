@@ -47,6 +47,9 @@ public final class ApiSecurityFilter implements Filter {
             return;
         }
         String path = req.getServletPath() + (req.getPathInfo() == null ? "" : req.getPathInfo());
+        if (path.startsWith("/api/v2/")) {
+            chain.doFilter(request, response); return;
+        }
         if (PUBLIC_PATHS.contains(path)) {
             chain.doFilter(request, response); return;
         }

@@ -14,12 +14,14 @@ import { reportRange } from "@/lib/finance";
 import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { request, type Finance } from "@/lib/api-client";
 
 export default function DriverDashboardPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const [driver, setDriver] = useState<DispatchDriver | null>(null);
   const [todayFare, setTodayFare] = useState("0.00");
+  const [companyDue, setCompanyDue] = useState("0");
   const [activeOrder, setActiveOrder] = useState<OrderItem | null>(null);
   const [todayTrips, setTodayTrips] = useState<OrderItem[]>([]);
   const [incomingOrder, setIncomingOrder] = useState<OrderItem | null>(null);
@@ -27,21 +29,21 @@ export default function DriverDashboardPage() {
   const [rejectReason, setRejectReason] = useState("Đang ở quá xa điểm lấy hàng");
   const [error, setError] = useState("");
   const isOnline = driver?.status === "ONLINE_IDLE" || driver?.status === "ONLINE_BUSY";
-  const ratedTrips: OrderItem[] = [];
-  const averageRating = "—";
 
   const refresh = useCallback(async () => {
     try {
       const { from, to } = reportRange("TODAY");
-      const [self, assigned, picked, delivering, completed, earnings] = await Promise.all([
+      const [self, assigned, picked, delivering, completed, earnings, finance] = await Promise.all([
         api<Driver>("/drivers/me"),
         api<{ items: Order[] }>("/orders?trangThai=DA_GAN&size=100"),
         api<{ items: Order[] }>("/orders?trangThai=DA_LAY_HANG&size=100"),
         api<{ items: Order[] }>("/orders?trangThai=DANG_GIAO&size=100"),
         api<{ items: Order[] }>("/orders?trangThai=HOAN_TAT&size=100"),
         api<DriverEarnings>(`/drivers/me/earnings?tuNgay=${from}&denNgay=${to}`),
+        request<Finance>("/drivers/me/finance"),
       ]);
       setTodayFare(earnings.tongCuocDaHoanTat);
+      setCompanyDue(finance.con_phai_nop);
       const roster = [driverForView(self)];
       setDriver(roster[0]);
       const current = [...assigned.items, ...picked.items, ...delivering.items].map(order => orderForView(order, roster));
@@ -61,7 +63,13 @@ export default function DriverDashboardPage() {
     return () => { clearTimeout(initial); clearInterval(timer); };
   }, [refresh]);
 
-  const handleToggleOnline = () => showToast("Trạng thái trực tuyến hiện được quản lý ở backend.", "info");
+  const handleToggleOnline = async () => {
+    try {
+      await request("/drivers/me/availability", "POST", { online: !isOnline });
+      await refresh();
+      showToast("Đã cập nhật trạng thái nhận đơn.", "success");
+    } catch (cause) { showToast((cause as Error).message, "error"); }
+  };
   const handleTriggerIncomingOrder = () => {
     if (activeOrder?.status === "DA_GAN") setIncomingOrder(activeOrder);
     else showToast("Chưa có đơn mới được phân công cho bạn.", "info");
@@ -154,13 +162,13 @@ export default function DriverDashboardPage() {
 
           <div className="bg-white border border-stone-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs text-center">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-stone-400 block">
-              Đánh giá sao
+              Cần nộp công ty
             </span>
             <div className="text-xl sm:text-3xl font-extrabold text-stone-900 mt-1 flex items-center justify-center gap-1">
-              <span className="text-amber-500">★</span> {averageRating}
+              {formatVND(Number(companyDue))}
             </div>
             <span className="text-[10px] text-amber-700 font-semibold hidden sm:inline">
-              {ratedTrips.length} lượt đánh giá
+              Thanh toán tại mục Thu nhập
             </span>
           </div>
         </section>
@@ -286,8 +294,8 @@ export default function DriverDashboardPage() {
             className="p-4 rounded-xl bg-white border border-stone-200 hover:border-amber-300 transition-colors shadow-2xs space-y-1"
           >
             <span className="text-xl">💳</span>
-            <h4 className="font-bold text-stone-900 text-xs sm:text-sm">Ví tài xế & COD</h4>
-            <p className="text-[11px] text-stone-500">Đối soát tiền mặt và rút thu nhập</p>
+            <h4 className="font-bold text-stone-900 text-xs sm:text-sm">Thu nhập & công nợ</h4>
+            <p className="text-[11px] text-stone-500">Xem phần 80% và nộp 20% cho công ty</p>
           </Link>
         </section>
       </main>

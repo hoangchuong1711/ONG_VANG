@@ -11,6 +11,7 @@ const messages: Record<string, string> = {
   INVALID_CREDENTIALS: "Số điện thoại hoặc mật khẩu không đúng.",
   ACCOUNT_LOCKED: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.",
   ACCOUNT_ALREADY_EXISTS: "Số điện thoại này đã có tài khoản.",
+  ALREADY_EXISTS: "Số điện thoại này đã có tài khoản.",
   VALIDATION_ERROR: "Thông tin chưa hợp lệ. Kiểm tra số điện thoại và mật khẩu.",
   CSRF_INVALID: "Phiên biểu mẫu đã hết hạn. Vui lòng thử lại.",
 };
@@ -106,8 +107,6 @@ function AuthForm() {
             onChange={event => setPassword(event.target.value)}
             autoComplete={tab === "login" ? "current-password" : "new-password"} required />
         </label>
-        {tab === "login" && <Link href="/forgot-password"
-          className="block text-right text-sm font-semibold text-amber-800 hover:underline">Quên mật khẩu?</Link>}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
         <button type="submit" disabled={busy}
           className="w-full rounded-xl bg-amber-400 px-4 py-3 font-extrabold hover:bg-amber-300 disabled:opacity-60">

@@ -4,18 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Navbar } from "@/components/layout/Navbar";
-import { api, type Order, type PaymentChoice, type PaymentMethod, type Quote, vnd } from "@/lib/live-orders";
+import { api, type Order, type Quote, vnd } from "@/lib/live-orders";
 
 type Form = {
   maKh: string; diemLayHang: string; diemGiaoHang: string; tenNguoiNhan: string;
   sdtNguoiNhan: string; loaiHangHoa: string; ghiChuBaoQuan: string; khoiLuongKg: string;
-  ghiChuGiaoHang: string; benThanhToan: PaymentChoice; phuongThucThanhToan: PaymentMethod;
+  ghiChuGiaoHang: string;
 };
 type Customer = { maKh: string; hoTen: string; soDienThoai: string };
 const initial: Form = {
   maKh: "", diemLayHang: "", diemGiaoHang: "", tenNguoiNhan: "", sdtNguoiNhan: "",
   loaiHangHoa: "Tài liệu", ghiChuBaoQuan: "", khoiLuongKg: "1.00", ghiChuGiaoHang: "",
-  benThanhToan: "NGUOI_DAT", phuongThucThanhToan: "TIEN_MAT",
 };
 
 export function LiveOrderForm({ dispatcher = false }: { dispatcher?: boolean }) {
@@ -61,7 +60,6 @@ export function LiveOrderForm({ dispatcher = false }: { dispatcher?: boolean }) 
     ...(dispatcher ? { maKh: form.maKh } : {}), diemLayHang: form.diemLayHang.trim(),
     diemGiaoHang: form.diemGiaoHang.trim(),
     kienHang: [{ loaiHangHoa: form.loaiHangHoa.trim(), ghiChuBaoQuan: form.ghiChuBaoQuan.trim(), khoiLuongKg: form.khoiLuongKg }],
-    benThanhToan: form.benThanhToan, phuongThucThanhToan: form.phuongThucThanhToan,
   };
 
   async function requestQuote() {
@@ -137,17 +135,10 @@ export function LiveOrderForm({ dispatcher = false }: { dispatcher?: boolean }) 
           <div className="grid gap-4 sm:grid-cols-2">{field("Tên người nhận", "tenNguoiNhan")}{field("SĐT người nhận", "sdtNguoiNhan", "09xxxxxxxx", "tel")}</div>
         </section>
         <section className="space-y-4 rounded-2xl border border-stone-200 bg-white p-5">
-          <h2 className="text-lg font-bold">Kiện và thanh toán</h2>
+          <h2 className="text-lg font-bold">Kiện hàng</h2>
           <div className="grid gap-4 sm:grid-cols-2">{field("Loại hàng hóa", "loaiHangHoa")}{field("Khối lượng (kg)", "khoiLuongKg", "1.00", "number")}</div>
           {field("Ghi chú bảo quản", "ghiChuBaoQuan")}{field("Ghi chú giao hàng", "ghiChuGiaoHang")}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-sm font-semibold">Bên trả cước
-              <select value={form.benThanhToan} onChange={event => change("benThanhToan", event.target.value as PaymentChoice)} className="mt-1.5 w-full rounded-xl border border-stone-300 px-3 py-2.5">
-                <option value="NGUOI_DAT">Người đặt</option><option value="NGUOI_NHAN">Người nhận</option></select></label>
-            <label className="text-sm font-semibold">Phương thức trả
-              <select value={form.phuongThucThanhToan} onChange={event => change("phuongThucThanhToan", event.target.value as PaymentMethod)} className="mt-1.5 w-full rounded-xl border border-stone-300 px-3 py-2.5">
-                <option value="TIEN_MAT">Tiền mặt</option><option value="VNPAY_QR">VNPay QR</option></select></label>
-          </div>
+          <p className="text-sm text-stone-600">Người đặt trả cước trực tiếp cho tài xế khi giao hàng.</p>
           <button type="button" onClick={requestQuote} disabled={busy !== null} className="rounded-xl bg-stone-900 px-5 py-3 font-bold text-white disabled:opacity-50">{busy === "quote" ? "Đang báo giá..." : "Kiểm tra địa chỉ và báo giá"}</button>
         </section>
         {quote && <section className="space-y-3 rounded-2xl border border-amber-300 bg-amber-50 p-5">

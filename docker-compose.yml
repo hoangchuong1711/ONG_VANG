@@ -21,7 +21,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       SQLCMDPASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
-      DATABASE_NAME: ${MSSQL_DATABASE:-mini_ong_vang_design_v1}
+      DATABASE_NAME: ${MSSQL_DATABASE:-mini_ong_vang_design_v2_demo}
     volumes:
       - ./scripts/init-sqlserver.sql:/init.sql:ro
     entrypoint: ["/bin/bash", "-ec"]
@@ -38,11 +38,13 @@ services:
       context: ./src/backend
 
     environment:
-      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=${MSSQL_DATABASE:-mini_ong_vang_design_v1};encrypt=true;trustServerCertificate=true"
-      DB_USER: sa
-      DB_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
-      DEMO_SEED: ${DEMO_SEED:-false}
-      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=${MSSQL_DATABASE:-mini_ong_vang_design_v2_demo};encrypt=true;trustServerCertificate=true"
+      DB_USER: ${APP_DB_USER:-sa}
+      DB_PASSWORD: ${APP_DB_PASSWORD:-${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}}
+      MIGRATION_DB_USER: sa
+      MIGRATION_DB_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
+      DESIGN_V2_DEMO: ${DESIGN_V2_DEMO:-true}
+      DESIGN_V2_RECONCILE_JOB: ${DESIGN_V2_RECONCILE_JOB:-false}
       ROUTE_PROVIDER: ${ROUTE_PROVIDER:-fake}
       ROUTE_MAX_DISTANCE_KM: ${ROUTE_MAX_DISTANCE_KM:-30}
       GOONG_API_KEY: ${GOONG_API_KEY:-}
@@ -51,7 +53,7 @@ services:
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
       VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
       VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-}
-      DRIVER_RETURN_URL: ${DRIVER_RETURN_URL:-http://localhost:3001/driver/orders}
+      DRIVER_RETURN_URL: ${DRIVER_RETURN_URL:-http://localhost:3001/driver/wallet}
       DISPATCHER_RETURN_URL: ${DISPATCHER_RETURN_URL:-http://localhost:3001/dispatcher/reports}
       VNPAY_QUERY_IP: ${VNPAY_QUERY_IP:-}
       BREVO_API_KEY: ${BREVO_API_KEY:-}

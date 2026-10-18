@@ -440,7 +440,11 @@ export default function DispatcherOrderDetailPage() {
                     </div>
                   </div>
                   <span className="font-bold text-emerald-700 text-xs">
-                    {d.routeKm ? `${d.routeKm} km · ${Math.ceil((d.routeSeconds ?? 0) / 60)} phút` : "Dự phòng"}
+                    {d.routeKm
+                      ? d.routeSource === "DEMO_KHOANG_CACH"
+                        ? `${d.routeKm} km (khoảng cách thẳng)`
+                        : `${d.routeKm} km · ${Math.ceil((d.routeSeconds ?? 0) / 60)} phút`
+                      : "Dự phòng"}
                   </span>
                 </label>
               ))}

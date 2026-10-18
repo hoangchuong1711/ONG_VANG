@@ -466,7 +466,11 @@ export default function DispatcherLiveBoardPage() {
                             isIdle ? "text-emerald-700" : "text-amber-700"
                           }`}
                         >
-                          {d.routeKm ? `${d.routeKm} km · ${Math.ceil((d.routeSeconds ?? 0) / 60)} phút` : "Thứ tự dự phòng"}
+                          {d.routeKm
+                            ? d.routeSource === "DEMO_KHOANG_CACH"
+                              ? `${d.routeKm} km (khoảng cách thẳng)`
+                              : `${d.routeKm} km · ${Math.ceil((d.routeSeconds ?? 0) / 60)} phút`
+                            : "Thứ tự dự phòng"}
                         </span>
                         <span className="text-stone-400 text-[11px] font-medium">{d.routeSource === "GOONG" ? "Tuyến Goong" : d.routeSource === "FAKE" ? "Tuyến FAKE" : "Theo thời điểm rảnh"}</span>
                       </div>

@@ -4,27 +4,23 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { api, type Driver } from "@/lib/live-orders";
-import type { CodDriver } from "@/lib/finance";
 import { driverForView, type DispatchDriver } from "@/lib/dispatch-view";
 import type { DriverStatus } from "@/lib/types";
-import { useToast } from "@/components/ui/Toast";
 
 type FilterStatus = "ALL" | DriverStatus;
 
 export default function DispatcherFleetPage() {
-  const { showToast } = useToast();
   const [drivers, setDrivers] = useState<DispatchDriver[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("ALL");
   const [searchDistrict, setSearchDistrict] = useState("ALL");
+  const [error, setError] = useState("");
   const [editing, setEditing] = useState<DispatchDriver | null>(null);
   const [address, setAddress] = useState("");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const refresh = useCallback(async () => {
     try {
-      const [page, cod] = await Promise.all([api<{ items: Driver[] }>("/drivers?size=100"), api<CodDriver[]>("/cod/drivers")]);
-      const holdings = new Map(cod.map((item) => [item.maTx, Number(item.soTienDangGiu)]));
-      setDrivers(page.items.map((item) => ({ ...driverForView(item), codCashHolding: holdings.get(item.maTx) ?? 0 })));
+      const page = await api<{ items: Driver[] }>("/drivers?size=100");
+      setDrivers(page.items.map((item) => driverForView(item)));
       setError("");
     }
     catch (cause) { setError((cause as Error).message); }
@@ -40,8 +36,6 @@ export default function DispatcherFleetPage() {
   const onlineIdleCount = drivers.filter(driver => driver.status === "ONLINE_IDLE").length;
   const onlineBusyCount = drivers.filter(driver => driver.status === "ONLINE_BUSY").length;
   const offlineCount = drivers.filter(driver => driver.status === "OFFLINE").length;
-
-  const handlePingDriver = (driver: DispatchDriver) => { setEditing(driver); setAddress(driver.currentDistrict === "Chưa cấu hình vị trí demo" ? "" : driver.currentDistrict); };
   const savePosition = async () => {
     if (!editing || !address.trim() || saving) return;
     setSaving(true);
@@ -49,7 +43,8 @@ export default function DispatcherFleetPage() {
       await api(`/drivers/${encodeURIComponent(editing.id)}/demo-position`, {
         method: "POST", body: JSON.stringify({ diaChi: address.trim() }),
       });
-      setEditing(null); await refresh(); showToast("Đã lưu vị trí demo cố định từ Goong.", "success");
+      setEditing(null);
+      await refresh();
     } catch (cause) { setError((cause as Error).message); }
     finally { setSaving(false); }
   };
@@ -70,7 +65,7 @@ export default function DispatcherFleetPage() {
               Giám Sát Đội Xe & Tài Xế Tác Chiến
             </h1>
             <p className="text-xs sm:text-sm text-stone-500 mt-1">
-              Theo dõi trạng thái trực tuyến, khu vực tác chiến và hạn mức tiền mặt COD tạm giữ của đội ngũ tài xế
+              Theo dõi trạng thái trực tuyến, khu vực tác chiến của đội ngũ tài xế
             </p>
           </div>
 
@@ -170,7 +165,6 @@ export default function DispatcherFleetPage() {
                   <th className="p-4 whitespace-nowrap">Trạng thái</th>
                   <th className="p-4 whitespace-nowrap">Cuốc hoàn tất</th>
                   <th className="p-4 whitespace-nowrap">Đánh giá</th>
-                  <th className="p-4 whitespace-nowrap">COD tạm giữ</th>
                   <th className="p-4 pr-6 text-right whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
@@ -178,8 +172,6 @@ export default function DispatcherFleetPage() {
                 {filteredDrivers.map((d) => {
                   const isIdle = d.status === "ONLINE_IDLE";
                   const isBusy = d.status === "ONLINE_BUSY";
-                  const hasHighCod = d.codCashHolding > 500000;
-
                   return (
                     <tr key={d.id} className="hover:bg-stone-50/70 transition-colors">
                       <td className="p-4 pl-6">
@@ -213,20 +205,6 @@ export default function DispatcherFleetPage() {
                         <span className="font-bold text-amber-700">—</span>
                         <div className="text-xs text-stone-500 font-medium">Chưa có thống kê</div>
                       </td>
-                      <td className="p-4">
-                        <span
-                          className={`font-bold ${
-                            hasHighCod ? "text-rose-700" : "text-stone-800"
-                          }`}
-                        >
-                          —
-                        </span>
-                        {hasHighCod && (
-                          <span className="block text-[11px] text-rose-600 font-medium">
-                            Cần nộp về quỹ
-                          </span>
-                        )}
-                      </td>
                       <td className="p-4 pr-6 text-right space-x-2">
                         <a
                           href={`tel:${d.phone}`}
@@ -234,12 +212,10 @@ export default function DispatcherFleetPage() {
                         >
                           Gọi
                         </a>
-                        <button
-                          type="button"
-                          onClick={() => handlePingDriver(d)}
-                          className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-200 transition-colors cursor-pointer"
-                        >
-                          Sửa vị trí demo
+                        <button type="button"
+                          onClick={() => { setEditing(d); setAddress(d.currentDistrict === "Chưa cấu hình vị trí demo" ? "" : d.currentDistrict); }}
+                          className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-200">
+                          Địa chỉ cố định
                         </button>
                       </td>
                     </tr>
@@ -252,12 +228,17 @@ export default function DispatcherFleetPage() {
       </main>
       {editing && <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
         <div className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 text-stone-800">
-          <h2 className="text-lg font-extrabold">Vị trí demo cố định · {editing.name}</h2>
-          <p className="text-xs text-stone-500">Địa chỉ được Goong geocode trước khi lưu vào DB; không phải GPS trực tiếp.</p>
-          {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
-          <input value={address} onChange={event => setAddress(event.target.value)} maxLength={255} className="w-full rounded-xl border px-3 py-2" />
-          <div className="flex justify-end gap-2"><button onClick={() => setEditing(null)} className="rounded-xl border px-4 py-2">Hủy</button>
-            <button onClick={() => void savePosition()} disabled={saving || !address.trim()} className="rounded-xl bg-amber-500 px-4 py-2 font-bold disabled:opacity-50">Lưu</button></div>
+          <h2 className="text-lg font-extrabold">Địa chỉ cố định · {editing.name}</h2>
+          <p className="text-xs text-stone-500">Địa chỉ được xác định tọa độ trước khi lưu để dùng cho bản đồ giao hàng.</p>
+          <input value={address} onChange={event => setAddress(event.target.value)} maxLength={255}
+            className="w-full rounded-xl border px-3 py-2" placeholder="Nhập địa chỉ đầy đủ" />
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setEditing(null)} className="rounded-xl border px-4 py-2">Hủy</button>
+            <button onClick={() => void savePosition()} disabled={saving || !address.trim()}
+              className="rounded-xl bg-amber-500 px-4 py-2 font-bold disabled:opacity-50">
+              {saving ? "Đang lưu..." : "Lưu địa chỉ"}
+            </button>
+          </div>
         </div>
       </div>}
     </div>

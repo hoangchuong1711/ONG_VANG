@@ -4,8 +4,8 @@ export interface AuthUser {
   maNguoiDung: string;
   hoTen: string;
   vaiTro: Role;
-  maKh: string | null;
-  maTx: string | null;
+  maKh?: string | null;
+  maTx?: string | null;
 }
 
 export const homeForRole: Record<Role, string> = {
@@ -34,12 +34,12 @@ async function readJson(response: Response) {
 async function csrf(refresh = false): Promise<string> {
   if (csrfToken && !refresh) return csrfToken;
 
-  const response = await fetch("/api/auth/csrf", { credentials: "same-origin", cache: "no-store" });
+  const response = await fetch("/api/v2/auth/csrf", { credentials: "same-origin", cache: "no-store" });
   const body = await readJson(response);
-  if (!response.ok || typeof body?.csrfToken !== "string") {
+  if (!response.ok || typeof body?.token !== "string") {
     throw new AuthError(body?.code ?? "SERVER_ERROR", response.status);
   }
-  const token: string = body.csrfToken;
+  const token: string = body.token;
   csrfToken = token;
   return token;
 }
@@ -63,29 +63,17 @@ async function post<T>(path: string, body?: object): Promise<T> {
 }
 
 export async function login(username: string, password: string): Promise<AuthUser> {
-  const user = await post<AuthUser>("/api/auth/login", { username, password });
+  const user = await post<AuthUser>("/api/v2/auth/login", { username, password });
   await csrf(true); // Login rotates the session and token.
   return user;
 }
 
 export async function register(hoTen: string, soDienThoai: string, email: string, password: string): Promise<AuthUser> {
-  return post<AuthUser>("/api/auth/register", { hoTen, soDienThoai, email, password });
-}
-
-export async function requestPasswordReset(soDienThoai: string, email: string): Promise<{ message: string }> {
-  return post("/api/auth/forgot-password", { soDienThoai, email });
-}
-
-export async function verifyResetOtp(soDienThoai: string, email: string, otp: string): Promise<{ resetToken: string }> {
-  return post("/api/auth/verify-reset-otp", { soDienThoai, email, otp });
-}
-
-export async function resetPassword(soDienThoai: string, email: string, resetToken: string, newPassword: string): Promise<void> {
-  await post("/api/auth/reset-password", { soDienThoai, email, resetToken, newPassword });
+  return post<AuthUser>("/api/v2/auth/register", { username: soDienThoai, hoTen, soDienThoai, email, password });
 }
 
 export async function currentUser(): Promise<AuthUser | null> {
-  const response = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
+  const response = await fetch("/api/v2/auth/me", { credentials: "same-origin", cache: "no-store" });
   if (response.status === 401 || response.status === 403) {
     csrfToken = null;
     return null;
@@ -97,7 +85,7 @@ export async function currentUser(): Promise<AuthUser | null> {
 
 export async function logout(): Promise<void> {
   try {
-    await post<void>("/api/auth/logout");
+    await post<void>("/api/v2/auth/logout");
   } finally {
     csrfToken = null;
   }

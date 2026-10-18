@@ -73,7 +73,7 @@ export function LiveOrderDetail({ id, dispatcher = false }: { id: string; dispat
           <p><strong>Lấy:</strong> {order.diemLayHang}</p><p><strong>Giao:</strong> {order.diemGiaoHang}</p>
           <p><strong>Người nhận:</strong> {order.tenNguoiNhan ?? "—"} · {order.sdtNguoiNhan}</p>
           <p><strong>Kiện:</strong> {order.kienHang.map(item => `${item.loaiHangHoa} (${item.khoiLuongKg} kg)`).join(", ")}</p>
-          <p><strong>Trả cước:</strong> {order.benThanhToan === "NGUOI_DAT" ? "Người đặt" : "Người nhận"} · {order.phuongThucThanhToan === "TIEN_MAT" ? "Tiền mặt" : "VNPay QR"}</p>
+          <p><strong>Trả cước:</strong> Người đặt trả trực tiếp cho tài xế khi giao hàng.</p>
         </section>
         {dispatcher && order.trangThai === "CHO_GAN" && <section className="space-y-3 rounded-2xl border border-amber-200 bg-white p-5">
           <h2 className="text-lg font-bold">Gán tài xế</h2>
@@ -99,7 +99,7 @@ export function LiveOrderDetail({ id, dispatcher = false }: { id: string; dispat
             <dt>Phụ thu</dt><dd className="text-right">{vnd(order.cuoc.tienPhuThu)}</dd>
             <dt>Giảm giá</dt><dd className="text-right">−{vnd(order.cuoc.tienGiamGia)}</dd>
             <dt className="border-t pt-2 font-bold">Tổng</dt><dd className="border-t pt-2 text-right text-xl font-extrabold">{vnd(order.cuoc.tongCuoc)}</dd></dl>
-          <p className="mt-3 text-xs text-stone-600">Biểu phí {order.cuoc.maBieuPhi} v{order.cuoc.phienBanBieuPhi} · {order.thanhToan.trangThai}</p>
+          <p className="mt-3 text-xs text-stone-600">Biểu phí {order.cuoc.maBieuPhi} · Cước được chốt khi tạo đơn.</p>
         </section>
         <section className="rounded-2xl border bg-white p-5"><h2 className="mb-3 text-lg font-bold">Lịch sử trạng thái</h2>
           <ol className="space-y-3">{order.nhatKy.map(event => <li key={event.thuTu} className="border-l-2 border-amber-500 pl-3 text-sm">

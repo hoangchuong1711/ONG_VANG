@@ -1,110 +1,95 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { formatVND } from "@/lib/utils";
 import { api, type Driver, type Order } from "@/lib/live-orders";
-import type { DriverEarnings } from "@/lib/finance";
+import { request, type Finance } from "@/lib/api-client";
 
 export default function DriverWalletPage() {
   const [driver, setDriver] = useState<Driver | null>(null);
-  const [earnings, setEarnings] = useState<DriverEarnings | null>(null);
-  const [cashOrders, setCashOrders] = useState<Order[]>([]);
+  const [finance, setFinance] = useState<Finance | null>(null);
+  const [completed, setCompleted] = useState<Order[]>([]);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
   const refresh = useCallback(async () => {
     try {
       const [self, money, orders] = await Promise.all([
-        api<Driver>("/drivers/me"),
-        api<DriverEarnings>("/drivers/me/earnings?tuNgay=2000-01-01&denNgay=2100-01-01"),
+        api<Driver>("/drivers/me"), request<Finance>("/drivers/me/finance"),
         api<{ items: Order[] }>("/orders?trangThai=HOAN_TAT&size=100"),
       ]);
-      setDriver(self); setEarnings(money);
-      setCashOrders(orders.items.filter((order) => order.phuongThucThanhToan === "TIEN_MAT" && order.thanhToan.soTienConPhaiThu === "0.00"));
-      setError("");
+      setDriver(self); setFinance(money); setCompleted(orders.items); setError("");
     } catch (cause) { setError((cause as Error).message); }
   }, []);
-  useEffect(() => { const timer = setTimeout(() => { void refresh(); }, 0); return () => clearTimeout(timer); }, [refresh]);
+  useEffect(() => {
+    const initial = setTimeout(() => { void refresh(); }, 0);
+    return () => clearTimeout(initial);
+  }, [refresh]);
+
+  async function pay() {
+    if (!driver || busy) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const storageKey = `settlement-key:${driver.maTx}`;
+      const key = localStorage.getItem(storageKey) ?? crypto.randomUUID();
+      localStorage.setItem(storageKey, key);
+      const payment = await request<{ payment_url?: string; trang_thai: string }>("/drivers/me/settlements", "POST", {}, key);
+      if (["THANH_CONG", "KHONG_THU"].includes(payment.trang_thai)) localStorage.removeItem(storageKey);
+      if (payment.payment_url) window.location.assign(payment.payment_url);
+      else { setNotice(`Giao dịch hiện tại: ${payment.trang_thai}. Hãy tra cứu trạng thái trước khi thanh toán lại.`); await refresh(); }
+    } catch (cause) { setError((cause as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  async function reconcile() {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await request("/drivers/me/settlements/reconcile", "POST", {});
+      await refresh(); setNotice("Đã đối chiếu kết quả với VNPay.");
+    } catch (cause) { setError((cause as Error).message); }
+    finally { setBusy(false); }
+  }
+
   const isOnline = driver?.trangThaiHoatDong === "ONLINE";
-  const balance = Number(earnings?.phanTaiXeDuDieuKienChiTra ?? 0);
-  const codHold = Number(earnings?.tienMatDangGiu ?? 0);
+  const income = Number(finance?.thu_nhap_tai_xe ?? 0);
+  const due = Number(finance?.con_phai_nop ?? 0);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
-      <DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} />
-
-      <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
-        {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
-        {/* Header */}
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
-            Ví tài xế & đối soát tiền mặt
-          </h1>
-          <p className="text-xs text-stone-500 mt-0.5">
-            Theo dõi thu nhập phát sinh, đủ điều kiện chi trả và tiền mặt đang giữ
-          </p>
+  return <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
+    <DriverNavbar isOnline={isOnline} onToggleOnline={() => {}} showStatus={false} />
+    <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
+      {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
+      {notice && <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{notice}</p>}
+      <div><h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">Thu nhập & nộp tiền công ty</h1>
+        <p className="text-xs text-stone-500 mt-0.5">Cước khách trả trực tiếp; hệ thống ghi thu nhập tài xế 80% và phần công ty 20%.</p></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-stone-900 text-white rounded-2xl p-5 shadow-sm space-y-3 relative overflow-hidden">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">Thu nhập tài xế phát sinh</span>
+          <div className="text-3xl font-black">{formatVND(income)}</div>
+          <p className="text-[11px] text-stone-400">80% cước các đơn đã hoàn tất; chưa phải số dư ví hoặc khoản đã chuyển về ngân hàng.</p>
         </div>
-
-        {/* 2 THẺ TÀI CHÍNH CHÍNH */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Card 1: Số dư thu nhập khả dụng */}
-          <div className="bg-stone-900 text-white rounded-2xl p-5 shadow-sm space-y-3 relative overflow-hidden">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
-              Thu nhập đủ điều kiện chi trả
-            </span>
-            <div className="text-3xl font-black">
-              {formatVND(balance)}
-            </div>
-            <p className="text-[11px] text-stone-400">
-              Chưa ghi nhận chuyển khoản thực tế về ngân hàng tài xế.
-            </p>
-            <p className="text-xs text-amber-300">Phát sinh: {formatVND(Number(earnings?.phanTaiXePhatSinh ?? 0))}</p>
-          </div>
-
-          {/* Card 2: Tiền COD tạm giữ cần nộp */}
-          <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-2xs space-y-3">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-              Tiền mặt COD đang tạm giữ
-            </span>
-            <div className="text-3xl font-black text-rose-600">
-              {formatVND(codHold)}
-            </div>
-            <p className="text-[11px] text-stone-500">
-              Tiền cước đã thu hộ và chưa được đối soát nộp COD.
-            </p>
-            <p className="text-[11px] text-stone-500">Thu nhập đang chờ COD: {formatVND(Number(earnings?.thuNhapDangChoCod ?? 0))}. Điều phối viên thực hiện thanh toán COD qua Sandbox.</p>
-          </div>
+        <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-2xs space-y-3">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">Cần nộp công ty</span>
+          <div className="text-3xl font-black text-rose-600">{formatVND(due)}</div>
+          <p className="text-[11px] text-stone-500">Đang thanh toán: {formatVND(Number(finance?.dang_thanh_toan ?? 0))} · Đã nộp: {formatVND(Number(finance?.da_nop ?? 0))}</p>
+          <div className="flex flex-wrap gap-2"><button type="button" disabled={busy || due <= 0} onClick={() => void pay()}
+            className="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-black text-stone-950 disabled:opacity-50">Thanh toán qua VNPay</button>
+            {finance?.giao_dich_dang_cho && <button type="button" disabled={busy} onClick={() => void reconcile()}
+              className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold disabled:opacity-50">Tra cứu giao dịch</button>}</div>
         </div>
-
-        {/* LỊCH SỬ BIẾN ĐỘNG SỐ DƯ */}
-        <section className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-          <h3 className="font-extrabold text-stone-900 text-sm uppercase tracking-wider">
-            Đơn đã thu tiền mặt
-          </h3>
-
-          <div className="divide-y divide-stone-100">
-            {cashOrders.length === 0 && <p className="py-6 text-center text-sm text-stone-500">Chưa có đơn đã thu tiền mặt.</p>}
-            {cashOrders.map((order) => (
-                <div key={order.maDon} className="py-3 flex items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <div className="font-bold text-xs sm:text-sm text-stone-900">
-                      Thu tiền mặt đơn {order.maDon}
-                    </div>
-                    <div className="text-[11px] text-stone-400 font-mono">
-                      {new Date(order.thoiGianTao).toLocaleString("vi-VN")}
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="font-black text-sm sm:text-base text-emerald-600">{formatVND(Number(order.cuoc.tongCuoc))}</span>
-                  </div>
-                </div>
-            ))}
-          </div>
-        </section>
-      </main>
-
-      <DriverBottomNav />
-    </div>
-  );
+      </div>
+      <section className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
+        <h2 className="font-extrabold text-stone-900 text-sm uppercase tracking-wider">Đơn đã hoàn tất</h2>
+        <div className="divide-y divide-stone-100">
+          {completed.length === 0 && <p className="py-6 text-center text-sm text-stone-500">Chưa có đơn hoàn tất.</p>}
+          {completed.map(order => <div key={order.maDon} className="py-3 flex items-center justify-between gap-3">
+            <div><div className="font-bold text-xs sm:text-sm text-stone-900">Đơn {order.maDon}</div>
+              <div className="text-[11px] text-stone-400">{new Date(order.thoiGianTao).toLocaleString("vi-VN")}</div></div>
+            <span className="font-black text-sm sm:text-base text-emerald-600">{formatVND(Number(order.cuoc.tongCuoc))}</span>
+          </div>)}</div>
+      </section>
+    </main><DriverBottomNav />
+  </div>;
 }

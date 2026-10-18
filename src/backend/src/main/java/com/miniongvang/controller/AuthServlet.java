@@ -1,16 +1,12 @@
 package com.miniongvang.controller;
 
 import java.io.IOException;
-import java.util.Map;
-
 import com.miniongvang.config.PersistenceContext;
 import com.miniongvang.config.PersistenceListener;
 import com.miniongvang.dto.auth.AuthDtos.Csrf;
 import com.miniongvang.dto.auth.AuthDtos.User;
 import com.miniongvang.security.AuthSession;
 import com.miniongvang.service.AuthService;
-import com.miniongvang.service.BrevoEmailSender;
-import com.miniongvang.service.PasswordRecoveryService;
 import com.miniongvang.web.AuthRequests;
 import com.miniongvang.web.JsonRequests;
 
@@ -22,17 +18,12 @@ import jakarta.servlet.http.HttpSession;
 import tools.jackson.databind.JsonNode;
 
 @WebServlet({"/api/auth/csrf", "/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/logout",
-        "/api/auth/forgot-password", "/api/auth/verify-reset-otp", "/api/auth/reset-password"})
+        "/api/auth/change-password"})
 public final class AuthServlet extends HttpServlet {
     //lấy ra service để xử lý các request liên quan đến auth và password recovery
     private AuthService service() {
         PersistenceContext persistence = (PersistenceContext) getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
         return new AuthService(persistence.entityManagerFactory());
-    }
-    //lấy ra service để xử lý các request liên quan đến password recovery
-    private PasswordRecoveryService recovery() {
-        PersistenceContext persistence = (PersistenceContext) getServletContext().getAttribute(PersistenceListener.ATTRIBUTE);
-        return new PasswordRecoveryService(persistence.entityManagerFactory(), BrevoEmailSender.fromEnvironment(), java.time.Clock.systemUTC());
     }
 
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -85,15 +76,10 @@ public final class AuthServlet extends HttpServlet {
             switch (path) {
                 case "/api/auth/register" -> register(resp, body);
                 case "/api/auth/login" -> login(req, resp, body);
-                case "/api/auth/forgot-password" -> forgotPassword(req, resp, body);
-                case "/api/auth/verify-reset-otp" -> verifyResetOtp(req, resp, body);
-                case "/api/auth/reset-password" -> resetPassword(req, resp, body);
                 default -> error(resp, 404, "RESOURCE_NOT_FOUND");
             }
         } catch (AuthRequests.InvalidRequest failure) {
             error(resp, 400, "VALIDATION_ERROR");
-        } catch (PasswordRecoveryService.RecoveryException failure) {
-            error(resp, failure.status(), failure.code());
         } catch (RuntimeException failure) {
             getServletContext().log("Auth POST failed", failure);
             if (!resp.isCommitted()) error(resp, 500, "INTERNAL_ERROR");
@@ -116,23 +102,6 @@ public final class AuthServlet extends HttpServlet {
         }
         AuthSession.start(req, result.user().maNguoiDung(), result.authVersion());
         send(resp, 200, result.user());
-    }
-
-    private void forgotPassword(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        var request = AuthRequests.forgotPassword(body);
-        recovery().request(request.soDienThoai(), request.email(), req.getRemoteAddr());
-        send(resp, 200, Map.of("message", "Neu thong tin khop tai khoan, ma OTP se duoc gui qua email."));
-    }
-    private void verifyResetOtp(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        var request = AuthRequests.verifyResetOtp(body);
-        String token = recovery().verify(request.soDienThoai(), request.email(), request.otp(), req.getRemoteAddr());
-        send(resp, 200, Map.of("resetToken", token));
-    }
-    private void resetPassword(HttpServletRequest req, HttpServletResponse resp, JsonNode body) throws IOException {
-        var request = AuthRequests.resetPassword(body);
-        recovery().reset(request.soDienThoai(), request.email(), request.resetToken(),
-                request.newPassword(), req.getRemoteAddr());
-        send(resp, 200, Map.of("message", "Mat khau da duoc thay doi."));
     }
 
     private static void noStore(HttpServletResponse resp) { resp.setHeader("Cache-Control", "no-store"); }

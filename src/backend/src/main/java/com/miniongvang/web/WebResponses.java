@@ -1,8 +1,8 @@
 package com.miniongvang.web;
 
-import com.miniongvang.dto.common.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Map;
 import tools.jackson.databind.ObjectMapper;
 
 /** HTTP serialization shared by controllers and the security filter. */
@@ -21,6 +21,6 @@ public final class WebResponses {
     }
 
     public static void error(HttpServletResponse response, int status, String code, String message) throws IOException {
-        json(response, status, ApiErrorResponse.of(code, message));
+        json(response, status, Map.of("code", code, "message", message));
     }
 }

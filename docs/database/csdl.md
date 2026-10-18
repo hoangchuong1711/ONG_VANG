@@ -1,12 +1,11 @@
 # Thiết kế CSDL đề xuất — Mini Ong Vang / DBMS330284
 
-Ngày cập nhật: 18/10/2026. **BẢN DỰ THẢO ĐỂ DUYỆT**, thay toàn bộ nội dung tổng hợp schema cũ. Chưa áp dụng vào DB, chưa thay migration, chưa sửa backend/frontend. SQL trong tài liệu là định nghĩa cho mô hình mới trên SQL Server 2022, không phải script nâng cấp V1–V12. Mục 0 chỉ rõ cách tách file V1–V9 cho designV2; mục 13 là dữ liệu demo SQL. Không chạy nguyên tài liệu trên database hiện tại. Các ví dụ kiểm thử/phân quyền ở cuối là các kịch bản riêng, không nối vào khối tạo đối tượng.
+Ngày cập nhật: 18/10/2026. Đây là baseline designV2 trên SQL Server 2022, không phải script nâng cấp V1–V12. SQL V1–V9 đã được tách từ các khối `-- FILE:` và chạy trên database designV2 demo/test riêng; backend và giao diện V2 dùng các đối tượng này. Không chạy nguyên tài liệu trên database V1. Các ví dụ kiểm thử/phân quyền ở cuối là kịch bản riêng, không nối vào khối tạo đối tượng.
 
 ## 0. Bố cục file migration để chia việc trong nhóm
 
 Đây là **baseline mới designV2 trên database mới**, không đánh lại số hay ghi đè V1–V12
-của designV1. Bảng dưới là tên file đích để thành viên tách từ tài liệu; chưa tạo file .sql
-hoặc đổi cấu hình chương trình trong lần sửa tài liệu này.
+của designV1. Bảng dưới mô tả các migration đã tách từ tài liệu.
 
 ```text
 src/backend/src/main/resources/db/designV2/sqlserver/
@@ -48,7 +47,7 @@ không phụ thuộc tùy chọn của kết nối trước. Không chèn SET tr
 - DB demo/test: cấu hình **hai locations**, schema ở trên và
   `classpath:db/designV2/sqlserver/demo` → Flyway sắp số V1 → V9 và tự nạp INSERT.
 - Dùng `mini_ong_vang_design_v2_demo` hoặc `mini_ong_vang_design_v2_test` cho V9;
-  tắt `DEMO_SEED` và không gọi SeedCommand. Chưa đổi cấu hình Java trong tài liệu này.
+  không gọi SeedCommand; backend V2 dùng V9 thay cho Java seed.
 - Không đưa designV1 và designV2 vào cùng locations/history, không chạy designV2 lên DB cũ.
   Không chạy V9 ở DB thật hoặc DB chứa dữ liệu cần giữ. Đã chạy file V nào thì giữ checksum;
   các thay đổi sau tạo V tiếp theo. Nếu DB đã áp dụng V9, không bỏ demo location khỏi cấu hình
@@ -65,14 +64,14 @@ không phụ thuộc tùy chọn của kết nối trước. Không chèn SET tr
    credential runtime, không cấp DDL cho bốn role nghiệp vụ.
 3. Tạo DB mới designV2 demo/test đúng tên guard V9; không dùng DB designV1 đã có bảng/history.
 4. Dùng Flyway có module SQL Server, cấu hình locations schema + demo cho DB demo;
-   không bật Java seed. Chưa thay cấu hình `PersistenceContext` đang trỏ designV1.
+   không bật Java seed. `PersistenceContext` chọn designV2 bằng `DB_DESIGN=designV2`.
 5. Chạy migrate lần đầu, kiểm tra schema history V1–V9 success, 16 bảng nghiệp vụ,
    8 tài khoản/30 đơn; chạy validate rồi migrate lần hai phải không nạp trùng.
 6. Chạy các truy vấn đối chiếu mục 10.3/13.3 và test rollback/quyền/đồng thời trên DB đó.
 
-Đã kiểm tra tĩnh cú pháp, thứ tự object/GRANT và tên file; chưa có bằng chứng thực thi
-Flyway/SQL Server trong môi trường này do tải image SQL Server bị Forbidden.
-Không coi việc Java hiện tại khởi động thành công với designV1 là đã kiểm thử bộ designV2.
+Đã chạy Flyway V1–V9 và validate trên SQL Server 2022 local: 8 tài khoản, 30 đơn demo.
+Backend V2 đã khởi động với database demo riêng. Kết quả này chưa thay cho việc kiểm thử
+quyền runtime bằng SQL login hạn quyền và toàn bộ kịch bản đồng thời ở mục 10.
 
 ## 1. Chức năng thay đổi đã thống nhất
 
@@ -154,12 +153,13 @@ Checklist khi review migration: đối chiếu CREATE TABLE với danh sách 16 
 FK tài chính với giao_dich_nop_tien; chỉ role tài xế được bắt đầu thanh toán; không có
 thủ tục nộp thay cho tổng đài; không có mức nợ/hạn nộp để chặn gán đơn. Kiểm tra các tình
 huống 300.000 → 60.000/240.000 và phát sinh thêm khoản trong lúc đang thanh toán ở mục 10.2.
-SQL trong tài liệu mới qua rà tĩnh; bảng/cột đúng phạm vi không có nghĩa code hiện tại đã
-được chuyển đổi hoặc các luồng mới đã được chạy thử.
+Migration V1–V9 đã chạy trên SQL Server 2022 local; ứng dụng V2 đã dùng các SP/view/UDF
+cho luồng đăng nhập, đơn hàng, điều phối và công nợ. Việc quyết toán VNPay thành công vẫn
+cần xác nhận bằng callback Sandbox thật.
 
 ## 2. Mô hình quan hệ và lựa chọn thiết kế
 
-16 bảng: `tai_khoan`, `khach_hang`, `tai_xe`, `phuong_tien`, `cau_hinh_cuoc`, `chinh_sach_thanh_vien`, `cau_hinh_phu_thu`, `don_hang`, `chi_tiet_kien_hang`, `phu_thu_don_hang`, `phan_cong_don_hang`, `nhat_ky_don_hang`, `nhat_ky_kiem_toan`, `phan_chia_cuoc`, `giao_dich_nop_tien`, `su_kien_thanh_toan`.
+16 bảng: `tai_khoan`, `khach_hang`, `tai_xe`, `phuong_tien`, `cau_hinh_cuoc`, `chinh_sach_thanh_vien`, `cau_hinh_phu_thu`, `don_hang`, `chi_tiet_kien_hang`, `phu_thu_don_hang`, `phan_cong_don_hang`, `nhat_ky_don_hang`, `nhat_ky_kiem_toan`, `phan_chia_cuoc`, `giao_dich_nop_tien`, `su_kien_thanh_toan`. Xem [ERD designV2](design-v2-erd.md).
 
 | Quan hệ | Bội số / ý nghĩa |
 |---|---|
@@ -189,7 +189,7 @@ Các cột cuoc_km, cuoc_kg, tien_giam trên đơn là kết quả định giá 
 
 ## 3. [V1] SQL tạo bảng đề xuất
 
-Khối 3–7 là SQL định nghĩa; không có DROP DATABASE, USE, seed hay thao tác lên DB hiện tại. Thứ tự: bảng → index → hàm/view → trigger → thủ tục. Đã rà tĩnh, **chưa biên dịch/chạy SQL Server**. Những trách nhiệm chưa có thủ tục đầy đủ được đánh dấu ở mục 8, không xem bản thảo là backend hoàn chỉnh.
+Khối 3–7 là SQL định nghĩa; không có DROP DATABASE, USE, seed hay thao tác lên DB hiện tại. Thứ tự: bảng → index → hàm/view → trigger → thủ tục. Các migration đã biên dịch và chạy trên SQL Server 2022 local. Những trách nhiệm không có thủ tục riêng được phân định ở mục 8 và tích hợp trong API V2.
 
 ```sql
 -- FILE: V1__create_business_tables.sql
@@ -1673,7 +1673,7 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 
 | Yêu cầu đề bài | Nội dung bản đề xuất | Trạng thái |
 |---|---|---|
-| ≥8 bảng có quan hệ, phân tích 3NF | 16 bảng, bảng quan hệ mục 2, PK/FK mục 3 | Có thiết kế; cần vẽ ERD từ bản đã duyệt |
+| ≥8 bảng có quan hệ, phân tích 3NF | 16 bảng, bảng quan hệ mục 2, PK/FK mục 3 | Có thiết kế và [ERD](design-v2-erd.md) |
 | ≥5 CHECK/UNIQUE/DEFAULT | Vai trò, trạng thái, tiền, kg, thời gian, mã tham chiếu, số điện thoại… | Có SQL |
 | ≥5 trigger | 9 trigger ở mục 6 | Có SQL; chưa chạy multi-row/rollback test |
 | ≥5 view | 8 view ở mục 5 | Có SQL; cần tích hợp màn hình |
@@ -1684,7 +1684,7 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 | Tranh chấp đồng thời | Gán đơn, bắt đầu thanh toán, callback/retry | Có kịch bản; chưa demo |
 | ≥4 Role/Login | 4 role nghiệp vụ + worker + auth backend; 6 user WITHOUT LOGIN cho demo | Có SQL role/user; login thực cấu hình sau |
 | GRANT/REVOKE/DENY | Mục 9 | Có SQL; cần test EXECUTE AS/ứng dụng |
-| App gọi SP/Function, CRUD/search/report | Kiến trúc đích gọi các SP/View/UDF, mục 8 | Chưa sửa code, không ghi đã hoàn thành |
+| App gọi SP/Function, CRUD/search/report | API V2 gọi 12 SP và các view/UDF; workspace dùng API V2 | Đã tích hợp và chạy các luồng chính trên ứng dụng local; còn xác nhận VNPay Sandbox thật |
 | Báo cáo/backup/demo | Dùng thiết kế đã duyệt làm cơ sở | Tài liệu này không thay báo cáo 50–100 trang, backup hay demo thật |
 
 ## 12. Lộ trình chuyển code sau khi duyệt
@@ -1942,10 +1942,11 @@ SELECT ma_tx FROM dbo.phan_cong_don_hang WHERE ket_thuc_luc IS NULL GROUP BY ma_
 SELECT COUNT(*) AS so_giao_dich_da_thu FROM dbo.giao_dich_nop_tien WHERE trang_thai='THANH_CONG';
 ```
 
-Đã phân tích cú pháp cả khối định nghĩa và INSERT bằng SQLFluff T-SQL, kiểm tra 8 username, JSON mẫu, kiểm kê độc lập 30 kịch bản và xác minh BCrypt bằng thư viện dự án. Phần này chưa chạy nạp trên SQL Server; không khẳng định
-các số lượng đã được quan sát thực tế. Các assert trong transaction sẽ từ chối commit nếu
-kết quả thực tế không khớp. Sau khi chuyển ứng dụng sang designV2, tắt Java seed trước khi
-khởi động; hiện tại tài liệu này chưa tự thay cấu hình Flyway hoặc code ứng dụng.
+Đã phân tích cú pháp các khối định nghĩa và INSERT bằng SQLFluff T-SQL, kiểm tra 8 username,
+JSON mẫu, kiểm kê độc lập 30 kịch bản và xác minh BCrypt bằng thư viện dự án. Flyway đã nạp
+V1–V9 trên SQL Server 2022 local và xác nhận 8 tài khoản/30 đơn ngay sau migration. Demo DB
+hiện có thêm đơn tạo qua ứng dụng khi kiểm tra luồng thực tế. Java seed đã tắt trong cấu hình
+designV2; các assert trong transaction từ chối commit nếu dữ liệu mẫu không khớp.
 
 ### Tài liệu kỹ thuật đối chiếu
 

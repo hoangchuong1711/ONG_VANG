@@ -1,5 +1,0 @@
-ALTER TABLE dbo.[thanh_toan] DROP CONSTRAINT [ck_payment_status_fields];
-ALTER TABLE dbo.[thanh_toan] DROP CONSTRAINT [ck_thanh_toan_trang_thai];
-
-ALTER TABLE dbo.[thanh_toan] ADD CONSTRAINT [ck_payment_status_fields] CHECK ((([trang_thai] IN (N'CHO_XU_LY',N'CHUA_RO_KET_QUA') AND [giai_quyet_luc] IS NULL AND [thu_luc] IS NULL AND [so_tien_thuc_nhan] IS NULL) OR ([trang_thai] IN (N'THAT_BAI',N'DA_HUY',N'KHONG_THU_DA_XAC_MINH',N'CHO_THU_LAI_DEMO') AND [giai_quyet_luc] IS NOT NULL AND [giai_quyet_luc]>=[tao_luc] AND [thu_luc] IS NULL AND [so_tien_thuc_nhan] IS NULL) OR ([trang_thai]=N'THANH_CONG' AND [giai_quyet_luc] IS NOT NULL AND [giai_quyet_luc]>=[tao_luc] AND [thu_luc] IS NOT NULL AND [so_tien_thuc_nhan]>0)) AND (([phuong_thuc]=N'TIEN_MAT' AND [ma_giao_dich_doi_tac] IS NULL) OR ([phuong_thuc]=N'VNPAY_QR' AND ([trang_thai]<>N'THANH_CONG' OR [ma_giao_dich_doi_tac] IS NOT NULL))));
-ALTER TABLE dbo.[thanh_toan] ADD CONSTRAINT [ck_thanh_toan_trang_thai] CHECK ([trang_thai] IN (N'CHO_XU_LY',N'CHUA_RO_KET_QUA',N'THANH_CONG',N'THAT_BAI',N'DA_HUY',N'KHONG_THU_DA_XAC_MINH',N'CHO_THU_LAI_DEMO'));

@@ -18,7 +18,7 @@ const questions = [
   },
   {
     question: "Tôi có thể thanh toán bằng cách nào?",
-    answer: "Trang thanh toán của đơn hiển thị các lựa chọn hiện có, gồm tiền mặt và VNPay tùy theo trạng thái đơn.",
+    answer: "Người đặt trả cước trực tiếp cho tài xế khi giao hàng. Tài xế xác nhận đã thu đủ trước khi hoàn tất đơn.",
   },
   {
     question: "Nếu cần hỗ trợ về đơn hàng thì sao?",

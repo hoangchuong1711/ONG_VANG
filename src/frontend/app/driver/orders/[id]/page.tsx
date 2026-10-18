@@ -13,7 +13,6 @@ import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import { DriverRouteMap } from "@/components/driver/DriverRouteMap";
-import { FareCollection } from "@/components/driver/FareCollection";
 
 const INCIDENT_TYPES = [
   "Người nhận không nghe máy (đã gọi 3 cuộc)",
@@ -56,9 +55,6 @@ export default function DriverOrderExecutionPage() {
     } catch (cause) { setOrder(null); setError((cause as Error).message); }
     finally { setReady(true); }
   }, [orderId]);
-  const collectionBlocked = !!detail && (detail.thanhToan.canDoiSoat ||
-    !["MIEN_CUOC", "DA_THANH_TOAN"].includes(detail.thanhToan.trangThai)) &&
-    (detail.trangThai === "DANG_GIAO" || detail.trangThai === "DA_LAY_HANG" && detail.benThanhToan === "NGUOI_DAT");
   useEffect(() => {
     const initial = setTimeout(() => { void refresh(); }, 0);
     const timer = setInterval(() => { void refresh(); }, 15000);
@@ -70,7 +66,8 @@ export default function DriverOrderExecutionPage() {
     const next = order.status === "DA_GAN" ? "DA_LAY_HANG" :
       order.status === "DA_LAY_HANG" ? "DANG_GIAO" :
       order.status === "DANG_GIAO" ? "HOAN_TAT" : null;
-    if (!next || saving || collectionBlocked || (next === "HOAN_TAT" && !arrived)) return;
+    if (!next || saving || (next === "HOAN_TAT" && !arrived)) return;
+    if (next === "HOAN_TAT" && !window.confirm("Bạn đã giao hàng và thu đủ cước trực tiếp từ người đặt?")) return;
     setSaving(true);
     try {
       await api(`/orders/${encodeURIComponent(order.id)}/transitions`, {
@@ -157,6 +154,8 @@ export default function DriverOrderExecutionPage() {
           </p>
         )}
 
+        <DriverRouteMap orderId={order.id} />
+
         {/* ========================================================================= */}
         {/* TIMELINE TIẾN TRÌNH 4 BƯỚC CỦA TÀI XẾ                                     */}
         {/* ========================================================================= */}
@@ -203,8 +202,9 @@ export default function DriverOrderExecutionPage() {
           </div>
         </section>}
 
-        {order.status !== "DA_HUY" && <DriverRouteMap key={`route-${order.id}`} orderId={order.id} />}
-        {detail && <FareCollection key={`fare-${detail.maDon}`} order={detail} refresh={refresh} />}
+        {detail && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
+          Người đặt trả cước trực tiếp cho tài xế. Khi giao xong, xác nhận đã thu đủ để hoàn tất đơn.
+        </section>}
 
         {/* THÔNG TIN CHI TIẾT 2 CHẶNG (LẤY HÀNG & GIAO HÀNG) */}
         <div className="space-y-4">
@@ -325,20 +325,12 @@ export default function DriverOrderExecutionPage() {
           <section className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-5 shadow-2xs flex items-center justify-between">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                Cước phí & Hình thức thu
+                Cước phí đã chốt
               </span>
               <div className="text-xl sm:text-2xl font-black text-amber-600">
                 {formatVND(order.totalFee)}
               </div>
-              <span className="text-xs text-stone-600 font-semibold">
-                {order.paymentMethod === "TIEN_MAT"
-                  ? "💵 Thu tiền mặt trực tiếp khi giao (COD)"
-                  : "💳 Thanh toán qua VNPay QR"}
-              </span>
-              <span className="block text-[11px] text-stone-500">
-                {order.paymentStatus === "MIEN_CUOC" ? "BE xác nhận miễn cước" :
-                  order.paid ? "BE đã xác nhận thanh toán" : "BE chưa xác nhận thanh toán"}
-              </span>
+              <span className="text-xs text-stone-600 font-semibold">Người đặt trả trực tiếp khi giao hàng.</span>
             </div>
 
             {/* Incident Trigger Button (Only available while delivering) */}
@@ -389,7 +381,7 @@ export default function DriverOrderExecutionPage() {
               size="lg"
               fullWidth
               onClick={handleNextStep}
-              disabled={saving || collectionBlocked}
+              disabled={saving}
               className="h-14 sm:h-15 text-base font-extrabold bg-amber-500 hover:bg-amber-600 shadow-lg text-stone-950"
             >
               2. BẮT ĐẦU ĐI GIAO CHO NGƯỜI NHẬN ➔
@@ -398,9 +390,9 @@ export default function DriverOrderExecutionPage() {
 
           {order.status === "DANG_GIAO" && (
             arrived ? <Button variant="primary" size="lg" fullWidth onClick={handleNextStep}
-              disabled={saving || collectionBlocked}
+              disabled={saving}
               className="h-14 sm:h-15 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg">
-              4. XÁC NHẬN GIAO THÀNH CÔNG ➔
+              4. ĐÃ GIAO VÀ THU ĐỦ CƯỚC ➔
             </Button> : <Button variant="primary" size="lg" fullWidth onClick={handleArrive}
               disabled={saving}
               className="h-14 sm:h-15 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg">

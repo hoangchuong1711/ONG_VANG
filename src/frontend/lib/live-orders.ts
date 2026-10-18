@@ -1,3 +1,5 @@
+import { requestApi } from "./ui-adapter";
+
 export type PaymentChoice = "NGUOI_DAT" | "NGUOI_NHAN";
 export type PaymentMethod = "TIEN_MAT" | "VNPAY_QR";
 
@@ -73,19 +75,7 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  if (options.body) headers.set("Content-Type", "application/json");
-  if (options.method && options.method !== "GET") {
-    const csrf = await fetch("/api/auth/csrf", { credentials: "include", cache: "no-store" });
-    if (!csrf.ok) throw new ApiError("CSRF_INVALID", csrf.status);
-    headers.set("X-CSRF-Token", (await csrf.json()).csrfToken);
-  }
-  const response = await fetch(`/api${path}`, { ...options, headers, credentials: "include", cache: "no-store" });
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new ApiError(body.code ?? "INTERNAL_ERROR", response.status);
-  }
-  return response.json() as Promise<T>;
+  return requestApi<T>(path, options);
 }
 
 export const vnd = (amount: string) => `${Number(amount).toLocaleString("vi-VN")} ₫`;

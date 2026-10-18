@@ -3,19 +3,16 @@ package com.miniongvang.config;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import org.flywaydb.core.Flyway;
 
-import java.util.Map;
-
-/** Owns the pool and JPA factory. Migration always precedes Hibernate validation. */
+/** Owns the database pool. Migration always runs before requests are served. */
 public final class PersistenceContext implements AutoCloseable {
     private final HikariDataSource dataSource;
     private final EntityManagerFactory entityManagerFactory;
 
-    private PersistenceContext(HikariDataSource dataSource, EntityManagerFactory entityManagerFactory) {
+    private PersistenceContext(HikariDataSource dataSource) {
         this.dataSource = dataSource;
-        this.entityManagerFactory = entityManagerFactory;
+        this.entityManagerFactory = null;
     }
 
     public static PersistenceContext start(String url, String user, String password) {
@@ -33,22 +30,27 @@ public final class PersistenceContext implements AutoCloseable {
         config.setPoolName("mini-ong-vang");
         HikariDataSource pool = new HikariDataSource(config);
         try {
-            Flyway.configure().dataSource(pool).defaultSchema("dbo")
-                    .locations("classpath:db/designV1/sqlserver").load().migrate();
-            EntityManagerFactory factory = Persistence.createEntityManagerFactory("mini-ong-vang-design-v1",
-                    Map.of("jakarta.persistence.nonJtaDataSource", pool));
-            return new PersistenceContext(pool, factory);
+            String db = url.toLowerCase(java.util.Locale.ROOT);
+            if (!db.contains("databasename=mini_ong_vang_"))
+                throw new IllegalArgumentException("DB_URL must target a mini_ong_vang database");
+            boolean demo = "true".equalsIgnoreCase(System.getenv("DESIGN_V2_DEMO"));
+            String schema = "classpath:db/designV2/sqlserver/schema";
+            String migrationUser = System.getenv().getOrDefault("MIGRATION_DB_USER", user);
+            String migrationPassword = System.getenv().getOrDefault("MIGRATION_DB_PASSWORD", password);
+            Flyway.configure().dataSource(url, migrationUser, migrationPassword).defaultSchema("dbo")
+                    .locations(demo ? new String[]{schema, "classpath:db/designV2/sqlserver/demo"}
+                            : new String[]{schema}).load().migrate();
+            return new PersistenceContext(pool);
         } catch (RuntimeException failure) {
             pool.close();
             throw failure;
         }
     }
 
-    public EntityManagerFactory entityManagerFactory() { return entityManagerFactory; }
     public HikariDataSource dataSource() { return dataSource; }
+    public EntityManagerFactory entityManagerFactory() { return entityManagerFactory; }
 
     @Override public void close() {
-        try { entityManagerFactory.close(); }
-        finally { dataSource.close(); }
+        dataSource.close();
     }
 }
