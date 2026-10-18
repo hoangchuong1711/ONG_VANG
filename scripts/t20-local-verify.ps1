@@ -25,7 +25,7 @@ function Invoke-TestSql([string] $source, [string] $destination) {
     docker compose -f docker-compose.ci.yml cp $source "db-test:$destination"
     Assert-Exit "copy $source"
     docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd `
-        -S localhost -U sa -C -b -d mini_ong_vang_test -i $destination
+        -S localhost -U sa -C -I -b -d mini_ong_vang_test -i $destination
     Assert-Exit "run $source"
 }
 

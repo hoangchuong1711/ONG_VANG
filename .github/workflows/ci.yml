@@ -83,9 +83,9 @@ jobs:
           docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V9__insert_demo_data.sql db-test:/tmp/designv2-V9.sql
           docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V13__seed_demo_operating_config.sql db-test:/tmp/designv2-V13.sql
           docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V14__change_demo_account_password.sql db-test:/tmp/designv2-V14.sql
-          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/designv2-V9.sql
-          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/designv2-V13.sql
-          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/designv2-V14.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_test -i /tmp/designv2-V9.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_test -i /tmp/designv2-V13.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_test -i /tmp/designv2-V14.sql
       - name: Start DesignV2 backend after database tests finish
         run: docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
       - name: Wait for DesignV2 API readiness
