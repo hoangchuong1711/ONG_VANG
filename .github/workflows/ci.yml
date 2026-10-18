@@ -48,7 +48,7 @@ jobs:
       REQUIRE_TEST_DB: 'true'
       API_BASE_URL: http://127.0.0.1:18081
       API_EXPECTED_DATABASE: mini_ong_vang_test
-      DEMO_PASSWORD: ci-only-demo-password
+      V2_SMOKE_PASSWORD: '12345678'
     steps:
       - uses: actions/checkout@v6
         with:
@@ -78,49 +78,33 @@ jobs:
           docker compose -f docker-compose.ci.yml up --no-deps --exit-code-from db-init-test db-init-test
       - name: Build WAR and run Java tests against test database
         run: mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml verify
-      - name: Prepare isolated demo fixtures for HTTP dispatch tests
+      - name: Seed isolated DesignV2 HTTP smoke fixtures
         run: |
-          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test < scripts/reset-test-db.sql
-          mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml exec:java -Dexec.mainClass=com.miniongvang.seed.SeedCommand -Dexec.args=test
-      - name: Start backend after database tests finish
+          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V9__insert_demo_data.sql db-test:/tmp/designv2-V9.sql
+          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V13__seed_demo_operating_config.sql db-test:/tmp/designv2-V13.sql
+          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V14__change_demo_account_password.sql db-test:/tmp/designv2-V14.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/designv2-V9.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/designv2-V13.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/designv2-V14.sql
+      - name: Start DesignV2 backend after database tests finish
         run: docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
-      - name: Smoke test deployed API and documentation
-        run: npm run smoke --prefix tools/api
-      - name: Smoke test T10 order creation
-        run: npm run smoke:orders --prefix tools/api
-      - name: Smoke test T16 order history and detail
-        run: npm run smoke:history --prefix tools/api
-      - name: Smoke test T13 cancellation
-        run: npm run smoke:cancel --prefix tools/api
-      - name: Smoke test T17 reports and Excel
-        run: npm run smoke:reports --prefix tools/api
-      - name: Smoke test T14 cash payment
-        run: npm run smoke:payment --prefix tools/api
-      - name: Smoke test T11 dispatch and concurrent assignment
-        run: npm run smoke:dispatch --prefix tools/api
-      - name: Reconcile designV1 after payments and dispatch before reset
-        run: docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test < scripts/check-design-v1-invariants.sql
-      - name: Isolate demo fixtures for T12 progress checks
-        run: |
-          docker compose -f docker-compose.ci.yml stop backend-test
-          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test < scripts/reset-test-db.sql
-          mvn --batch-mode --no-transfer-progress -f src/backend/pom.xml exec:java -Dexec.mainClass=com.miniongvang.seed.SeedCommand -Dexec.args=test
-          docker compose -f docker-compose.ci.yml up --no-deps --wait --wait-timeout 120 backend-test
-      - name: Wait for restarted backend HTTP readiness
+      - name: Wait for DesignV2 API readiness
         run: |
           for attempt in $(seq 1 30); do
             if curl --fail --silent --max-time 2 "$API_BASE_URL/api/health" > /dev/null; then
-              echo "Backend ready after attempt $attempt"
+              echo "DesignV2 API ready after attempt $attempt"
               exit 0
             fi
             sleep 2
           done
           docker compose -f docker-compose.ci.yml logs --tail=100 backend-test
           exit 1
-      - name: Smoke test T12 delivery progress and completion
-        run: npm run smoke:progress --prefix tools/api
-      - name: Reconcile designV1 invariants and policy triggers
-        run: docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test < scripts/check-design-v1-invariants.sql
+      - name: Smoke test DesignV2 admin directories
+        run: python tools/api/design-v2-admin-directory-smoke.py --base "$API_BASE_URL" --expected-database "$API_EXPECTED_DATABASE"
+      - name: Smoke test DesignV2 admin orders and incidents
+        run: python tools/api/design-v2-admin-ops-smoke.py --base "$API_BASE_URL"
+      - name: Smoke test DesignV2 finance and Excel reports
+        run: python tools/api/design-v2-admin-finance-smoke.py --base "$API_BASE_URL"
       - name: Collect container logs
         if: always()
         run: |

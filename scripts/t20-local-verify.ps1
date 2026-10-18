@@ -1,4 +1,4 @@
-# Disposable SQL Server verification for the T20 backend gate.
+# Disposable SQL Server verification for the current DesignV2 backend gate.
 # Run from the repository root in PowerShell with Docker Desktop started.
 $ErrorActionPreference = 'Stop'
 $bytes = New-Object byte[] 20
@@ -11,7 +11,7 @@ $env:TEST_DB_USER = 'sa'
 $env:REQUIRE_TEST_DB = 'true'
 $env:API_BASE_URL = 'http://127.0.0.1:18081'
 $env:API_EXPECTED_DATABASE = 'mini_ong_vang_test'
-$env:DEMO_PASSWORD = 't20-only-demo-password'
+$env:V2_SMOKE_PASSWORD = '12345678'
 $existing = docker ps --filter label=com.docker.compose.project=mini-ong-vang-ci --format '{{.Names}}'
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect existing Docker test containers' }
 if ($existing) { throw 'The mini-ong-vang-ci stack is already running; stop it separately before this disposable run' }
@@ -19,6 +19,14 @@ if ($existing) { throw 'The mini-ong-vang-ci stack is already running; stop it s
 function Assert-Exit([string] $label) {
     if ($LASTEXITCODE -ne 0) { throw "$label failed with exit code $LASTEXITCODE" }
     Write-Output "PASS $label"
+}
+
+function Invoke-TestSql([string] $source, [string] $destination) {
+    docker compose -f docker-compose.ci.yml cp $source "db-test:$destination"
+    Assert-Exit "copy $source"
+    docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd `
+        -S localhost -U sa -C -b -d mini_ong_vang_test -i $destination
+    Assert-Exit "run $source"
 }
 
 try {
@@ -29,41 +37,33 @@ try {
     mvn.cmd --batch-mode --no-transfer-progress -f src/backend/pom.xml verify | Select-Object -Last 22
     Assert-Exit 'Maven integration verify'
 
-    docker cp scripts/reset-test-db.sql mini-ong-vang-ci-db-test-1:/tmp/reset.sql
-    Assert-Exit 'copy reset script'
-    docker cp scripts/check-design-v1-invariants.sql mini-ong-vang-ci-db-test-1:/tmp/invariants.sql
-    Assert-Exit 'copy invariant script'
-    docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/reset.sql
-    Assert-Exit 'DB reset'
-    mvn.cmd --batch-mode --no-transfer-progress -f src/backend/pom.xml exec:java '-Dexec.mainClass=com.miniongvang.seed.SeedCommand' '-Dexec.args=test' | Select-Object -Last 8
-    Assert-Exit 'demo seed'
+    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V9__insert_demo_data.sql' '/tmp/designv2-V9.sql'
+    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V13__seed_demo_operating_config.sql' '/tmp/designv2-V13.sql'
+    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V14__change_demo_account_password.sql' '/tmp/designv2-V14.sql'
     docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test | Select-Object -Last 8
     Assert-Exit 'backend startup'
-
-    foreach ($task in @('smoke', 'smoke:orders', 'smoke:history', 'smoke:cancel', 'smoke:reports', 'smoke:payment', 'smoke:dispatch')) {
-        npm.cmd run $task --prefix tools/api | Select-Object -Last 5
-        Assert-Exit $task
+    $ready = $false
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
+        curl.exe --fail --silent --max-time 2 "$env:API_BASE_URL/api/health" | Out-Null
+        if ($LASTEXITCODE -eq 0) { $ready = $true; break }
+        Start-Sleep -Seconds 2
     }
-    docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/invariants.sql
-    Assert-Exit 'invariants before reset'
+    if (-not $ready) {
+        docker compose -f docker-compose.ci.yml logs --tail=100 backend-test
+        throw 'DesignV2 API did not become ready.'
+    }
 
-    docker compose -f docker-compose.ci.yml stop backend-test | Select-Object -Last 3
-    Assert-Exit 'backend stop'
-    docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/reset.sql
-    Assert-Exit 'DB reset before progress'
-    mvn.cmd --batch-mode --no-transfer-progress -f src/backend/pom.xml exec:java '-Dexec.mainClass=com.miniongvang.seed.SeedCommand' '-Dexec.args=test' | Select-Object -Last 8
-    Assert-Exit 'demo reseed'
-    docker compose -f docker-compose.ci.yml up --no-deps --wait --wait-timeout 120 backend-test | Select-Object -Last 5
-    Assert-Exit 'backend restart'
-    npm.cmd run smoke:progress --prefix tools/api | Select-Object -Last 5
-    Assert-Exit 'smoke:progress'
-    docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d mini_ong_vang_test -i /tmp/invariants.sql
-    Assert-Exit 'invariants after progress'
+    python tools/api/design-v2-admin-directory-smoke.py --base $env:API_BASE_URL --expected-database $env:API_EXPECTED_DATABASE
+    Assert-Exit 'DesignV2 admin directory smoke'
+    python tools/api/design-v2-admin-ops-smoke.py --base $env:API_BASE_URL
+    Assert-Exit 'DesignV2 admin operations smoke'
+    python tools/api/design-v2-admin-finance-smoke.py --base $env:API_BASE_URL
+    Assert-Exit 'DesignV2 finance report smoke'
 } catch {
     Write-Error "T20 verification failed: $_"
     exit 1
 } finally {
     docker compose -f docker-compose.ci.yml down --volumes --remove-orphans | Select-Object -Last 5
     Remove-Item Env:TEST_DB_PASSWORD -ErrorAction SilentlyContinue
-    Remove-Item Env:DEMO_PASSWORD -ErrorAction SilentlyContinue
+    Remove-Item Env:V2_SMOKE_PASSWORD -ErrorAction SilentlyContinue
 }

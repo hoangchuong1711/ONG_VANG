@@ -30,6 +30,7 @@ import com.miniongvang.service.PolicyPublicationService;
 import com.miniongvang.service.PaymentService;
 import com.miniongvang.service.VnpayPaymentService;
 import com.miniongvang.integration.VnpayGateway;
+import org.junit.jupiter.api.Disabled;
 import com.miniongvang.entity.enums.PaymentEventResult;
 import com.miniongvang.service.QuoteService;
 import com.miniongvang.service.RouteService;
@@ -62,7 +63,8 @@ import javax.crypto.spec.SecretKeySpec;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-/** Checks the new schema through the real SQL Server, JPA mapping and current service flow. */
+/** Historical suite retained for reference; its DesignV1 database migrations have been removed. */
+@Disabled("The application now migrates DesignV2; this legacy suite requires removed DesignV1 migrations and schema")
 class DesignV1IntegrationTest {
     private static PersistenceContext db;
     private static TransactionRunner tx;
