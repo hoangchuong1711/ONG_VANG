@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-label="Kết quả kiểm thử cơ sở dữ liệu Design V2">
+  <rect width="1200" height="700" fill="#f5f4f0"/>
+  <rect x="45" y="42" width="1110" height="616" rx="24" fill="#fff" stroke="#dedbd2"/>
+  <text x="82" y="98" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#a16207">MINI ONG VANG · DESIGN V2</text>
+  <text x="82" y="145" font-family="Arial, sans-serif" font-size="35" font-weight="700" fill="#1c1917">Kết quả kiểm thử SQL/API</text>
+  <text x="82" y="176" font-family="Arial, sans-serif" font-size="16" fill="#57534e">DB demo · 18/10/2026 · Các thao tác thử trên SQL đã được ROLLBACK</text>
+  <line x1="82" y1="204" x2="1118" y2="204" stroke="#e7e5e4"/>
+  <g font-family="Arial, sans-serif">
+    <rect x="82" y="230" width="1036" height="66" rx="10" fill="#ecfdf5"/>
+    <text x="105" y="272" font-size="19" font-weight="700" fill="#047857">PASS</text>
+    <text x="205" y="272" font-size="19" fill="#1c1917">Còn 6 view; 2 view không dùng đã được xóa bằng V15</text>
+    <rect x="82" y="306" width="1036" height="66" rx="10" fill="#ecfdf5"/>
+    <text x="105" y="348" font-size="19" font-weight="700" fill="#047857">PASS</text>
+    <text x="205" y="348" font-size="19" fill="#1c1917">Trigger chặn sửa giá đơn và biểu phí đã công bố; rollback giữ nguyên dữ liệu</text>
+    <rect x="82" y="382" width="1036" height="66" rx="10" fill="#ecfdf5"/>
+    <text x="105" y="424" font-size="19" font-weight="700" fill="#047857">PASS</text>
+    <text x="205" y="424" font-size="19" fill="#1c1917">SP tạo và công bố chính sách; transaction thử được rollback</text>
+    <rect x="82" y="458" width="1036" height="66" rx="10" fill="#ecfdf5"/>
+    <text x="105" y="500" font-size="19" font-weight="700" fill="#047857">PASS</text>
+    <text x="205" y="500" font-size="19" fill="#1c1917">Unique filtered index chặn hai phân công mở cho cùng tài xế</text>
+    <rect x="82" y="534" width="1036" height="66" rx="10" fill="#eff6ff"/>
+    <text x="105" y="576" font-size="19" font-weight="700" fill="#1d4ed8">API</text>
+    <text x="205" y="576" font-size="19" fill="#1c1917">Lọc HOAN_TAT: 2 đơn, 2 trang size=1; CRUD nháp: 1 → 2 → 1</text>
+  </g>
+  <text x="82" y="631" font-family="Arial, sans-serif" font-size="14" fill="#78716c">Nguồn: tests/design-v2-integrity-check.sql và kết quả gọi API local; ảnh tổng hợp, không phải ảnh chụp màn hình.</text>
+</svg>

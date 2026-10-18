@@ -8,7 +8,7 @@
 
 1. Tạo `.env` từ [.env.example](.env.example) nếu chưa có. Đặt `MSSQL_SA_PASSWORD` và
    `MSSQL_DATABASE=mini_ong_vang_design_v2_demo`.
-2. Để `DESIGN_V2_DEMO=true` nếu muốn Flyway nạp 8 tài khoản và 30 đơn mẫu. Với database
+2. Để `DESIGN_V2_DEMO=true` nếu muốn Flyway nạp 8 tài khoản demo, hồ sơ khách/tài xế và cấu hình tối thiểu để báo giá, tạo đơn, điều phối. Seed không tạo đơn hàng hoặc giao dịch. Với database
    không phải demo/test, đặt `DESIGN_V2_DEMO=false`; Flyway chỉ chạy phần schema.
 3. Chạy `docker compose up --build` trong thư mục gốc.
 4. Mở [http://localhost:3001](http://localhost:3001) và đăng nhập. Ứng dụng đưa mỗi vai trò
@@ -23,22 +23,22 @@ Trong SSMS, dùng lại kết nối SQL Server `127.0.0.1,1433`, rồi chọn da
 
 Mật khẩu demo: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
 tổng đài: `demo_dispatcher`; chủ đội xe: `demo_admin`; tài xế: `0800000001`,
-`0800000002`, `0800000003`. Đây là dữ liệu mẫu trong migration V9, không dùng Java seed.
+`0800000002`, `0800000003`. V9 tạo tài khoản và hồ sơ, V13 tạo biểu phí, chính sách, phụ thu và xe demo; không dùng Java seed. DB demo mới bắt đầu với 0 đơn hàng và 0 giao dịch. Do V9/V10 đã thay đổi, DB demo cũ cần được sao lưu và tạo lại trước khi chạy Flyway.
 
 `ROUTE_PROVIDER=fake` dùng tuyến cố định cho demo. Muốn dùng Goong, đặt `ROUTE_PROVIDER=goong`
 và `GOONG_API_KEY`; báo giá/tạo đơn cần quota Goong còn hiệu lực.
 
 VNPay Sandbox chỉ dành cho giao dịch tài xế nộp tiền công ty. Cấu hình `VNPAY_TMN_CODE`,
 `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL` trong `.env`; IPN công khai cần trỏ đến
-`/api/payments/vnpay/ipn`. Return đưa tài xế về màn thu nhập; IPN hoặc kết quả tra cứu có
+`/api/v2/payments/vnpay/ipn` (URL cũ `/api/payments/vnpay/ipn` cũng được tiếp nhận). Return đưa tài xế về màn thu nhập; IPN hoặc kết quả tra cứu có
 chữ ký hợp lệ mới quyết toán. Giao dịch chưa rõ kết quả vẫn giữ các khoản liên kết.
 Đặt `DESIGN_V2_RECONCILE_JOB=true` để backend tự tra cứu giao dịch quá 15 phút mỗi 5 phút;
-local demo mặc định tắt để không tra cứu ba giao dịch chờ mẫu liên tục.
+demo hiện bật tác vụ này để tự xử lý các giao dịch quá hạn nếu IPN bị lỡ.
 
 ## Cấu trúc và kiểm tra
 
 - Migration schema: `src/backend/src/main/resources/db/designV2/sqlserver/schema/`.
-- Dữ liệu demo V9: `src/backend/src/main/resources/db/designV2/sqlserver/demo/`.
+- Tài khoản demo V9: `src/backend/src/main/resources/db/designV2/sqlserver/demo/`.
 - [ERD 16 bảng designV2](docs/database/design-v2-erd.md).
 - API designV2: `src/backend/src/main/java/com/miniongvang/controller/DesignV2Servlet.java`.
 - Giao diện hiện tại theo từng vai trò dùng chung dữ liệu designV2 qua lớp adapter,

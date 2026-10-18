@@ -17,7 +17,7 @@ export type Quote = {
   hangThanhVien: { tenHang: string; phanTramGiamGia: string; conHieuLuc: boolean; ngayHetHan: string | null } | null;
 };
 export type Order = {
-  maDon: string; thoiGianTao: string; diemLayHang: string; diemGiaoHang: string;
+  maDon: string; thoiGianTao: string; thoiGianHoanTat?: string | null; diemLayHang: string; diemGiaoHang: string;
   tenNguoiNhan: string | null; sdtNguoiNhan: string; quangDuongKm: string; ghiChuGiaoHang?: string | null;
   trangThai: string; maKh: string; maTkTao: string; maTx?: string | null; benThanhToan: PaymentChoice;
   nguonLoTrinh: "FAKE" | "GOONG";
@@ -76,6 +76,20 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   return requestApi<T>(path, options);
+}
+
+export async function allOrders(status: string): Promise<Order[]> {
+  const items: Order[] = [];
+  let page = 0;
+  let totalPages: number;
+  do {
+    const result = await api<{ items: Order[]; totalPages: number }>(
+      `/orders?trangThai=${encodeURIComponent(status)}&page=${page}&size=100`);
+    items.push(...result.items);
+    totalPages = result.totalPages;
+    page++;
+  } while (page < totalPages);
+  return items;
 }
 
 export const vnd = (amount: string) => `${Number(amount).toLocaleString("vi-VN")} ₫`;

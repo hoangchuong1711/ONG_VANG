@@ -71,10 +71,11 @@ public final class DesignV2Servlet extends HttpServlet {
                 return;
             }
             if (path.equals("/payments/vnpay/ipn") && "GET".equals(req.getMethod())) {
-                vnpayIpn(req, resp); return;
+                handleVnpayIpn(db(), req, resp); return;
             }
             if (path.equals("/payments/vnpay/return") && "GET".equals(req.getMethod())) {
-                resp.sendRedirect(System.getenv().getOrDefault("DRIVER_RETURN_URL", "http://localhost:3001/driver/wallet")); return;
+                String wallet = System.getenv().getOrDefault("DRIVER_RETURN_URL", "http://localhost:3001/driver/wallet");
+                resp.sendRedirect(wallet + (wallet.contains("?") ? "&" : "?") + "paymentReturn=1"); return;
             }
             try (Connection connection = db().dataSource().getConnection()) {
                 if (path.equals("/auth/login") && "POST".equals(req.getMethod())) {
@@ -323,7 +324,7 @@ public final class DesignV2Servlet extends HttpServlet {
             WebResponses.json(resp, 201, createOrder(c, body(req), actor, req)); return;
         }
         if (path.equals("/orders") && method.equals("GET")) {
-            WebResponses.json(resp, 200, Map.of("items", orderRows(c, actor))); return;
+            WebResponses.json(resp, 200, orderRows(c, req)); return;
         }
         if (path.matches("/orders/[0-9a-fA-F-]{36}/suggestions") && method.equals("GET")) {
             require(actor, "TONG_DAI", "CHU_DOI_XE");
@@ -391,14 +392,14 @@ public final class DesignV2Servlet extends HttpServlet {
         }
         if (path.equals("/policies") && method.equals("GET")) {
             require(actor, "CHU_DOI_XE");
-            WebResponses.json(resp, 200, Map.of("items", rows(c, "SELECT * FROM dbo.v_phien_ban_chinh_sach ORDER BY loai,hieu_luc_tu DESC"))); return;
+            WebResponses.json(resp, 200, policies(c)); return;
         }
         if (path.equals("/policies") && method.equals("POST")) {
             require(actor, "CHU_DOI_XE");
             JsonNode data = body(req);
             call(c, "EXEC dbo.usp_quan_ly_chinh_sach ?,?,?,?,?", required(data, "hanhDong"), required(data, "loai"),
                     field(data, "ma"), data.path("duLieu").isMissingNode() ? null : JSON.writeValueAsString(data.path("duLieu")), field(data, "den"));
-            WebResponses.json(resp, 200, Map.of("items", rows(c, "SELECT * FROM dbo.v_phien_ban_chinh_sach ORDER BY loai,hieu_luc_tu DESC"))); return;
+            WebResponses.json(resp, 200, policies(c)); return;
         }
         if (path.equals("/vehicles") && method.equals("GET")) {
             require(actor, "CHU_DOI_XE", "TONG_DAI");
@@ -701,10 +702,46 @@ public final class DesignV2Servlet extends HttpServlet {
         return ids;
     }
 
-    private static List<Map<String,Object>> orderRows(Connection c, Actor actor) throws SQLException {
-        List<Map<String,Object>> orders = rows(c, "EXEC dbo.usp_doc_don NULL,0,100");
-        for (Map<String,Object> item : orders) addAssignment(c, item);
-        return orders;
+    private static Map<String,Object> orderRows(Connection c, HttpServletRequest req) throws SQLException {
+        String status = req.getParameter("trangThai");
+        if (status != null && !Set.of("CHO_GAN", "DA_GAN", "DA_LAY_HANG", "DANG_GIAO", "HOAN_TAT", "DA_HUY").contains(status))
+            throw new Rejected(400, "VALIDATION_ERROR", "Trạng thái đơn không hợp lệ");
+        int page, size;
+        try {
+            page = req.getParameter("page") == null ? 0 : Integer.parseInt(req.getParameter("page"));
+            size = req.getParameter("size") == null ? 20 : Integer.parseInt(req.getParameter("size"));
+        } catch (NumberFormatException invalid) {
+            throw new Rejected(400, "VALIDATION_ERROR", "Phân trang không hợp lệ");
+        }
+        if (page < 0 || size < 1 || size > 100)
+            throw new Rejected(400, "VALIDATION_ERROR", "Phân trang không hợp lệ");
+        try (PreparedStatement statement = c.prepareStatement("EXEC dbo.usp_doc_don_trang ?,?,?")) {
+            statement.setString(1, status);
+            statement.setInt(2, page);
+            statement.setInt(3, size);
+            if (!statement.execute()) throw new SQLException("Order count missing");
+            long total;
+            try (ResultSet result = statement.getResultSet()) {
+                if (!result.next()) throw new SQLException("Order count missing");
+                total = result.getLong("total");
+            }
+            if (!statement.getMoreResults()) throw new SQLException("Order page missing");
+            List<Map<String,Object>> orders = new ArrayList<>();
+            try (ResultSet result = statement.getResultSet()) {
+                while (result.next()) orders.add(map(result));
+            }
+            for (Map<String,Object> item : orders) addAssignment(c, item);
+            return Map.of("items", orders, "totalElements", total,
+                    "totalPages", (total + size - 1) / size, "page", page, "size", size);
+        }
+    }
+
+    private static Map<String,Object> policies(Connection c) throws SQLException {
+        return Map.of(
+                "items", rows(c, "SELECT * FROM dbo.v_phien_ban_chinh_sach ORDER BY loai,hieu_luc_tu DESC"),
+                "fares", rows(c, "SELECT * FROM dbo.cau_hinh_cuoc ORDER BY hieu_luc_tu DESC"),
+                "memberships", rows(c, "SELECT * FROM dbo.chinh_sach_thanh_vien ORDER BY ma_hang,hieu_luc_tu DESC"),
+                "surcharges", rows(c, "SELECT * FROM dbo.cau_hinh_phu_thu ORDER BY ma_loai,hieu_luc_tu DESC"));
     }
 
     private static Map<String,Object> order(Connection c, String id, Actor actor) throws SQLException {
@@ -798,7 +835,7 @@ public final class DesignV2Servlet extends HttpServlet {
         return settlement;
     }
 
-    private void vnpayIpn(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+    public static void handleVnpayIpn(PersistenceContext persistence, HttpServletRequest req, HttpServletResponse resp) throws Exception {
         VnpayGateway gateway = VnpayGateway.fromEnvironment();
         Map<String,String> fields;
         try { fields = gateway.parseQuery(req.getQueryString()); }
@@ -806,20 +843,24 @@ public final class DesignV2Servlet extends HttpServlet {
             WebResponses.json(resp, 200, Map.of("RspCode", "97", "Message", "Invalid message")); return;
         }
         if (!gateway.verifyCallback(fields)) {
-            recordPaymentObservation(fields, "IPN", "KHONG_HOP_LE", false);
+            recordPaymentObservation(persistence, fields, "IPN", "KHONG_HOP_LE", false);
             WebResponses.json(resp, 200, Map.of("RspCode", "97", "Message", "Invalid signature")); return;
         }
         String reference = fields.get("vnp_TxnRef");
-        try (Connection c = db().dataSource().getConnection()) {
+        try (Connection c = persistence.dataSource().getConnection()) {
             Map<String,Object> payment = one(c, "SELECT ma_giao_dich,so_tien_yeu_cau FROM dbo.giao_dich_nop_tien WHERE ma_tham_chieu=?", reference);
             if (payment == null) {
-                recordPaymentObservation(fields, "IPN", "KHONG_KHOP", true);
+                recordPaymentObservation(persistence, fields, "IPN", "KHONG_KHOP", true);
                 WebResponses.json(resp, 200, Map.of("RspCode", "01", "Message", "Unknown payment")); return;
             }
             BigDecimal expected = new BigDecimal(payment.get("so_tien_yeu_cau").toString()).movePointRight(2);
-            if (!"VND".equals(fields.get("vnp_CurrCode")) || !expected.toPlainString().equals(fields.get("vnp_Amount"))
+            String currency = fields.get("vnp_CurrCode");
+            BigDecimal actualAmount;
+            try { actualAmount = new BigDecimal(fields.get("vnp_Amount")); }
+            catch (RuntimeException invalid) { actualAmount = null; }
+            if ((currency != null && !"VND".equals(currency)) || actualAmount == null || expected.compareTo(actualAmount) != 0
                     || !("Nop tien cong ty " + reference).equals(fields.get("vnp_OrderInfo"))) {
-                recordPaymentObservation(fields, "IPN", "KHONG_KHOP", true);
+                recordPaymentObservation(persistence, fields, "IPN", "KHONG_KHOP", true);
                 WebResponses.json(resp, 200, Map.of("RspCode", "04", "Message", "Payment mismatch")); return;
             }
             if ("00".equals(fields.get("vnp_ResponseCode")) && "00".equals(fields.get("vnp_TransactionStatus"))) {
@@ -830,7 +871,7 @@ public final class DesignV2Servlet extends HttpServlet {
                 applyPayment(c, fields, "IPN", true, partner);
                 WebResponses.json(resp, 200, Map.of("RspCode", "00", "Message", "Confirm Success")); return;
             }
-            recordPaymentObservation(fields, "IPN", "KHONG_THAY_DOI", true);
+            recordPaymentObservation(persistence, fields, "IPN", "KHONG_THAY_DOI", true);
             WebResponses.json(resp, 200, Map.of("RspCode", "00", "Message", "Pending reconciliation"));
         }
     }
@@ -848,7 +889,8 @@ public final class DesignV2Servlet extends HttpServlet {
             throw new Rejected(502, "VNPAY_QUERY_INVALID", "Kết quả tra cứu VNPay không hợp lệ");
         String code = reply.get("vnp_ResponseCode"), status = reply.get("vnp_TransactionStatus");
         if ("00".equals(code) && "00".equals(status)) {
-            if (!payment.get("so_tien_yeu_cau").toString().equals(new BigDecimal(reply.get("vnp_Amount")).movePointLeft(2).toPlainString()))
+            if (new BigDecimal(payment.get("so_tien_yeu_cau").toString())
+                    .compareTo(new BigDecimal(reply.get("vnp_Amount")).movePointLeft(2)) != 0)
                 throw new Rejected(409, "PAYMENT_AMOUNT_MISMATCH", "Số tiền VNPay không khớp");
             applyPayment(c, reply, "QUERY", true, reply.get("vnp_TransactionNo"));
         } else if ("91".equals(code) || ("00".equals(code) && "02".equals(status))) {
@@ -897,10 +939,10 @@ public final class DesignV2Servlet extends HttpServlet {
         }
     }
 
-    private void recordPaymentObservation(Map<String,String> fields, String source, String result, boolean signatureValid) throws Exception {
+    private static void recordPaymentObservation(PersistenceContext persistence, Map<String,String> fields, String source, String result, boolean signatureValid) throws Exception {
         String json = JSON.writeValueAsString(new TreeMap<>(fields));
         byte[] hash = MessageDigest.getInstance("SHA-256").digest((source + json).getBytes(StandardCharsets.UTF_8));
-        try (Connection c = db().dataSource().getConnection(); PreparedStatement statement = c.prepareStatement(
+        try (Connection c = persistence.dataSource().getConnection(); PreparedStatement statement = c.prepareStatement(
                 "IF NOT EXISTS(SELECT 1 FROM dbo.su_kien_thanh_toan WHERE nguon=? AND khoa_su_kien=?) "
                         + "INSERT dbo.su_kien_thanh_toan(ma_giao_dich,nguon,khoa_su_kien,chu_ky_hop_le,ket_qua,noi_dung_json) "
                         + "VALUES((SELECT ma_giao_dich FROM dbo.giao_dich_nop_tien WHERE ma_tham_chieu=?),?,?,?,?,?)")) {

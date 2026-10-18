@@ -1,175 +1,109 @@
 "use client";
 
-import React, { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
+import { allOrders, api, type Driver, type Order } from "@/lib/live-orders";
+import { request } from "@/lib/api-client";
 import { formatVND } from "@/lib/utils";
-import { toggleDemoDriverOnline, useDemoStore } from "@/lib/demo-store";
 
 type HistoryFilter = "TODAY" | "YESTERDAY" | "7_DAYS" | "MONTH";
 
+function completedAt(order: Order): Date {
+  return new Date(order.thoiGianHoanTat ?? order.thoiGianTao);
+}
+
+function inPeriod(date: Date, filter: HistoryFilter, now: Date): boolean {
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (filter === "TODAY") return date >= today && date <= now;
+  if (filter === "YESTERDAY") return date >= new Date(today.getTime() - 86400000) && date < today;
+  if (filter === "7_DAYS") return date >= new Date(today.getTime() - 6 * 86400000) && date <= now;
+  return date >= new Date(now.getFullYear(), now.getMonth(), 1) && date <= now;
+}
+
 export default function DriverTripHistoryPage() {
   const [filter, setFilter] = useState<HistoryFilter>("7_DAYS");
-  const [asOf] = useState(() => Date.now());
-  const { state: demo } = useDemoStore();
-  const isOnline = demo.drivers.find((item) => item.id === "TX-DEMO-1")?.status !== "OFFLINE";
+  const [driver, setDriver] = useState<Driver | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const trips = demo.orders
-    .filter((order) => order.driver?.id === "TX-DEMO-1" && ["HOAN_TAT", "CHUA_THANH_TOAN"].includes(order.status))
-    .filter((order) => {
-      const day = new Date(order.createdTimestamp).toDateString();
-      if (filter === "TODAY") return day === new Date(asOf).toDateString();
-      if (filter === "YESTERDAY") return day === new Date(asOf - 86400000).toDateString();
-      if (filter === "7_DAYS") return order.createdTimestamp >= asOf - 7 * 86400000;
-      return new Date(order.createdTimestamp).getMonth() === new Date(asOf).getMonth() &&
-        new Date(order.createdTimestamp).getFullYear() === new Date(asOf).getFullYear();
-    })
-    .map((order) => ({
-      id: order.id, time: order.createdAt,
-      from: order.sender.street + ", " + order.sender.district,
-      to: order.receiver.street + ", " + order.receiver.district,
-      distanceKm: order.distanceKm, fee: order.totalFee,
-      paymentMethod: order.paymentMethod, paid: order.paid, rating: order.rating?.stars,
-    }));
+  const refresh = useCallback(async () => {
+    try {
+      const [self, result] = await Promise.all([
+        api<Driver>("/drivers/me"),
+        allOrders("HOAN_TAT"),
+      ]);
+      setDriver(self);
+      setOrders(result.filter(order => order.trangThai === "HOAN_TAT" && order.maTx === self.maTx));
+      setError("");
+    } catch (cause) { setError((cause as Error).message); }
+    finally { setLoading(false); }
+  }, []);
 
-  const totalFare = trips.reduce((sum, t) => sum + t.fee, 0);
-  const totalKm = trips.reduce((sum, t) => sum + t.distanceKm, 0);
+  useEffect(() => { const timer = setTimeout(() => { void refresh(); }, 0); return () => clearTimeout(timer); }, [refresh]);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
-      <DriverNavbar isOnline={isOnline} onToggleOnline={() => toggleDemoDriverOnline("TX-DEMO-1")} />
+  async function toggleOnline() {
+    if (!driver) return;
+    try {
+      await request("/drivers/me/availability", "POST", { online: driver.trangThaiHoatDong !== "ONLINE" });
+      await refresh();
+    } catch (cause) { setError((cause as Error).message); }
+  }
 
-      <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
-        {/* Header */}
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">
-            Lịch sử chuyến giao
-          </h1>
-          <p className="text-xs text-stone-500 mt-0.5">
-            Xem các đơn đã hoàn tất được tạo trong kỳ và cước vận chuyển tương ứng.
-          </p>
+  const now = new Date();
+  const trips = orders.filter(order => inPeriod(completedAt(order), filter, now))
+    .sort((a, b) => completedAt(b).getTime() - completedAt(a).getTime());
+  const totalFare = trips.reduce((sum, trip) => sum + Number(trip.cuoc.tongCuoc), 0);
+  const totalKm = trips.reduce((sum, trip) => sum + Number(trip.quangDuongKm), 0);
+
+  return <div className="min-h-screen flex flex-col bg-[#FAFAF9] text-[#1C1917] pb-24 md:pb-8">
+    <DriverNavbar isOnline={driver?.trangThaiHoatDong === "ONLINE"} onToggleOnline={() => void toggleOnline()} />
+    <main className="flex-1 max-w-[768px] w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5">
+      <div>
+        <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">Lịch sử chuyến giao</h1>
+        <p className="text-xs text-stone-500 mt-0.5">Các chuyến thực tế đã hoàn tất, tính theo ngày hoàn thành.</p>
+      </div>
+      {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {([
+          { key: "TODAY", label: "Hôm nay" },
+          { key: "YESTERDAY", label: "Hôm qua" },
+          { key: "7_DAYS", label: "7 ngày qua" },
+          { key: "MONTH", label: "Tháng này" },
+        ] as const).map(item => <button key={item.key} type="button" onClick={() => setFilter(item.key)}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${filter === item.key
+            ? "bg-stone-950 text-white shadow-xs" : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-50"}`}>
+          {item.label}
+        </button>)}
+      </div>
+      <section className="bg-gradient-to-br from-amber-500 via-amber-400 to-amber-600 rounded-2xl p-5 text-stone-950 shadow-sm">
+        <div className="flex items-center justify-between pb-3 border-b border-stone-950/15">
+          <div><span className="text-[10px] uppercase font-black tracking-wider text-amber-950 block">Tổng cước chuyến hoàn tất</span>
+            <div className="text-3xl font-black mt-0.5">{formatVND(totalFare)}</div></div>
+          <div className="text-right"><span className="text-[10px] uppercase font-bold text-amber-950 block">Số chuyến</span>
+            <div className="text-2xl font-black">{trips.length} chuyến</div></div>
         </div>
-
-        {/* Filter chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {(
-            [
-              { key: "TODAY", label: "Hôm nay" },
-              { key: "YESTERDAY", label: "Hôm qua" },
-              { key: "7_DAYS", label: "7 ngày qua" },
-              { key: "MONTH", label: "Tháng này" },
-            ] as const
-          ).map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => setFilter(item.key)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                filter === item.key
-                  ? "bg-stone-950 text-white shadow-xs"
-                  : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-50"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* SUMMARY STATS CARD */}
-        <section className="bg-gradient-to-br from-amber-500 via-amber-400 to-amber-600 rounded-2xl p-5 text-stone-950 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between pb-3 border-b border-stone-950/15">
-            <div>
-              <span className="text-[10px] uppercase font-black tracking-wider text-amber-950 block">
-                Tổng cước chuyến hoàn tất
-              </span>
-              <div className="text-3xl font-black mt-0.5">
-                {formatVND(totalFare)}
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] uppercase font-bold text-amber-950 block">
-                Số chuyến
-              </span>
-              <div className="text-2xl font-black">
-                {trips.length} chuyến
-              </div>
-            </div>
+        <div className="pt-3 text-xs font-bold text-stone-900">Quãng đường chạy: {totalKm.toFixed(1)} km</div>
+      </section>
+      <section className="space-y-3">
+        <h2 className="font-extrabold text-stone-900 text-sm uppercase tracking-wider">Danh sách chuyến giao ({trips.length})</h2>
+        {loading && <p className="rounded-xl border border-stone-200 bg-white p-8 text-center text-sm text-stone-500">Đang tải chuyến giao...</p>}
+        {!loading && !error && trips.length === 0 && <p className="rounded-xl border border-stone-200 bg-white p-8 text-center text-sm text-stone-500">Chưa có chuyến giao hoàn tất trong kỳ đã chọn.</p>}
+        {trips.map(trip => <article key={trip.maDon} className="bg-white border border-stone-200 rounded-xl p-4 shadow-2xs space-y-2.5">
+          <div className="flex items-center justify-between pb-2 border-b border-stone-100 flex-wrap gap-2">
+            <div><span className="font-mono font-black text-sm text-stone-900">{trip.maDon}</span>
+              <span className="text-xs text-stone-400 block">{completedAt(trip).toLocaleString("vi-VN")}</span></div>
+            <span className="text-sm font-black text-amber-600">{formatVND(Number(trip.cuoc.tongCuoc))}</span>
           </div>
-
-          <div className="pt-3 grid grid-cols-2 gap-2 text-xs font-bold text-stone-900">
-            <div>
-              <span className="opacity-80 block text-[10px]">Quãng đường chạy:</span>
-              <span>{totalKm.toFixed(1)} km</span>
-            </div>
-            <div className="text-right">
-              <span className="opacity-80 block text-[10px]">Đánh giá trung bình:</span>
-              <span>{trips.some((trip) => trip.rating) ?
-                "★ " + (trips.reduce((sum, trip) => sum + (trip.rating ?? 0), 0) / trips.filter((trip) => trip.rating).length).toFixed(1) + " / 5.0" :
-                "Chưa có đánh giá"}</span>
-            </div>
+          <div className="text-xs space-y-1 text-stone-700">
+            <div>Lấy: {trip.diemLayHang}</div><div>Giao: {trip.diemGiaoHang}</div>
           </div>
-        </section>
-
-        {/* LIST OF COMPLETED TRIPS */}
-        <section className="space-y-3">
-          <h3 className="font-extrabold text-stone-900 text-sm uppercase tracking-wider">
-            Danh sách chuyến giao ({trips.length})
-          </h3>
-
-          <div className="space-y-3">
-            {trips.length === 0 && <div className="rounded-xl border border-stone-200 bg-white p-8 text-center text-sm text-stone-500">Chưa có chuyến giao hoàn tất trong kỳ đã chọn.</div>}
-            {trips.map((trip) => (
-              <article
-                key={trip.id}
-                className="bg-white border border-stone-200 hover:border-amber-300 rounded-xl p-4 shadow-2xs transition-colors space-y-2.5"
-              >
-                <div className="flex items-center justify-between pb-2 border-b border-stone-100 flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-black text-sm text-stone-900">
-                      {trip.id}
-                    </span>
-                    <span className="text-stone-300">·</span>
-                    <span className="text-xs text-stone-400">{trip.time}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-black text-amber-600">
-                      {formatVND(trip.fee)}
-                    </span>
-                    <span className="text-[10px] text-stone-400 block">
-                      Cước vận chuyển
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-xs space-y-1 text-stone-700">
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-stone-400 mt-1 shrink-0" />
-                    <span className="truncate">Lấy: {trip.from}</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 mt-1 shrink-0" />
-                    <span className="truncate">Giao: {trip.to}</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-stone-100 text-[10px] font-bold text-stone-700">
-                      {trip.paid ? (trip.paymentMethod === "TIEN_MAT" ? "Đã thu tiền mặt" : "Đã thanh toán trực tuyến") : "Chưa thanh toán"}
-                    </span>
-                    <span className="text-[11px] text-stone-400">{trip.distanceKm} km</span>
-                  </div>
-                  <div className="font-bold text-amber-600">
-                    {trip.rating ? "★ " + trip.rating + ".0" : "Chưa có đánh giá"}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      </main>
-
-      <DriverBottomNav />
-    </div>
-  );
+          <div className="pt-2 border-t border-stone-100 text-xs text-stone-500">{Number(trip.quangDuongKm).toFixed(1)} km · Đã hoàn tất</div>
+        </article>)}
+      </section>
+    </main>
+    <DriverBottomNav />
+  </div>;
 }

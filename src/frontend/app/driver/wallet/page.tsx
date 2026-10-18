@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { DriverNavbar } from "@/components/layout/DriverNavbar";
 import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { formatVND } from "@/lib/utils";
-import { api, type Driver, type Order } from "@/lib/live-orders";
+import { allOrders, api, type Driver, type Order } from "@/lib/live-orders";
 import { request, type Finance } from "@/lib/api-client";
 
 export default function DriverWalletPage() {
@@ -19,14 +19,27 @@ export default function DriverWalletPage() {
     try {
       const [self, money, orders] = await Promise.all([
         api<Driver>("/drivers/me"), request<Finance>("/drivers/me/finance"),
-        api<{ items: Order[] }>("/orders?trangThai=HOAN_TAT&size=100"),
+        allOrders("HOAN_TAT"),
       ]);
-      setDriver(self); setFinance(money); setCompleted(orders.items); setError("");
+      setDriver(self); setFinance(money); setCompleted(orders.filter(order => order.maTx === self.maTx)); setError("");
     } catch (cause) { setError((cause as Error).message); }
   }, []);
   useEffect(() => {
     const initial = setTimeout(() => { void refresh(); }, 0);
     return () => clearTimeout(initial);
+  }, [refresh]);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("paymentReturn") !== "1") return;
+    window.history.replaceState(null, "", window.location.pathname);
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          await request("/drivers/me/settlements/reconcile", "POST", {});
+          await refresh();
+        } catch (cause) { setError((cause as Error).message); }
+      })();
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
   async function pay() {

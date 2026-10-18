@@ -1,0 +1,11 @@
+PASS: exactly six business views; removed views are absent
+PASS: order price trigger rejected update and transaction rolled back
+PASS: published policy trigger rejected edit and transaction rolled back
+ma_chinh_sach
+-------------
+B294DCE3-E339-452D-9287-414A57B7F085
+ma_chinh_sach
+-------------
+B294DCE3-E339-452D-9287-414A57B7F085
+PASS: policy SP created and published a draft; outer rollback removed the test policy
+PASS: unique filtered index blocked simultaneous open assignments; rollback left no test rows

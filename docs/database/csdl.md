@@ -1,5 +1,7 @@
 # Thiết kế CSDL đề xuất — Mini Ong Vang / DBMS330284
 
+> Lưu ý hiện hành: phần mô tả và khối SQL V9 ở mục 13 bên dưới là phương án cũ. Migration V9 trong mã nguồn hiện tạo 8 tài khoản cùng 6 hồ sơ khách/tài xế; V13 tạo biểu phí, chính sách, phụ thu và xe cần cho các luồng demo. Không migration nào tạo đơn hàng hoặc giao dịch mẫu. Xem [README](../../README.md) và các file migration thực tế trước khi chạy DB demo mới.
+
 Ngày cập nhật: 18/10/2026. Đây là baseline designV2 trên SQL Server 2022, không phải script nâng cấp V1–V12. SQL V1–V9 đã được tách từ các khối `-- FILE:` và chạy trên database designV2 demo/test riêng; backend và giao diện V2 dùng các đối tượng này. Không chạy nguyên tài liệu trên database V1. Các ví dụ kiểm thử/phân quyền ở cuối là kịch bản riêng, không nối vào khối tạo đối tượng.
 
 ## 0. Bố cục file migration để chia việc trong nhóm
@@ -27,7 +29,7 @@ src/backend/src/main/resources/db/designV2/sqlserver/
 | 1 | `V1__create_business_tables.sql` | Mục 3 | SET options, 16 bảng, PK/FK/CHECK/DEFAULT và ALTER FK khoản chia → giao dịch; chưa có dữ liệu mẫu |
 | 2 | `V2__create_indexes.sql` | Mục 4 | Unique filtered index chống gán/nộp trùng, index tra cứu; cần V1 |
 | 3 | `V3__create_fare_functions.sql` | Mục 5.1 | 4 scalar UDF tính cước km/kg, giảm giá và phần công ty |
-| 4 | `V4__create_business_views.sql` | Mục 5.2 | 8 view, gồm view tổng hợp phiên bản chính sách; cần bảng và fn_phan_cong_ty |
+| 4 | `V4__create_business_views.sql` | Mục 5.2 | Ban đầu 8 view; V15 bỏ 2 view không dùng, còn 6 view |
 | 5 | `V5__create_driver_income_function.sql` | Mục 5.3 | TVF fn_thu_nhap_tai_xe; phải sau v_chia_cuoc ở V4 |
 | 6 | `V6__create_integrity_triggers.sql` | **Cả hai khối SQL** mục 6 | 9 trigger, gồm ba trigger policy; cần bảng và các view tài chính |
 | 7 | `V7__create_business_procedures.sql` | **Tất cả khối SQL** mục 7, từ 7.1 đến 7.12 | 12 SP; không tạo helper riêng; giữ thứ tự các khối 7.1–7.12 |
@@ -510,9 +512,6 @@ SELECT t.ma_tx,
 FROM dbo.tai_xe t LEFT JOIN dbo.v_chia_cuoc c ON c.ma_tx=t.ma_tx
 LEFT JOIN dbo.giao_dich_nop_tien g ON g.ma_giao_dich=c.ma_giao_dich_nop GROUP BY t.ma_tx;
 GO
-CREATE OR ALTER VIEW dbo.v_don_cho_dieu_phoi AS
-SELECT ma_don,ma_kh,diem_lay,diem_giao,tao_luc FROM dbo.don_hang WHERE trang_thai='CHO_GAN';
-GO
 CREATE OR ALTER VIEW dbo.v_tai_xe_san_sang AS
 SELECT t.ma_tx,k.ho_ten,t.ranh_tu,p.bien_so FROM dbo.tai_xe t
 JOIN dbo.tai_khoan k ON k.ma_tk=t.ma_tk JOIN dbo.phuong_tien p ON p.ma_tx=t.ma_tx
@@ -520,12 +519,6 @@ WHERE t.trang_thai='ONLINE' AND t.ranh_tu IS NOT NULL
  AND k.trang_thai='HOAT_DONG' AND p.dang_hoat_dong=1
  AND t.ngay_het_han_gplx>=CONVERT(DATE,DATEADD(HOUR,7,SYSUTCDATETIME()))
  AND NOT EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang a WHERE a.ma_tx=t.ma_tx AND a.ket_thuc_luc IS NULL);
-GO
-CREATE OR ALTER VIEW dbo.v_cong_ty_thuc_nhan_ngay AS
-SELECT CONVERT(DATE,DATEADD(HOUR,7,giai_quyet_luc)) AS ngay_vn,
- SUM(so_tien_thuc_nhan) AS thuc_nhan,COUNT_BIG(*) AS so_giao_dich
-FROM dbo.giao_dich_nop_tien WHERE trang_thai='THANH_CONG'
-GROUP BY CONVERT(DATE,DATEADD(HOUR,7,giai_quyet_luc));
 GO
 CREATE OR ALTER VIEW dbo.v_phien_ban_chinh_sach AS
 SELECT 'CUOC' AS loai,ma_bieu_phi AS ma,'CUOC' AS nhom,hieu_luc_tu,hieu_luc_den,trang_thai FROM dbo.cau_hinh_cuoc
@@ -1506,16 +1499,13 @@ GRANT EXECUTE ON dbo.usp_quan_ly_phuong_tien TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_doc_don TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_ap_dung_ket_qua_nop TO r_payment_worker;
 GRANT EXECUTE ON dbo.usp_dang_ky_khach TO r_auth_backend;
-GRANT SELECT ON dbo.v_don_cho_dieu_phoi TO r_tong_dai;
 GRANT SELECT ON dbo.v_tai_xe_san_sang TO r_tong_dai;
 GRANT SELECT ON dbo.phan_cong_don_hang TO r_tong_dai;
-GRANT SELECT ON dbo.v_don_cho_dieu_phoi TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_tai_xe_san_sang TO r_chu_doi_xe;
 GRANT SELECT ON dbo.phan_cong_don_hang TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_chia_cuoc TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_so_du_tai_xe TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_giao_dich_nop TO r_chu_doi_xe;
-GRANT SELECT ON dbo.v_cong_ty_thuc_nhan_ngay TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_phien_ban_chinh_sach TO r_chu_doi_xe;
 -- Chỉ pool backend tin cậy. Không phải quyền cấp cho khách/tài xế trực tiếp.
 GRANT SELECT,INSERT,DELETE ON dbo.tai_khoan TO r_auth_backend;
@@ -1647,7 +1637,16 @@ Kịch bản chạy sau khi tạo DB test mới và seed riêng, không áp dụ
 các ví dụ đo/kiểm thử) và phân tích bằng SQLFluff 4.4.0 dialect `tsql`, không có phần SQL không phân tích được sau khi rút còn 12 SP.
 Đã kiểm tra không trùng tên đối tượng, mọi GRANT EXECUTE trỏ đến SP tồn tại,
 không có SP helper riêng, SP đăng ký chỉ cấp r_auth_backend và SP áp dụng
-VNPay chỉ cấp r_payment_worker. Có 16 bảng, 8 view, 5 UDF, 9 trigger, **đúng 12 SP tổng cộng**.
+VNPay chỉ cấp r_payment_worker. Thiết kế ban đầu có 16 bảng, 8 view, 5 UDF, 9 trigger và 12 SP.
+Trên DB đã chạy, migration V15 bỏ `v_don_cho_dieu_phoi` và `v_cong_ty_thuc_nhan_ngay`, còn 6 view;
+migration V16 thêm `usp_doc_don_trang` để lọc và phân trang đơn tại SQL (13 SP).
+Màn `/admin/pricing` dùng `/api/v2/policies` để lưu/sửa/xóa nháp, công bố và đóng hiệu lực;
+màn `/admin/orders` gửi `trangThai`, `page`, `size` xuống API thay vì lọc tối đa 100 dòng trong trình duyệt.
+Ca kiểm chứng có thể chạy lại từ [script SQL](../../tests/design-v2-integrity-check.sql),
+với [đầu ra](../../tests/evidence/design-v2-integrity-output.txt) và [ảnh tổng hợp kết quả](../../tests/evidence/design-v2-results.svg).
+Ca CRUD nháp và hai trang đơn có [script API](../../tests/design-v2-api-check.ps1)
+và [kết quả](../../tests/evidence/design-v2-api-results.json).
+DB demo hiện chỉ có ít đơn nên chưa đủ để kết luận index `ix_don_queue` nhanh hơn một phương án khác.
 Đây là kiểm tra tĩnh, **không chứng minh biên dịch/ràng buộc/quyền/concurrency trên SQL Server**.
 Lượt thử khởi động DB bị chặn tại tải image mcr.microsoft.com/mssql/server:2022-latest
 (`Forbidden`); các kịch bản trên chưa chạy, chưa có kết quả thực thi.
@@ -1676,15 +1675,15 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 | ≥8 bảng có quan hệ, phân tích 3NF | 16 bảng, bảng quan hệ mục 2, PK/FK mục 3 | Có thiết kế và [ERD](design-v2-erd.md) |
 | ≥5 CHECK/UNIQUE/DEFAULT | Vai trò, trạng thái, tiền, kg, thời gian, mã tham chiếu, số điện thoại… | Có SQL |
 | ≥5 trigger | 9 trigger ở mục 6 | Có SQL; chưa chạy multi-row/rollback test |
-| ≥5 view | 8 view ở mục 5 | Có SQL; cần tích hợp màn hình |
+| ≥5 view | 6 view nghiệp vụ sau migration V15; 2 view không dùng đã bỏ | Cả 6 có đường sử dụng qua API/SP/trigger |
 | ≥5 index, có non-PK và đo hiệu năng | Unique + 7 index tra cứu thường ở mục 4 | Có SQL; chưa có kết quả đo |
-| ≥5 SP, TRY/CATCH | 12 SP chức năng, không tạo helper riêng | Có SQL; cần biên dịch và kiểm thử rollback/quyền |
+| ≥5 SP, TRY/CATCH | 13 SP sau V16, gồm SP lọc/phân trang đơn | Có SQL và đường gọi API |
 | ≥5 UDF | 4 scalar + 1 inline TVF | Có SQL và vị trí sử dụng |
 | ≥5 nghiệp vụ transaction | TX1–TX7 | Có SQL; chưa có bằng chứng chạy |
 | Tranh chấp đồng thời | Gán đơn, bắt đầu thanh toán, callback/retry | Có kịch bản; chưa demo |
 | ≥4 Role/Login | 4 role nghiệp vụ + worker + auth backend; 6 user WITHOUT LOGIN cho demo | Có SQL role/user; login thực cấu hình sau |
 | GRANT/REVOKE/DENY | Mục 9 | Có SQL; cần test EXECUTE AS/ứng dụng |
-| App gọi SP/Function, CRUD/search/report | API V2 gọi 12 SP và các view/UDF; workspace dùng API V2 | Đã tích hợp và chạy các luồng chính trên ứng dụng local; còn xác nhận VNPay Sandbox thật |
+| App gọi SP/Function, CRUD/search/report | API V2 gọi SP chính sách và SP lọc/phân trang đơn; workspace dùng API V2 | Đã tích hợp màn quản trị biểu phí và danh sách đơn |
 | Báo cáo/backup/demo | Dùng thiết kế đã duyệt làm cơ sở | Tài liệu này không thay báo cáo 50–100 trang, backup hay demo thật |
 
 ## 12. Lộ trình chuyển code sau khi duyệt

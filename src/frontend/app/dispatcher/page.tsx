@@ -6,7 +6,7 @@ import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { IncidentItem, OrderItem } from "@/lib/types";
-import { api, type Driver, type Order } from "@/lib/live-orders";
+import { allOrders, api, type Driver } from "@/lib/live-orders";
 import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
@@ -28,17 +28,17 @@ export default function DispatcherLiveBoardPage() {
   const refresh = useCallback(async () => {
     try {
       const [pending, assigned, picked, delivering, fleet] = await Promise.all([
-        api<Page<Order>>("/orders?trangThai=CHO_GAN&size=100"),
-        api<Page<Order>>("/orders?trangThai=DA_GAN&size=100"),
-        api<Page<Order>>("/orders?trangThai=DA_LAY_HANG&size=100"),
-        api<Page<Order>>("/orders?trangThai=DANG_GIAO&size=100"),
+        allOrders("CHO_GAN"),
+        allOrders("DA_GAN"),
+        allOrders("DA_LAY_HANG"),
+        allOrders("DANG_GIAO"),
         api<Page<Driver>>("/drivers?size=100"),
       ]);
       const roster = fleet.items.map(driverForView);
       setDrivers(roster);
-      setOrders([...pending.items, ...assigned.items, ...picked.items, ...delivering.items]
+      setOrders([...pending, ...assigned, ...picked, ...delivering]
         .map(order => orderForView(order, roster)));
-      setPendingCount(pending.totalElements);
+      setPendingCount(pending.length);
       setLoadError("");
     } catch (cause) { setLoadError((cause as Error).message); }
   }, []);

@@ -30,5 +30,6 @@ Thumbs.db
 
 # Docker local volumes
 *.pid
+backups/
 # Local backup created while folding frontend into the root repository
 .git-migration-backup/

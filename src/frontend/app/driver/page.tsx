@@ -8,7 +8,7 @@ import { DriverBottomNav } from "@/components/layout/DriverBottomNav";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { OrderItem } from "@/lib/types";
-import { api, type Driver, type Order } from "@/lib/live-orders";
+import { allOrders, api, type Driver } from "@/lib/live-orders";
 import type { DriverEarnings } from "@/lib/finance";
 import { reportRange } from "@/lib/finance";
 import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
@@ -35,10 +35,10 @@ export default function DriverDashboardPage() {
       const { from, to } = reportRange("TODAY");
       const [self, assigned, picked, delivering, completed, earnings, finance] = await Promise.all([
         api<Driver>("/drivers/me"),
-        api<{ items: Order[] }>("/orders?trangThai=DA_GAN&size=100"),
-        api<{ items: Order[] }>("/orders?trangThai=DA_LAY_HANG&size=100"),
-        api<{ items: Order[] }>("/orders?trangThai=DANG_GIAO&size=100"),
-        api<{ items: Order[] }>("/orders?trangThai=HOAN_TAT&size=100"),
+        allOrders("DA_GAN"),
+        allOrders("DA_LAY_HANG"),
+        allOrders("DANG_GIAO"),
+        allOrders("HOAN_TAT"),
         api<DriverEarnings>(`/drivers/me/earnings?tuNgay=${from}&denNgay=${to}`),
         request<Finance>("/drivers/me/finance"),
       ]);
@@ -46,13 +46,13 @@ export default function DriverDashboardPage() {
       setCompanyDue(finance.con_phai_nop);
       const roster = [driverForView(self)];
       setDriver(roster[0]);
-      const current = [...assigned.items, ...picked.items, ...delivering.items].map(order => orderForView(order, roster));
+      const current = [...assigned, ...picked, ...delivering].map(order => orderForView(order, roster));
       setActiveOrder(current[0] ?? null);
       setIncomingOrder(previous => previous && current[0]?.id === previous.id && current[0].status === "DA_GAN"
         ? current[0] : null);
       if (current[0]?.status !== "DA_GAN") setIsRejectModalOpen(false);
       const today = new Date().toDateString();
-      setTodayTrips(completed.items.map(order => orderForView(order, roster))
+      setTodayTrips(completed.map(order => orderForView(order, roster))
         .filter(order => new Date(order.createdTimestamp).toDateString() === today));
       setError("");
     } catch (cause) { setError((cause as Error).message); }

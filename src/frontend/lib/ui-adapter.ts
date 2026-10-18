@@ -26,7 +26,8 @@ function order(row: Row): OrderDetail {
   const km = num(row.cuoc_km), kg = num(row.cuoc_kg), discount = num(row.tien_giam), total = num(row.tong_cuoc);
   const surcharge = total - km - kg + discount;
   return {
-    maDon: str(row.ma_don), thoiGianTao: str(row.tao_luc), diemLayHang: str(row.diem_lay),
+    maDon: str(row.ma_don), thoiGianTao: str(row.tao_luc),
+    thoiGianHoanTat: row.hoan_tat_luc == null ? null : str(row.hoan_tat_luc), diemLayHang: str(row.diem_lay),
     diemGiaoHang: str(row.diem_giao), tenNguoiNhan: str(row.ten_nguoi_nhan),
     sdtNguoiNhan: str(row.sdt_nguoi_nhan), quangDuongKm: str(row.quang_duong_km),
     ghiChuGiaoHang: str(row.ghi_chu), trangThai: str(row.trang_thai), maKh: str(row.ma_kh),
@@ -86,12 +87,10 @@ export async function requestApi<T>(path: string, options: RequestInit = {}): Pr
     }
     if (path.startsWith("/orders?") || path === "/orders") {
       const query = new URLSearchParams(path.split("?")[1] ?? "");
-      const raw = await request<{ items: Row[] }>("/orders");
-      const filtered = raw.items.map(order).filter(item => !query.has("trangThai") || item.trangThai === query.get("trangThai"));
-      const size = Math.max(1, num(query.get("size") ?? 20));
-      const page = num(query.get("page") ?? 0);
-      return { items: filtered.slice(page * size, (page + 1) * size), totalElements: filtered.length,
-        totalPages: Math.ceil(filtered.length / size) } as Page<Order> as T;
+      const raw = await request<{ items: Row[]; totalElements: number; totalPages: number }>(
+        `/orders?${query.toString()}`);
+      return { items: raw.items.map(order), totalElements: raw.totalElements,
+        totalPages: raw.totalPages } as Page<Order> as T;
     }
     const parts = path.split("?")[0].split("/").filter(Boolean);
     if (parts[0] === "drivers" && parts[1] && parts[2] === "demo-position" && method === "POST") {
