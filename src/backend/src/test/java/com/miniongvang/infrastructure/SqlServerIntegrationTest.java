@@ -22,8 +22,8 @@ class SqlServerIntegrationTest {
             assertTrue(configured, "CI requires TEST_DB_URL; integration tests must not silently skip");
         }
         assumeTrue(configured, "Set TEST_DB_URL to run isolated SQL Server integration tests");
-        assertTrue(url.matches("jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"),
-                "Integration tests only accept the dedicated mini_ong_vang_test database");
+        assertTrue(url.matches("jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_design_v2_test;encrypt=true;trustServerCertificate=true"),
+                "Integration tests only accept the dedicated mini_ong_vang_design_v2_test database");
     }
 
     private Connection connect() throws SQLException {
@@ -36,7 +36,7 @@ class SqlServerIntegrationTest {
              var result = statement.executeQuery("SELECT DB_NAME(), 1")) {
             assertEquals("Microsoft SQL Server", connection.getMetaData().getDatabaseProductName());
             assertTrue(result.next());
-            assertEquals("mini_ong_vang_test", result.getString(1));
+            assertEquals("mini_ong_vang_design_v2_test", result.getString(1));
             assertEquals(1, result.getInt(2));
         }
     }

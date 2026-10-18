@@ -1,13 +1,14 @@
 # Thiết kế CSDL đề xuất — Mini Ong Vang / DBMS330284
 
-> Lưu ý hiện hành: phần mô tả và khối SQL V9 ở mục 13 bên dưới là phương án cũ. Migration V9 trong mã nguồn hiện tạo 8 tài khoản cùng 6 hồ sơ khách/tài xế; V13 tạo biểu phí, chính sách, phụ thu và xe cần cho các luồng demo. Không migration nào tạo đơn hàng hoặc giao dịch mẫu. Xem [README](../../README.md) và các file migration thực tế trước khi chạy DB demo mới.
+> Lưu ý hiện hành: V9–V11 là migration lịch sử đã áp dụng, cần giữ nguyên checksum. V9 tạo tài khoản và các fixture đơn/giao dịch cũ; V20 chỉ xóa các fixture có ID và khóa yêu cầu cố định, giữ tài khoản, hồ sơ, cấu hình cùng dữ liệu người dùng. V17–V19 là các migration demo mới, được đánh số sau schema V16 để không trùng phiên bản Flyway.
 
 Ngày cập nhật: 18/10/2026. Đây là baseline designV2 trên SQL Server 2022, không phải script nâng cấp V1–V12. SQL V1–V9 đã được tách từ các khối `-- FILE:` và chạy trên database designV2 demo/test riêng; backend và giao diện V2 dùng các đối tượng này. Không chạy nguyên tài liệu trên database V1. Các ví dụ kiểm thử/phân quyền ở cuối là kịch bản riêng, không nối vào khối tạo đối tượng.
 
 ## 0. Bố cục file migration để chia việc trong nhóm
 
-Đây là **baseline mới designV2 trên database mới**, không đánh lại số hay ghi đè V1–V12
-của designV1. Bảng dưới mô tả các migration đã tách từ tài liệu.
+Đây là **baseline designV2**, không đánh lại số hay ghi đè V1–V12 của designV1. Flyway gộp
+các thư mục location thành một lịch sử phiên bản, vì vậy số phiên bản phải duy nhất giữa `schema/`
+và `demo/`. V9–V11 được giữ nguyên vì đã áp dụng; các migration demo mới bắt đầu từ V17 sau schema V16.
 
 ```text
 src/backend/src/main/resources/db/designV2/sqlserver/
@@ -19,9 +20,21 @@ src/backend/src/main/resources/db/designV2/sqlserver/
 │   ├── V5__create_driver_income_function.sql
 │   ├── V6__create_integrity_triggers.sql
 │   ├── V7__create_business_procedures.sql
-│   └── V8__create_roles_and_permissions.sql
+│   ├── V8__create_roles_and_permissions.sql
+│   ├── ...
+│   ├── V12__admin_driver_customer_management.sql
+│   ├── V13__admin_staff_profile_management.sql
+│   ├── V14__recover_validated_vnpay_ipn.sql
+│   ├── V15__drop_unused_business_views.sql
+│   └── V16__list_orders_with_filters.sql
 └── demo/
-    └── V9__insert_demo_data.sql
+    ├── V9__insert_demo_data.sql
+    ├── V10__update_demo_credentials_and_positions.sql
+    ├── V11__fix_demo_account_password_hash.sql
+    ├── V17__restore_demo_password_hash.sql
+    ├── V18__seed_demo_operating_config.sql
+    ├── V19__change_demo_account_password.sql
+    └── V20__remove_legacy_demo_orders.sql
 ```
 
 | Thứ tự | File | Lấy nội dung tại | Phạm vi và phụ thuộc |
@@ -35,6 +48,10 @@ src/backend/src/main/resources/db/designV2/sqlserver/
 | 7 | `V7__create_business_procedures.sql` | **Tất cả khối SQL** mục 7, từ 7.1 đến 7.12 | 12 SP; không tạo helper riêng; giữ thứ tự các khối 7.1–7.12 |
 | 8 | `V8__create_roles_and_permissions.sql` | Mục 9 | 6 role/user demo, GRANT/REVOKE/DENY; chỉ chạy sau khi các SP/view đã tồn tại |
 | 9 | `V9__insert_demo_data.sql` | **Chỉ mục 13.2** | 8 tài khoản hiện có, 30 đơn và dữ liệu liên quan; cần V1–V8, DB demo/test mới rỗng |
+| 10–11 | `V10__update_demo_credentials_and_positions.sql`, `V11__fix_demo_account_password_hash.sql` | Các thay đổi demo lịch sử | Giữ nguyên vì có thể đã được áp dụng trên DB đang dùng |
+| 12–16 | Các migration trong `schema/` | Thay đổi schema admin/VNPay | Nằm cùng lịch sử Flyway với demo; chạy sau V9–V11 |
+| 17–19 | `V17__restore_demo_password_hash.sql`, `V18__seed_demo_operating_config.sql`, `V19__change_demo_account_password.sql` | Các migration demo mới | Được chạy sau schema V12–V16; không trùng số với migration schema |
+| 20 | `V20__remove_legacy_demo_orders.sql` | Dọn fixture V9 | Chỉ xóa 30 đơn, 3 giao dịch giả và dữ liệu liên quan theo ID cố định; giữ các tài khoản demo và dữ liệu người dùng |
 
 **Quy tắc tách file:** chỉ sao chép nội dung bên trong hàng rào `sql` có dòng `-- FILE:`
 đúng tên file; không sao chép Markdown, truy vấn kiểm tra mục 10/11/13.3 hay cả tài liệu vào
@@ -45,12 +62,11 @@ không phụ thuộc tùy chọn của kết nối trước. Không chèn SET tr
 
 **Nạp demo tự động, không bật Java seed:**
 
-- DB schema sạch: cấu hình locations chỉ `classpath:db/designV2/sqlserver/schema` → chạy V1–V8.
-- DB demo/test: cấu hình **hai locations**, schema ở trên và
-  `classpath:db/designV2/sqlserver/demo` → Flyway sắp số V1 → V9 và tự nạp INSERT.
-- Dùng `mini_ong_vang_design_v2_demo` hoặc `mini_ong_vang_design_v2_test` cho V9;
-  DB CI cô lập `mini_ong_vang_test` cũng được phép để nạp fixture kiểm thử;
-  không gọi SeedCommand; backend V2 dùng V9 thay cho Java seed.
+- DB schema sạch: location `classpath:db/designV2/sqlserver/schema` chạy V1–V8 và V12–V16.
+- DB demo/test: cấu hình **hai locations**, schema ở trên và `classpath:db/designV2/sqlserver/demo`.
+  Flyway chạy V9–V11 đã áp dụng, schema V12–V16, rồi demo V17–V20; V20 dọn fixture V9.
+- Dùng `mini_ong_vang_design_v2_demo` hoặc `mini_ong_vang_design_v2_test`; không gọi SeedCommand.
+  DB CI V2 cũng dùng tên `mini_ong_vang_design_v2_test` để khớp guard của seed.
 - Không đưa designV1 và designV2 vào cùng locations/history, không chạy designV2 lên DB cũ.
   Không chạy V9 ở DB thật hoặc DB chứa dữ liệu cần giữ. Đã chạy file V nào thì giữ checksum;
   các thay đổi sau tạo V tiếp theo. Nếu DB đã áp dụng V9, không bỏ demo location khỏi cấu hình
@@ -60,7 +76,7 @@ không phụ thuộc tùy chọn của kết nối trước. Không chèn SET tr
 
 ### 0.1. Checklist trước khi chạy Flyway thật
 
-1. Tách V1–V8 vào schema và V9 vào demo theo `-- FILE:`; mỗi số V chỉ có một file,
+1. Dùng V1–V16 trong schema, giữ V9–V11 demo lịch sử và đặt migration demo mới từ V17; mỗi số V chỉ có một file,
    V6/V7 nối các khối đúng thứ tự, không sao chép Markdown/truy vấn kiểm tra.
 2. Đúng SQL Server 2022 và schema dbo, SQL login migration có quyền DDL/tạo role/user;
    dùng login ứng dụng hạn quyền để chạy migration sẽ thất bại ở V8. Login này tách khỏi
@@ -1704,7 +1720,7 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 File đích: `db/designV2/sqlserver/demo/V9__insert_demo_data.sql`.
 Chỉ tách khối SQL mục 13.2 vào file; mục 13.3 là câu truy vấn kiểm tra riêng.
 Chạy sau V1–V8 bằng Flyway trên DB **mới/rỗng** `mini_ong_vang_design_v2_demo`
-hoặc `mini_ong_vang_design_v2_test`; CI dùng DB cô lập `mini_ong_vang_test`. Không gọi DesignV1DemoSeeder/SeedCommand.
+hoặc `mini_ong_vang_design_v2_test`; CI dùng DB cô lập `mini_ong_vang_design_v2_test`. Không gọi DesignV1DemoSeeder/SeedCommand.
 Giữ đúng 8 username của dự án; không thêm tài khoản đăng nhập khác.
 
 | Username | Vai trò | Hồ sơ |
@@ -1755,7 +1771,7 @@ SET NUMERIC_ROUNDABORT OFF;
 GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
-IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo',N'mini_ong_vang_design_v2_test',N'mini_ong_vang_test')
+IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo',N'mini_ong_vang_design_v2_test')
  THROW 52400,N'V9 chỉ được chạy trên DB demo/test của schema designV2',1;
 IF EXISTS(SELECT 1 FROM dbo.tai_khoan) OR EXISTS(SELECT 1 FROM dbo.don_hang)
  OR EXISTS(SELECT 1 FROM dbo.cau_hinh_cuoc) OR EXISTS(SELECT 1 FROM dbo.chinh_sach_thanh_vien)

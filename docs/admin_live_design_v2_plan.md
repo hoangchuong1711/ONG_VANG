@@ -4,9 +4,9 @@
 
 - Mọi màn còn xuất hiện dưới `/admin` chỉ đọc/ghi dữ liệu của backend designV2. Không dùng `sample-data`, `admin-demo`, `demo-store` hoặc `localStorage` làm nguồn dữ liệu nghiệp vụ.
 - Backend và database quyết định quyền, trạng thái đơn, chính sách giá và kết quả thanh toán. Giao diện chỉ hiển thị kết quả được backend xác nhận.
-- Tiếp tục dùng database designV2 hiện tại và các tài khoản do V9–V11 tạo (trong đó có `demo_admin`). Không xóa tài khoản, đơn, giao dịch, migration seed hoặc dữ liệu người dùng đã tạo trong DB này.
+- Tiếp tục dùng database designV2 hiện tại và các tài khoản do V9–V11 tạo (trong đó có `demo_admin`). Giữ tài khoản, đơn do người dùng tạo và giao dịch thật; V20 chỉ dọn 30 đơn fixture V9 cùng giao dịch giả liên quan theo ID cố định.
 - Giữ 16 bảng nghiệp vụ trong `csdl.md`. Tính năng không có dữ liệu hoặc quy tắc trong 16 bảng sẽ được bỏ khỏi admin, trừ khi có yêu cầu thiết kế CSDL mới riêng.
-- Phạm vi chính là cổng admin và API phục vụ nó. “Bỏ demo” trong kế hoạch này nghĩa là bỏ **dữ liệu nghiệp vụ viết cứng trên frontend** và state giả trong trình duyệt; dữ liệu mẫu đang nằm trong DB vẫn được xem là bản ghi DB và tiếp tục sử dụng. Module frontend dùng chung chỉ xóa sau khi mọi route phụ thuộc đã được thay thế hoặc giữ nguyên an toàn.
+- Phạm vi chính là cổng admin và API phục vụ nó. “Bỏ demo” trong kế hoạch này nghĩa là bỏ **dữ liệu nghiệp vụ viết cứng trên frontend** và state giả trong trình duyệt; tài khoản demo và cấu hình trong DB tiếp tục sử dụng. Riêng 30 fixture đơn V9 được dọn bằng V20 theo ID cố định như yêu cầu; dữ liệu người dùng vẫn được giữ. Module frontend dùng chung chỉ xóa sau khi mọi route phụ thuộc đã được thay thế hoặc giữ nguyên an toàn.
 
 ### Bằng chứng hiện trạng
 
@@ -52,7 +52,7 @@ Các trang chỉ đọc hiện tại là bước nối dữ liệu thật, **kh�
 ### Giai đoạn 0 — Chốt database hiện dùng và bảo toàn dữ liệu
 
 1. Kiểm tra `MSSQL_DATABASE`, `DESIGN_V2_DEMO`, `ROUTE_PROVIDER`, Flyway history và `/api/health` của môi trường đang chạy. Ghi lại database nào chứa đơn/giao dịch thật và giao dịch VNPay còn chờ.
-2. Tiếp tục dùng DB designV2 hiện tại với `demo_admin` và các tài khoản mẫu; xác nhận đăng nhập, quyền, số đơn và số dư lấy từ DB. Giữ V9–V11 trong đường dẫn Flyway của DB đã áp dụng chúng; không tạo/chuyển sang DB live riêng cho kế hoạch này.
+2. Tiếp tục dùng DB designV2 hiện tại với `demo_admin` và các tài khoản mẫu; xác nhận đăng nhập, quyền, số đơn và số dư lấy từ DB. Giữ nguyên checksum V9–V11; không tạo/chuyển sang DB live riêng cho kế hoạch này. Dọn fixture V9 bằng migration V20, không đụng các đơn và giao dịch người dùng.
 3. Sao lưu DB trước khi sửa code hoặc cấu hình. Giữ nguyên đơn do người dùng tạo và giao dịch VNPay đang chờ; đối soát kết quả giao dịch qua luồng hiện có khi có thông tin đáng tin, không xóa hay tự đặt trạng thái kết thúc.
 4. Chạy tuyến thật khi vận hành (`ROUTE_PROVIDER=goong` và cấu hình hợp lệ). Không hiển thị vị trí demo như vị trí GPS thật.
 
@@ -135,14 +135,14 @@ Migration `V13__admin_staff_profile_management.sql` đã chạy trước trên `
 1. Kiểm thử DB/API/UI trên DB V2 test riêng: quyền, trạng thái đơn, hai thao tác đồng thời, rollback, khách/tài xế bị khóa, chính sách giá, kỳ báo cáo, Excel và các trạng thái VNPay.
 2. Kiểm tra từng route `/admin` trên cổng 3001 bằng tài khoản chủ thật; kiểm tra màn rỗng, tải chậm, API lỗi, làm mới trang và đăng nhập ở trình duyệt khác.
 3. Kiểm tra mọi route còn dùng mã demo hoặc API V1; lập bảng đối chiếu route → API V2/thao tác thay thế → kết quả kiểm thử. Không xóa module dùng chung ở bước này khi màn khác vẫn import.
-4. Cập nhật README, API/Postman và hướng dẫn sử dụng admin với DB V2 hiện tại, `demo_admin`, báo cáo và đối soát. Giữ migration V1/V2 đã áp dụng nguyên vẹn; nếu cần thêm index/cột, tạo migration mới không trùng V9–V11 (sau V13, dùng version tiếp theo là V14).
+4. Cập nhật README, API/Postman và hướng dẫn sử dụng admin với DB V2 hiện tại, `demo_admin`, báo cáo và đối soát. Giữ nguyên mọi migration đã áp dụng. Phiên bản Flyway phải duy nhất giữa hai locations; migration mới dùng số sau schema V16.
 5. Sao lưu và đối chiếu DB trước khi triển khai code admin; có cách khôi phục ứng dụng tương ứng. Không xóa dữ liệu hoặc giao dịch đang chờ khi cập nhật giao diện/API.
 
 **Tiến độ kiểm thử ngày 18/10/2026:** các route admin trên `localhost:3001` trả HTTP 200 (route settings đã gỡ trả 404); `/api/health` xác nhận backend live đang dùng `mini_ong_vang_design_v2_demo`. Smoke API chỉ đọc bằng `demo_admin` trước đó qua danh bạ, đơn/tổng quan/sự cố, báo cáo JSON/Excel và thanh toán. Kết quả live vẫn là 4 đơn và giao dịch VNPay `CHO_XU_LY` 29.103đ; không phát sinh ghi dữ liệu. API admin từ chối request chưa đăng nhập bằng 401 và từ chối khách hàng bằng 403. Trên DB test, smoke V12/V13, retry idempotent, hai phân công đồng thời, đua phân công/hủy, khóa tài xế đang có đơn, danh bạ, báo cáo JSON/Excel và phân trang 102 đơn đều qua; 104 đơn test được giữ ở `DA_HUY`, không còn đơn chờ hoặc phân công đang hoạt động. Next production build qua; `npm.cmd run check --prefix tools/api` qua, gồm OpenAPI 80 operation, Postman đồng bộ, backend boundary và 2 test Swagger. Chrome headless hiện tải trang `/admin` và bị chuyển về màn đăng nhập; API CSRF trả 200. Một lần thử đăng nhập `demo_admin` bằng `DEMO_PASSWORD` hiện có trả 401 `INVALID_CREDENTIALS`, nên đã dừng và chưa chạy smoke UI có phiên. SQL local không kết nối được bằng `sqlcmd`, Docker daemon cũng từ chối quyền; chưa chạy callback trên DB test. Ma trận route/API nằm trong [báo cáo kiểm thử](admin_live_design_v2_test_report.md), tài liệu API bổ trợ ở [hợp đồng admin V2](../api/design-v2-admin.md). Chưa đóng giai đoạn: còn test callback VNPay trên DB test, UI trạng thái biên/đa trình duyệt sau khi có thông tin đăng nhập hợp lệ và sao lưu/đối chiếu ngay trước triển khai. Tài khoản fixture chỉ được điều chỉnh trong DB test.
 
 ### Giai đoạn 7 — Dọn dữ liệu viết cứng trên frontend
 
-Mục tiêu là các màn admin hiển thị bản ghi và kết quả tính từ API/DB designV2 hiện tại, kể cả khi bản ghi ấy được tạo bởi seed V9. **Không xóa dữ liệu trong DB, tài khoản demo, V9–V11, backend seed hay cấu hình đang dùng** trong giai đoạn này.
+Mục tiêu là các màn admin hiển thị bản ghi và kết quả tính từ API/DB designV2 hiện tại. **Không xóa tài khoản demo, đơn/giao dịch do người dùng tạo, V9–V11 hoặc cấu hình đang dùng.** Migration V20 chỉ dọn 30 fixture V9 nhận diện bằng ID và khóa yêu cầu cố định, giữ nguyên các dữ liệu còn lại.
 
 1. Kiểm kê từng route `/admin`: mọi import từ `admin-demo.ts`, `admin-extras.ts`, `sample-data.ts`, `demo-store.ts`, `demo-pricing.ts`; mọi mảng/đối tượng mẫu khai báo ngay trong component; các thao tác `localStorage` dùng làm nguồn dữ liệu nghiệp vụ; nhãn và nút “Đặt lại demo”. Ghi route, trường hiển thị, API V2 thay thế và quyền cần có.
 2. Chuyển từng route sang API V2 và dữ liệu DB: tổng quan, đơn, tài xế, xe, khách, sự cố, thanh toán, báo cáo, chính sách, nhân sự và tài khoản. Với trường không có nguồn thật trong schema/API, bỏ khỏi UI hoặc thiết kế API/DB cần thiết trước khi hiển thị. Trạng thái tải/rỗng/lỗi phải nói đúng tình trạng API; không tự điền mẫu khi API lỗi.

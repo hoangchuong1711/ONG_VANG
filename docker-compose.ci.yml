@@ -23,7 +23,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       SQLCMDPASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}
-      DATABASE_NAME: mini_ong_vang_test
+      DATABASE_NAME: mini_ong_vang_design_v2_test
     volumes:
       - ./scripts/init-sqlserver.sql:/init.sql:ro
     entrypoint: ["/bin/bash", "-ec"]
@@ -40,7 +40,7 @@ services:
     build:
       context: ./src/backend
     environment:
-      DB_URL: "jdbc:sqlserver://db-test:1433;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"
+      DB_URL: "jdbc:sqlserver://db-test:1433;databaseName=mini_ong_vang_design_v2_test;encrypt=true;trustServerCertificate=true"
       DB_USER: sa
       DB_PASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}
     ports:

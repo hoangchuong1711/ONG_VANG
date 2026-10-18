@@ -43,11 +43,11 @@ jobs:
     timeout-minutes: 20
     env:
       COMPOSE_PROJECT_NAME: mini-ong-vang-ci
-      TEST_DB_URL: jdbc:sqlserver://127.0.0.1:15433;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true
+      TEST_DB_URL: jdbc:sqlserver://127.0.0.1:15433;databaseName=mini_ong_vang_design_v2_test;encrypt=true;trustServerCertificate=true
       TEST_DB_USER: sa
       REQUIRE_TEST_DB: 'true'
       API_BASE_URL: http://127.0.0.1:18081
-      API_EXPECTED_DATABASE: mini_ong_vang_test
+      API_EXPECTED_DATABASE: mini_ong_vang_design_v2_test
       V2_SMOKE_PASSWORD: '12345678'
     steps:
       - uses: actions/checkout@v6
@@ -81,11 +81,17 @@ jobs:
       - name: Seed isolated DesignV2 HTTP smoke fixtures
         run: |
           docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V9__insert_demo_data.sql db-test:/tmp/designv2-V9.sql
-          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V13__seed_demo_operating_config.sql db-test:/tmp/designv2-V13.sql
-          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V14__change_demo_account_password.sql db-test:/tmp/designv2-V14.sql
-          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_test -i /tmp/designv2-V9.sql
-          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_test -i /tmp/designv2-V13.sql
-          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_test -i /tmp/designv2-V14.sql
+          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V10__update_demo_credentials_and_positions.sql db-test:/tmp/designv2-V10.sql
+          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V11__fix_demo_account_password_hash.sql db-test:/tmp/designv2-V11.sql
+          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V17__restore_demo_password_hash.sql db-test:/tmp/designv2-V17.sql
+          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V18__seed_demo_operating_config.sql db-test:/tmp/designv2-V18.sql
+          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V19__change_demo_account_password.sql db-test:/tmp/designv2-V19.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_design_v2_test -i /tmp/designv2-V9.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_design_v2_test -i /tmp/designv2-V10.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_design_v2_test -i /tmp/designv2-V11.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_design_v2_test -i /tmp/designv2-V17.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_design_v2_test -i /tmp/designv2-V18.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_design_v2_test -i /tmp/designv2-V19.sql
       - name: Start DesignV2 backend after database tests finish
         run: docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test
       - name: Wait for DesignV2 API readiness
@@ -105,6 +111,11 @@ jobs:
         run: python tools/api/design-v2-admin-ops-smoke.py --base "$API_BASE_URL"
       - name: Smoke test DesignV2 finance and Excel reports
         run: python tools/api/design-v2-admin-finance-smoke.py --base "$API_BASE_URL"
+      - name: Verify V20 removes only legacy demo fixtures
+        run: |
+          docker compose -f docker-compose.ci.yml cp src/backend/src/main/resources/db/designV2/sqlserver/demo/V20__remove_legacy_demo_orders.sql db-test:/tmp/designv2-V20.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_design_v2_test -i /tmp/designv2-V20.sql
+          docker compose -f docker-compose.ci.yml exec -T db-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -d mini_ong_vang_design_v2_test -Q "IF (SELECT COUNT(*) FROM dbo.tai_khoan) <> 8 THROW 52420, 'Demo accounts were not preserved', 1; IF EXISTS (SELECT 1 FROM dbo.don_hang WHERE CONVERT(VARCHAR(36), ma_don) LIKE '50000000-0000-0000-0000-%') THROW 52421, 'Legacy demo orders remain', 1; IF EXISTS (SELECT 1 FROM dbo.giao_dich_nop_tien WHERE CONVERT(VARCHAR(36), ma_giao_dich) LIKE '80000000-0000-0000-0000-%') THROW 52422, 'Legacy demo payments remain', 1;"
       - name: Collect container logs
         if: always()
         run: |

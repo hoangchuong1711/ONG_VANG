@@ -31,8 +31,8 @@ class DesignV2IntegrationTest {
         password = System.getenv("TEST_DB_PASSWORD");
         if (Boolean.parseBoolean(System.getenv("REQUIRE_TEST_DB"))) assertNotNull(url);
         assumeTrue(url != null && url.matches(
-                "jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_test;encrypt=true;trustServerCertificate=true"),
-                "DesignV2 integration tests require the isolated mini_ong_vang_test database");
+                "jdbc:sqlserver://[^;]+;databaseName=mini_ong_vang_design_v2_test;encrypt=true;trustServerCertificate=true"),
+                "DesignV2 integration tests require the isolated mini_ong_vang_design_v2_test database");
         persistence = PersistenceContext.start(url, user, password);
     }
 

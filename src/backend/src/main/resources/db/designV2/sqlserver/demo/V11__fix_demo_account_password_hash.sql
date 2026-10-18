@@ -1,7 +1,7 @@
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo',N'mini_ong_vang_design_v2_test',N'mini_ong_vang_test')
+IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo',N'mini_ong_vang_design_v2_test')
     THROW 52400,N'V11 chỉ được chạy trên DB demo/test của schema designV2',1;
 
 DECLARE @hash NVARCHAR(255)=N'$2a$12$/wS5Xo5EaRXLYFwYgw7XPuAddgjumoPBsQ8UJKjBgCYoj7KN3.Xh2';

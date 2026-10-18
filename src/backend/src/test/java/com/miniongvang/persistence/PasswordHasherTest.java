@@ -25,7 +25,7 @@ class PasswordHasherTest {
     }
 
     @Test void restoredDemoHashMatchesDocumentedPassword() throws Exception {
-        String path = "/db/designV2/sqlserver/demo/V12__restore_demo_password_hash.sql";
+        String path = "/db/designV2/sqlserver/demo/V17__restore_demo_password_hash.sql";
         try (InputStream migration = getClass().getResourceAsStream(path)) {
             assertNotNull(migration);
             String sql = new String(migration.readAllBytes(), StandardCharsets.UTF_8);

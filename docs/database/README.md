@@ -1,6 +1,6 @@
 ﻿# Database designV1
 
-Schema đang chạy do Flyway tạo từ V1–V12 trong `src/backend/src/main/resources/db/designV1/sqlserver/`. [csdl.md](csdl.md) là bản đề xuất thiết kế mới, chưa áp dụng vào DB. Chỉ dùng script trong đó khi thiết kế được duyệt và trên database mới; không chạy trên DB đã migrate. Khi phát triển schema hiện tại, thêm migration Flyway mới, không sửa migration đã áp dụng.
+Phần chạy local bên dưới ghi lại cấu hình DesignV1 cũ. Ứng dụng hiện tại dùng DesignV2 như mô tả trong [README gốc](../../README.md) và [csdl.md](csdl.md). Không trộn migration hai thiết kế vào cùng database hoặc cùng Flyway locations.
 
 ## Chạy local
 
@@ -16,6 +16,6 @@ Kiểm tra `http://localhost:8081/api/health`; `databaseName` phải là `mini_o
 
 ## Test DB
 
-DB CI `mini_ong_vang_test` chạy riêng qua `docker-compose.ci.yml`, cổng 15433; backend test dùng 18081. Đặt `TEST_DB_URL`, `TEST_DB_USER`, `TEST_DB_PASSWORD`, `REQUIRE_TEST_DB=true`, sau đó khởi động `db-test` và `db-init-test` theo lệnh trong [README](../../README.md#ci-và-môi-trường-kiểm-thử-t05). Script reset từ chối DB không đúng tên và chỉ dùng cho test. Không chạy smoke ghi dữ liệu trên DB phát triển.
+DB CI DesignV2 `mini_ong_vang_design_v2_test` chạy riêng qua `docker-compose.ci.yml`, cổng 15433; backend test dùng 18081. Đặt `TEST_DB_URL`, `TEST_DB_USER`, `TEST_DB_PASSWORD`, `REQUIRE_TEST_DB=true`, sau đó dùng workflow [CI](../../.github/workflows/ci.yml) hoặc script [t20-local-verify.ps1](../../scripts/t20-local-verify.ps1). Các smoke DesignV2 chỉ chạy trên DB này. Công cụ reset DesignV1 cũ vẫn nhắm `mini_ong_vang_test`, không dùng với stack CI DesignV2.
 
-Seed demo tạo tài khoản, hồ sơ, xe và policy; mật khẩu lấy từ `DEMO_PASSWORD` và lưu dạng bcrypt hash. Không có sẵn đơn/thanh toán demo. Mọi thông tin đăng nhập do nhóm tự cấu hình, không ghi mật khẩu vào tài liệu/commit.
+Seed demo cuối cùng giữ tài khoản, hồ sơ, xe và policy; V20 dọn các đơn/giao dịch fixture cũ theo ID cố định. Mật khẩu tài khoản demo được đặt bởi migration V19. Không chạy cleanup trên DB khác demo/test.

@@ -1,7 +1,7 @@
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo', N'mini_ong_vang_design_v2_test', N'mini_ong_vang_test')
+IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo', N'mini_ong_vang_design_v2_test')
     THROW 52400, N'V12 is restricted to designV2 demo/test databases', 1;
 
 -- V11 replaced the working 12345678 hash with one for a different password.
