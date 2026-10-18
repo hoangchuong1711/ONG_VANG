@@ -31,7 +31,7 @@ src/backend/src/main/resources/db/designV2/sqlserver/
 | 4 | `V4__create_business_views.sql` | Mục 5.2 | 8 view, gồm view tổng hợp phiên bản chính sách; cần bảng và fn_phan_cong_ty |
 | 5 | `V5__create_driver_income_function.sql` | Mục 5.3 | TVF fn_thu_nhap_tai_xe; phải sau v_chia_cuoc ở V4 |
 | 6 | `V6__create_integrity_triggers.sql` | **Cả hai khối SQL** mục 6 | 9 trigger, gồm ba trigger policy; cần bảng và các view tài chính |
-| 7 | `V7__create_business_procedures.sql` | **Tất cả khối SQL** mục 7, từ helper đến 7.11 | 34 SP; giữ thứ tự usp_khoa/usp_actor trước, rồi nghiệp vụ/CRUD/tra cứu |
+| 7 | `V7__create_business_procedures.sql` | **Tất cả khối SQL** mục 7, từ 7.1 đến 7.12 | 12 SP; không tạo helper riêng; giữ thứ tự các khối 7.1–7.12 |
 | 8 | `V8__create_roles_and_permissions.sql` | Mục 9 | 6 role/user demo, GRANT/REVOKE/DENY; chỉ chạy sau khi các SP/view đã tồn tại |
 | 9 | `V9__insert_demo_data.sql` | **Chỉ mục 13.2** | 8 tài khoản hiện có, 30 đơn và dữ liệu liên quan; cần V1–V8, DB demo/test mới rỗng |
 
@@ -39,8 +39,8 @@ src/backend/src/main/resources/db/designV2/sqlserver/
 đúng tên file; không sao chép Markdown, truy vấn kiểm tra mục 10/11/13.3 hay cả tài liệu vào
 một migration. V6 và V7 có nhiều khối: nối chúng theo thứ tự xuất hiện. Giữ GO và SET options
 của định nghĩa. Không thêm BEGIN TRAN chung quanh V7 vì các SP tự quản transaction nghiệp vụ.
-Giữ các SET options đầu V1; khi tách file thủ công/khác kết nối, dùng cùng SET options đầu
-file tạo function/view/index/trigger để tránh khác tùy chọn phiên. Flyway SQL Server hỗ trợ GO.
+Mỗi file đã có SET options ở khối đầu tiên; giữ nguyên chúng khi tách để index/function/view/trigger
+không phụ thuộc tùy chọn của kết nối trước. Không chèn SET trước CREATE FUNCTION/VIEW/TRIGGER/SP trong cùng batch; giữ GO phân cách. Flyway SQL Server hỗ trợ GO.
 
 **Nạp demo tự động, không bật Java seed:**
 
@@ -55,6 +55,24 @@ file tạo function/view/index/trigger để tránh khác tùy chọn phiên. Fl
   các lần validate/migrate tiếp theo của chính DB đó, tránh migration đã áp dụng bị báo thiếu.
 - Phân công theo **nhóm bảng/index**, **hàm/view**, **trigger/SP**, **quyền/dữ liệu/test**;
   thống nhất tên trong bảng trên, chỉ một thành viên tích hợp mỗi file để không trùng phiên bản.
+
+### 0.1. Checklist trước khi chạy Flyway thật
+
+1. Tách V1–V8 vào schema và V9 vào demo theo `-- FILE:`; mỗi số V chỉ có một file,
+   V6/V7 nối các khối đúng thứ tự, không sao chép Markdown/truy vấn kiểm tra.
+2. Đúng SQL Server 2022 và schema dbo, SQL login migration có quyền DDL/tạo role/user;
+   dùng login ứng dụng hạn quyền để chạy migration sẽ thất bại ở V8. Login này tách khỏi
+   credential runtime, không cấp DDL cho bốn role nghiệp vụ.
+3. Tạo DB mới designV2 demo/test đúng tên guard V9; không dùng DB designV1 đã có bảng/history.
+4. Dùng Flyway có module SQL Server, cấu hình locations schema + demo cho DB demo;
+   không bật Java seed. Chưa thay cấu hình `PersistenceContext` đang trỏ designV1.
+5. Chạy migrate lần đầu, kiểm tra schema history V1–V9 success, 16 bảng nghiệp vụ,
+   8 tài khoản/30 đơn; chạy validate rồi migrate lần hai phải không nạp trùng.
+6. Chạy các truy vấn đối chiếu mục 10.3/13.3 và test rollback/quyền/đồng thời trên DB đó.
+
+Đã kiểm tra tĩnh cú pháp, thứ tự object/GRANT và tên file; chưa có bằng chứng thực thi
+Flyway/SQL Server trong môi trường này do tải image SQL Server bị Forbidden.
+Không coi việc Java hiện tại khởi động thành công với designV1 là đã kiểm thử bộ designV2.
 
 ## 1. Chức năng thay đổi đã thống nhất
 
@@ -100,6 +118,44 @@ Phân biệt: tiền khách được tài xế **khai báo đã thu**; tiền c�
 - Bỏ `bao_gia`. Chọn phương án gọn: bỏ `yeu_cau_tao_don`, thay bằng khóa yêu cầu + hash nội dung trên đơn. Khóa chỉ duy nhất theo người tạo; cùng khóa nhưng khác nội dung phải từ chối.
 - Bỏ `ben_thanh_toan`, `phuong_thuc_thanh_toan`. Giữ lịch sử phân công, kiện, phụ thu, nhật ký đơn và kiểm toán.
 - Bảng Flyway/seed/công cụ không tính trong 16 bảng nghiệp vụ và không tạo ở bản này.
+
+### 1.2. Hợp đồng phạm vi: không tạo lại chức năng đã bỏ
+
+Khi tách V1–V9 ở mục 0, chỉ tạo **16 bảng nghiệp vụ được liệt kê ở mục 2**.
+Không sao chép bảng/cột/SP cũ từ designV1 để làm cho Entity cũ chạy tạm.
+Nếu code cũ còn phụ thuộc bảng đã bỏ thì sửa code ở giai đoạn tích hợp, không bổ sung
+bảng tương thích làm sống lại chức năng đã loại khỏi phạm vi.
+
+| Chức năng đã bỏ | Không được tạo trong designV2 | Phần thay thế/được giữ |
+|---|---|---|
+| Thanh toán cước của khách trong hệ thống | thanh_toan, xac_nhan_thanh_toan_don_hang, giao dịch/callback VNPay khách → tài xế; ben_thanh_toan, phuong_thuc_thanh_toan trên đơn | Tài xế xác nhận đã giao + thu đủ qua usp_hoan_tat; người đặt chịu trách nhiệm trả cước bên ngoài |
+| Nộp COD do điều phối thực hiện, đợt/chi tiết/lần nộp | dot_nop_cod, khoan_cod_trong_dot, lan_nop_cod, su_kien_nop_cod; dot_nop_tien, chi_tiet_dot_nop; ma_dot hoặc người điều phối nộp trong giao dịch mới | giao_dich_nop_tien thuộc tài xế, phan_chia_cuoc.ma_giao_dich_nop gắn khoản của chính người đó; một nút thanh toán |
+| Lưu báo giá tạm | bao_gia hoặc bảng quote/token báo giá thay tên | Xem trước bằng tính toán, TX1 tính lại và so gia_da_dong_y; không lưu báo giá vào DB |
+| Bảng yêu cầu tạo đơn riêng | yeu_cau_tao_don | khoa_yeu_cau + hash_yeu_cau trên don_hang để chống tạo trùng |
+| Quên mật khẩu/OTP/email reset | password_reset_challenge, auth_rate_limit của reset, bảng OTP/reset token/email queue dành cho reset | Đăng nhập, đăng ký, đổi mật khẩu khi đã xác thực, hash + auth_version; hạn chế đăng nhập ở ứng dụng |
+| Ví điện tử/trả lương/rút tiền/hoàn tiền/thu tiền hàng/đánh giá | Bảng số dư ví, giao dịch rút/chuyển lương, hoàn tiền, tiền hàng COD, đánh giá ngoài phạm vi | Thu nhập 80% và công nợ 20% được suy từ đơn hoàn tất, không phải số dư ví hoặc tiền đã chuyển cho tài xế |
+| GPS trực tiếp | Bảng điểm GPS theo thời gian hoặc nguồn giả mạo GPS | Địa chỉ/tọa độ demo sau geocode, DEMO_CO_DINH và thời điểm cấu hình |
+
+**Tên cần phân biệt để không xóa nhầm hoặc tạo nhầm:**
+
+- `su_kien_thanh_toan` trong designV2 **chỉ** tham chiếu `giao_dich_nop_tien` của
+  tài xế → công ty. Đây không phải bảng sự kiện thanh toán cước khách ở schema cũ.
+- `v_so_du_tai_xe` là **view công nợ/thu nhập suy ra**, không phải bảng ví có số dư để nạp/rút.
+- `ma_tk_dieu_phoi` chỉ nằm ở lịch sử **phân công đơn**, vẫn cần cho nghiệp vụ điều phối;
+  không được thêm cột đó để tổng đài đứng tên nộp tiền công ty.
+- `nhat_ky_don_hang` và `nhat_ky_kiem_toan` là nhật ký nghiệp vụ/chỉnh sửa, không phải
+  một kho giao dịch khách trả tiền bên ngoài hệ thống.
+- Backend xác minh chữ ký VNPay **chỉ cho tài xế nộp công ty**. Tiền khách là tài xế
+  khai báo thu đủ; không có bảng/xác nhận ngân hàng để biến khai báo đó thành giao dịch khách.
+- Phần INSERT V9 chỉ nạp dữ liệu cho 16 bảng này, không tạo tài khoản OTP, quote tạm,
+  thanh toán khách hoặc dữ liệu ví dưới tên khác.
+
+Checklist khi review migration: đối chiếu CREATE TABLE với danh sách 16 bảng; đối chiếu
+FK tài chính với giao_dich_nop_tien; chỉ role tài xế được bắt đầu thanh toán; không có
+thủ tục nộp thay cho tổng đài; không có mức nợ/hạn nộp để chặn gán đơn. Kiểm tra các tình
+huống 300.000 → 60.000/240.000 và phát sinh thêm khoản trong lúc đang thanh toán ở mục 10.2.
+SQL trong tài liệu mới qua rà tĩnh; bảng/cột đúng phạm vi không có nghĩa code hiện tại đã
+được chuyển đổi hoặc các luồng mới đã được chạy thử.
 
 ## 2. Mô hình quan hệ và lựa chọn thiết kế
 
@@ -346,6 +402,14 @@ Index duy nhất bảo vệ bất biến ngay cả khi có hai request. Index th
 
 ```sql
 -- FILE: V2__create_indexes.sql
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 CREATE UNIQUE INDEX ux_tk_phone ON dbo.tai_khoan(so_dien_thoai) WHERE so_dien_thoai IS NOT NULL;
 CREATE UNIQUE INDEX ux_pc_open_order ON dbo.phan_cong_don_hang(ma_don) WHERE ket_thuc_luc IS NULL;
 CREATE UNIQUE INDEX ux_pc_open_driver ON dbo.phan_cong_don_hang(ma_tx) WHERE ket_thuc_luc IS NULL;
@@ -372,6 +436,14 @@ Công thức giữ cách tính cũ: cước km = cơ bản + km × đơn giá; k
 
 ```sql
 -- FILE: V3__create_fare_functions.sql
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 CREATE OR ALTER FUNCTION dbo.fn_cuoc_km(@co_ban DECIMAL(15,0), @km DECIMAL(10,2), @don_gia DECIMAL(15,0))
 RETURNS DECIMAL(15,0) AS
 BEGIN RETURN CONVERT(DECIMAL(15,0),ROUND(@co_ban+@km*@don_gia,0)); END;
@@ -394,6 +466,14 @@ GO
 
 ```sql
 -- FILE: V4__create_business_views.sql
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 CREATE OR ALTER VIEW dbo.v_cuoc_don AS
 SELECT d.ma_don,d.ma_kh,d.trang_thai,d.tao_luc,d.hoan_tat_luc,
  d.cuoc_km,d.cuoc_kg,d.tien_giam,
@@ -460,6 +540,14 @@ GO
 
 ```sql
 -- FILE: V5__create_driver_income_function.sql
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 CREATE OR ALTER FUNCTION dbo.fn_thu_nhap_tai_xe(@ma_tx UNIQUEIDENTIFIER,@tu DATETIME2(3),@den DATETIME2(3))
 RETURNS TABLE AS RETURN (
  SELECT COUNT_BIG(*) AS so_don,COALESCE(SUM(tong_cuoc),0) AS tong_cuoc,
@@ -477,6 +565,14 @@ Trigger xử lý theo tập inserted/deleted, không giả định một dòng. 
 
 ```sql
 -- FILE: V6__create_integrity_triggers.sql
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 CREATE OR ALTER TRIGGER dbo.tr_kh_role ON dbo.khach_hang AFTER INSERT,UPDATE AS
 BEGIN
  SET NOCOUNT ON;
@@ -617,32 +713,31 @@ GO
 
 Đã có 9 trigger có mã cụ thể. FK/CHECK không thay kiểm tra quyền trên từng dòng. Quy tắc “đơn có ít nhất một kiện”, “đơn hoàn tất có khoản chia”, “giao dịch chưa giải quyết/thành công liên kết đúng tổng tiền”, “KHONG_THU không giữ khoản chia” cần thủ tục transaction và chặn DML trực tiếp. Không có trigger tổng tiền lúc INSERT giao dịch vì các khoản được gắn ngay sau đó trong cùng TX4.
 
-## 7. [V7] Stored Procedure và transaction
+## 7. [V7] Đúng 12 Stored Procedure
 
-Các thủ tục ghi bên dưới tự sở hữu transaction, không gọi bên trong transaction Java đang mở. JDBC gọi ở chế độ phù hợp và không giữ khóa trong lúc người dùng mở VNPay. Cùng tài xế dùng khóa `nop:<ma_tx>` cho bắt đầu thanh toán, ghi nhận hoàn tất và callback. Luồng điều phối dùng khóa `dieu-phoi` trước rồi mới lấy khóa tài chính tài xế; không đảo thứ tự. Đây là phương án ưu tiên dễ chứng minh cho bài học, chấp nhận tuần tự hóa điều phối; sau này có thể thay khóa toàn cục bằng khóa theo đơn/tài xế có thứ tự cố định.
+Chốt **12 SP tổng cộng**, không có SP helper riêng. Các đoạn đọc actor từ SESSION_CONTEXT,
+kiểm tra vai trò và sp_getapplock được viết trực tiếp trong SP cần dùng. V7 không tạo
+usp_actor/usp_khoa hoặc các SP CRUD nhỏ của bản trước.
 
-Các tham số được coi là dữ liệu đầu vào; danh tính actor luôn từ kết nối backend đã xác thực. Các thủ tục kiểm tra vai trò và quyền sở hữu bổ sung. Role SQL giới hạn ai được EXECUTE; backend không đưa mật khẩu DB cho trình duyệt.
+| STT | SP | Trách nhiệm |
+|---|---|---|
+| 1 | usp_tao_don | Tạo đơn/kiện/phụ thu và chốt cước |
+| 2 | usp_phan_cong | Gán đơn, chống gán trùng và loại tài xế đã từ chối |
+| 3 | usp_tien_trinh | Lấy hàng, bắt đầu giao, đến điểm nhận, từ chối, sự cố |
+| 4 | usp_hoan_tat | Xác nhận giao/thu đủ, kết thúc phân công, ghi chia cước |
+| 5 | usp_huy_don | Hủy trước lấy hàng, đóng phân công và giải phóng tài xế |
+| 6 | usp_bat_dau_thanh_toan | Tài xế nộp phần công ty |
+| 7 | usp_ap_dung_ket_qua_nop | Worker áp dụng kết quả VNPay đã xác minh |
+| 8 | usp_quan_ly_chinh_sach | Lưu/xóa NHAP, công bố, đóng hiệu lực |
+| 9 | usp_quan_ly_phuong_tien | Thêm/sửa/xóa xe chưa dùng hoặc ngừng hoạt động |
+| 10 | usp_dang_ky_khach | Tài khoản và hồ sơ khách cùng transaction |
+| 11 | usp_doc_don | Đơn/lịch sử theo quyền, có phân trang |
+| 12 | usp_thu_nhap_cua_toi | Thu nhập và khoản cần nộp của tài xế |
 
-```sql
--- FILE: V7__create_business_procedures.sql
-CREATE OR ALTER PROCEDURE dbo.usp_khoa @tai_nguyen NVARCHAR(255) AS
-BEGIN
- SET NOCOUNT ON;
- DECLARE @r INT;
- EXEC @r=sys.sp_getapplock @Resource=@tai_nguyen,@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
- IF @r<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_actor @ma_tk UNIQUEIDENTIFIER OUTPUT,@vai_tro VARCHAR(20) OUTPUT AS
-BEGIN
- SET NOCOUNT ON;
- SET @ma_tk=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
- SET @vai_tro=NULL;
- SELECT @vai_tro=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@ma_tk AND trang_thai='HOAT_DONG';
- IF @vai_tro IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
-END;
-GO
-```
+SP ghi tự sở hữu transaction, không gọi bên trong transaction Java đang mở. Cùng tài xế
+dùng khóa nop:<ma_tx> cho bắt đầu thanh toán/hoàn tất/callback. Điều phối lấy dieu-phoi
+trước khóa tài chính; không đảo thứ tự. Không giữ transaction trong lúc gọi Goong/VNPay.
+Khóa dieu-phoi toàn cục ưu tiên minh họa tính đúng; chấp nhận tuần tự hóa điều phối.
 
 ### 7.1. Tạo đơn — TX1
 
@@ -650,6 +745,14 @@ GO
 
 ```sql
 -- FILE: V7__create_business_procedures.sql
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 CREATE OR ALTER PROCEDURE dbo.usp_tao_don
  @ma_kh UNIQUEIDENTIFIER,@khoa VARCHAR(100),@hash BINARY(32),
  @diem_lay NVARCHAR(255),@diem_giao NVARCHAR(255),@ten_nhan NVARCHAR(100),@sdt_nhan VARCHAR(10),
@@ -658,16 +761,21 @@ CREATE OR ALTER PROCEDURE dbo.usp_tao_don
 AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
+ DECLARE @khoa_rc INT;
  BEGIN TRY
   BEGIN TRAN;
   DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20),@now DATETIME2(3)=SYSUTCDATETIME(),@id UNIQUEIDENTIFIER,@oldhash BINARY(32);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
+  SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
   IF @role NOT IN ('KHACH_HANG','TONG_DAI','CHU_DOI_XE') THROW 51102,N'Không được tạo đơn',1;
   IF NOT EXISTS(SELECT 1 FROM dbo.khach_hang k JOIN dbo.tai_khoan t ON t.ma_tk=k.ma_tk
    WHERE k.ma_kh=@ma_kh AND t.trang_thai='HOAT_DONG' AND (@role<>'KHACH_HANG' OR k.ma_tk=@actor))
    THROW 51103,N'Khách hàng không hợp lệ',1;
   DECLARE @lock NVARCHAR(255)=N'tao-don:'+CONVERT(NVARCHAR(36),@actor);
-  EXEC dbo.usp_khoa @lock;
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=@lock,@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   SELECT @id=ma_don,@oldhash=hash_yeu_cau FROM dbo.don_hang WHERE ma_tk_tao=@actor AND khoa_yeu_cau=@khoa;
   IF @id IS NOT NULL
   BEGIN
@@ -689,7 +797,8 @@ BEGIN
   INSERT @pt SELECT TRY_CONVERT(UNIQUEIDENTIFIER,value) FROM OPENJSON(@phu_thu_json);
   IF EXISTS(SELECT 1 FROM @pt WHERE id IS NULL) OR EXISTS(SELECT id FROM @pt GROUP BY id HAVING COUNT(*)>1)
    THROW 51107,N'Phụ thu không hợp lệ hoặc trùng',1;
-  EXEC dbo.usp_khoa N'chinh-sach';
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=N'chinh-sach',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   DECLARE @kg DECIMAL(10,2)=(SELECT SUM(kg) FROM @kien),@bp UNIQUEIDENTIFIER,@cs UNIQUEIDENTIFIER,
    @ckm DECIMAL(15,0),@ckg DECIMAL(15,0),@giam DECIMAL(15,0)=0,@phuthu DECIMAL(15,0),@rate DECIMAL(5,2)=0;
   IF (SELECT COUNT(*) FROM dbo.cau_hinh_cuoc WHERE trang_thai='CONG_BO' AND hieu_luc_tu<=@now AND (hieu_luc_den IS NULL OR @now<hieu_luc_den))<>1
@@ -745,12 +854,17 @@ GO
 CREATE OR ALTER PROCEDURE dbo.usp_phan_cong @ma_don UNIQUEIDENTIFIER,@ma_tx UNIQUEIDENTIFIER AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
+ DECLARE @khoa_rc INT;
  BEGIN TRY
   BEGIN TRAN;
   DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
+  SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
   IF @role NOT IN ('TONG_DAI','CHU_DOI_XE') THROW 51201,N'Không có quyền điều phối',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=N'dieu-phoi',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   IF NOT EXISTS(SELECT 1 FROM dbo.don_hang WITH(UPDLOCK,HOLDLOCK) WHERE ma_don=@ma_don AND trang_thai='CHO_GAN')
    THROW 51202,N'Đơn không chờ gán',1;
   IF NOT EXISTS(SELECT 1 FROM dbo.v_tai_xe_san_sang WHERE ma_tx=@ma_tx) THROW 51203,N'Tài xế không sẵn sàng',1;
@@ -779,16 +893,22 @@ Xác nhận thu đủ là hành động của tài xế, không phải xác nh�
 CREATE OR ALTER PROCEDURE dbo.usp_hoan_tat @ma_don UNIQUEIDENTIFIER,@xac_nhan_thu_du BIT AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
+ DECLARE @khoa_rc INT;
  BEGIN TRY
   BEGIN TRAN;
   DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20),@tx UNIQUEIDENTIFIER,@pc UNIQUEIDENTIFIER,@now DATETIME2(3)=SYSUTCDATETIME();
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
+  SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
   IF @role<>'TAI_XE' OR ISNULL(@xac_nhan_thu_du,0)<>1 THROW 51301,N'Cần tài xế xác nhận thu đủ',1;
   SELECT @tx=ma_tx FROM dbo.tai_xe WHERE ma_tk=@actor;
   IF @tx IS NULL THROW 51302,N'Thiếu hồ sơ tài xế',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=N'dieu-phoi',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   DECLARE @lock NVARCHAR(255)=N'nop:'+CONVERT(NVARCHAR(36),@tx);
-  EXEC dbo.usp_khoa @lock;
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=@lock,@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   IF EXISTS(SELECT 1 FROM dbo.phan_chia_cuoc c JOIN dbo.phan_cong_don_hang p ON p.ma_phan_cong=c.ma_phan_cong WHERE c.ma_don=@ma_don AND p.ma_tx=@tx)
   BEGIN COMMIT; RETURN; END;
   SELECT @pc=p.ma_phan_cong FROM dbo.phan_cong_don_hang p JOIN dbo.don_hang d ON d.ma_don=p.ma_don
@@ -819,16 +939,21 @@ Một lần bấm gọi usp_bat_dau_thanh_toan (không có ma_dot). Thủ tục 
 CREATE OR ALTER PROCEDURE dbo.usp_bat_dau_thanh_toan @khoa_yeu_cau VARCHAR(100) AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
+ DECLARE @khoa_rc INT;
  BEGIN TRY
   BEGIN TRAN;
   DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20),@tx UNIQUEIDENTIFIER,@gd UNIQUEIDENTIFIER,@tien DECIMAL(15,0);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
+  SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
   IF @role<>'TAI_XE' OR @khoa_yeu_cau IS NULL OR LEN(LTRIM(RTRIM(@khoa_yeu_cau)))=0
    THROW 51401,N'Chỉ tài xế thanh toán; cần khóa yêu cầu',1;
   SELECT @tx=ma_tx FROM dbo.tai_xe WHERE ma_tk=@actor;
   IF @tx IS NULL THROW 51402,N'Thiếu hồ sơ tài xế',1;
   DECLARE @lock NVARCHAR(255)=N'nop:'+CONVERT(NVARCHAR(36),@tx);
-  EXEC dbo.usp_khoa @lock;
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=@lock,@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   SELECT @gd=ma_giao_dich FROM dbo.giao_dich_nop_tien WHERE ma_tx=@tx AND khoa_yeu_cau=@khoa_yeu_cau;
   IF @gd IS NULL
    SELECT @gd=ma_giao_dich FROM dbo.giao_dich_nop_tien WHERE ma_tx=@tx AND giai_quyet_luc IS NULL;
@@ -868,6 +993,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_ap_dung_ket_qua_nop
 AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
+ DECLARE @khoa_rc INT;
  BEGIN TRY
   BEGIN TRAN;
   IF @nguon IS NULL OR @nguon NOT IN ('IPN','QUERY') OR @thanh_cong IS NULL OR @so_tien IS NULL
@@ -877,7 +1003,8 @@ BEGIN
   SELECT @gd=ma_giao_dich,@tx=ma_tx FROM dbo.giao_dich_nop_tien WHERE ma_tham_chieu=@ma_tham_chieu;
   IF @gd IS NULL THROW 51602,N'Không tìm thấy giao dịch; backend ghi sự kiện không khớp riêng',1;
   DECLARE @lock NVARCHAR(255)=N'nop:'+CONVERT(NVARCHAR(36),@tx);
-  EXEC dbo.usp_khoa @lock;
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=@lock,@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   IF EXISTS(SELECT 1 FROM dbo.su_kien_thanh_toan WHERE nguon=@nguon AND khoa_su_kien=@khoa)
   BEGIN COMMIT; RETURN; END;
   SELECT @expected=so_tien_yeu_cau,@status=trang_thai,@partner=ma_giao_dich_doi_tac
@@ -922,12 +1049,17 @@ Sự kiện sai chữ ký/không tìm thấy mã tham chiếu phải ghi bằng 
 CREATE OR ALTER PROCEDURE dbo.usp_tien_trinh @ma_don UNIQUEIDENTIFIER,@hanh_dong VARCHAR(25),@ghi_chu NVARCHAR(500)=NULL AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
+ DECLARE @khoa_rc INT;
  BEGIN TRY
   BEGIN TRAN;
   DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20),@tx UNIQUEIDENTIFIER,@pc UNIQUEIDENTIFIER,@state VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
+  SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
   IF @role<>'TAI_XE' THROW 51701,N'Chỉ tài xế cập nhật tiến trình',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=N'dieu-phoi',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   SELECT @tx=ma_tx FROM dbo.tai_xe WHERE ma_tk=@actor;
   SELECT @pc=p.ma_phan_cong,@state=d.trang_thai FROM dbo.phan_cong_don_hang p JOIN dbo.don_hang d ON d.ma_don=p.ma_don
    WHERE p.ma_don=@ma_don AND p.ma_tx=@tx AND p.ket_thuc_luc IS NULL;
@@ -969,13 +1101,18 @@ GO
 CREATE OR ALTER PROCEDURE dbo.usp_huy_don @ma_don UNIQUEIDENTIFIER,@ly_do NVARCHAR(500) AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
+ DECLARE @khoa_rc INT;
  BEGIN TRY
   BEGIN TRAN;
   DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20),@tx UNIQUEIDENTIFIER;
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
+  SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
   IF @role NOT IN ('KHACH_HANG','TONG_DAI','CHU_DOI_XE') OR @ly_do IS NULL OR LEN(LTRIM(RTRIM(@ly_do)))=0
    THROW 51801,N'Không được hủy hoặc thiếu lý do',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=N'dieu-phoi',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   IF NOT EXISTS(SELECT 1 FROM dbo.don_hang d JOIN dbo.khach_hang k ON k.ma_kh=d.ma_kh
    WHERE d.ma_don=@ma_don AND d.trang_thai IN ('CHO_GAN','DA_GAN') AND (@role<>'KHACH_HANG' OR k.ma_tk=@actor))
    THROW 51802,N'Không đúng chủ đơn hoặc đã lấy hàng',1;
@@ -1002,7 +1139,10 @@ CREATE OR ALTER PROCEDURE dbo.usp_thu_nhap_cua_toi @tu DATETIME2(3),@den DATETIM
 BEGIN
  SET NOCOUNT ON;
  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20),@tx UNIQUEIDENTIFIER;
- EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
+ SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
  IF @role<>'TAI_XE' OR @tu IS NULL OR @den IS NULL OR @tu>=@den THROW 51901,N'Không đúng quyền/khoảng thời gian',1;
  SELECT @tx=ma_tx FROM dbo.tai_xe WHERE ma_tk=@actor;
  SELECT * FROM dbo.fn_thu_nhap_tai_xe(@tx,@tu,@den);
@@ -1011,30 +1151,38 @@ END;
 GO
 ```
 
-### 7.9. CRUD chính sách, công bố và đóng hiệu lực
+### 7.9. Quản lý chính sách qua một SP
 
-Chủ đội xe tạo/sửa/xóa **NHAP**; công bố kiểm tra overlap theo nhóm: một biểu phí chung,
-mỗi hạng thành viên và mỗi `ma_loai` phụ thu. Dùng cùng khóa `chinh-sach` với TX1 và đổi hạng.
-Khoảng hiệu lực là [từ, đến); đóng bản cũ tại T ở tương lai rồi công bố bản mới bắt đầu T.
-Hai thao tác riêng có thể retry; không sửa tiền/loại/bắt buộc của phiên bản đã công bố.
-JSON dưới là **thay thế đầy đủ** bản nháp, không phải PATCH; thiếu trường bắt buộc sẽ bị từ chối.
-Ví dụ phụ thu: `{"ma_loai":"DICH_VU","ten":"Dịch vụ","so_tien":5000,"bat_buoc":true,"hieu_luc_tu":"2026-10-18T00:00:00","hieu_luc_den":null}`.
-Biểu phí cần tên, các trường km/kg/đơn giá; thành viên cần ma_hang, ty_le_giam và khoảng hiệu lực.
+`LUU_NHAP`: @ma=NULL để tạo, có @ma để thay toàn bộ nháp; @du_lieu là JSON đầy đủ.
+`XOA_NHAP`, `CONG_BO`: truyền @loai và @ma. `DONG_HIEU_LUC`: thêm @den ở tương lai.
+Chỉ CHU_DOI_XE; cùng khóa chinh-sach với TX1. Không cho sửa/xóa bản công bố.
+JSON phụ thu: `{"ma_loai":"DICH_VU","ten":"Dịch vụ","so_tien":5000,"bat_buoc":true,"hieu_luc_tu":"2026-10-18T00:00:00","hieu_luc_den":null}`.
+Biểu phí cần các trường tên/km/kg/đơn giá; thành viên cần ma_hang/ty_le_giam và khoảng hiệu lực.
 
 ```sql
 -- FILE: V7__create_business_procedures.sql
-CREATE OR ALTER PROCEDURE dbo.usp_luu_chinh_sach_nhap
- @loai VARCHAR(15),@du_lieu NVARCHAR(MAX),@ma UNIQUEIDENTIFIER=NULL
+CREATE OR ALTER PROCEDURE dbo.usp_quan_ly_chinh_sach
+ @hanh_dong VARCHAR(15),@loai VARCHAR(15),@ma UNIQUEIDENTIFIER=NULL,
+ @du_lieu NVARCHAR(MAX)=NULL,@den DATETIME2(3)=NULL
 AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
+ DECLARE @khoa_rc INT;
  BEGIN TRY
   BEGIN TRAN;
   DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'chinh-sach';
-  IF @loai IS NULL OR @loai NOT IN ('CUOC','THANH_VIEN','PHU_THU')
+  SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
+  IF @role<>'CHU_DOI_XE' THROW 52001,N'Không đủ quyền',1;
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=N'chinh-sach',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
+  IF @hanh_dong IS NULL OR @hanh_dong NOT IN ('LUU_NHAP','XOA_NHAP','CONG_BO','DONG_HIEU_LUC')
+   THROW 52002,N'Hành động chính sách không hợp lệ',1;
+  IF @hanh_dong='LUU_NHAP'
+  BEGIN
+IF @loai IS NULL OR @loai NOT IN ('CUOC','THANH_VIEN','PHU_THU')
    OR ISNULL(ISJSON(@du_lieu),0)<>1 OR LEFT(LTRIM(@du_lieu),1)<>'{'
    THROW 52002,N'Loại hoặc JSON chính sách không hợp lệ',1;
   DECLARE @moi BIT=CASE WHEN @ma IS NULL THEN 1 ELSE 0 END;
@@ -1043,9 +1191,9 @@ BEGIN
   IF @moi=1 SET @ma=NEWID();
   DECLARE @ten NVARCHAR(100)=JSON_VALUE(@du_lieu,'$.ten'),
    @tu DATETIME2(3)=TRY_CONVERT(DATETIME2(3),JSON_VALUE(@du_lieu,'$.hieu_luc_tu'),126),
-   @den DATETIME2(3)=TRY_CONVERT(DATETIME2(3),JSON_VALUE(@du_lieu,'$.hieu_luc_den'),126);
-  IF @tu IS NULL OR (JSON_VALUE(@du_lieu,'$.hieu_luc_den') IS NOT NULL AND @den IS NULL)
-   OR (@den IS NOT NULL AND @den<=@tu) THROW 52004,N'Khoảng hiệu lực không hợp lệ',1;
+   @nhap_den DATETIME2(3)=TRY_CONVERT(DATETIME2(3),JSON_VALUE(@du_lieu,'$.hieu_luc_den'),126);
+  IF @tu IS NULL OR (JSON_VALUE(@du_lieu,'$.hieu_luc_den') IS NOT NULL AND @nhap_den IS NULL)
+   OR (@nhap_den IS NOT NULL AND @nhap_den<=@tu) THROW 52004,N'Khoảng hiệu lực không hợp lệ',1;
   IF @loai='CUOC'
   BEGIN
    DECLARE @cb DECIMAL(15,0)=TRY_CONVERT(DECIMAL(15,0),JSON_VALUE(@du_lieu,'$.cuoc_co_ban')),
@@ -1057,16 +1205,16 @@ BEGIN
    @dkg DECIMAL(15,0)=TRY_CONVERT(DECIMAL(15,0),JSON_VALUE(@du_lieu,'$.don_gia_kg'));
    IF @ten IS NULL OR LEN(LTRIM(RTRIM(@ten)))=0 THROW 52005,N'Thiếu tên biểu phí',1;
    IF @moi=1 INSERT dbo.cau_hinh_cuoc(ma_bieu_phi,ten,cuoc_co_ban,don_gia_km,km_toi_thieu,km_toi_da,kg_bao_gom,kg_toi_da,don_gia_kg,hieu_luc_tu,hieu_luc_den)
-   VALUES(@ma,@ten,@cb,@dkm,@kmin,@kmax,@kg,@kgmax,@dkg,@tu,@den);
+   VALUES(@ma,@ten,@cb,@dkm,@kmin,@kmax,@kg,@kgmax,@dkg,@tu,@nhap_den);
    ELSE UPDATE dbo.cau_hinh_cuoc SET ten=@ten,cuoc_co_ban=@cb,don_gia_km=@dkm,km_toi_thieu=@kmin,km_toi_da=@kmax,
-   kg_bao_gom=@kg,kg_toi_da=@kgmax,don_gia_kg=@dkg,hieu_luc_tu=@tu,hieu_luc_den=@den WHERE ma_bieu_phi=@ma;
+   kg_bao_gom=@kg,kg_toi_da=@kgmax,don_gia_kg=@dkg,hieu_luc_tu=@tu,hieu_luc_den=@nhap_den WHERE ma_bieu_phi=@ma;
   END
   ELSE IF @loai='THANH_VIEN'
   BEGIN
    DECLARE @hang VARCHAR(15)=JSON_VALUE(@du_lieu,'$.ma_hang'),@rate DECIMAL(5,2)=TRY_CONVERT(DECIMAL(5,2),JSON_VALUE(@du_lieu,'$.ty_le_giam'));
    IF @moi=1 INSERT dbo.chinh_sach_thanh_vien(ma_chinh_sach,ma_hang,ty_le_giam,hieu_luc_tu,hieu_luc_den)
-   VALUES(@ma,@hang,@rate,@tu,@den);
-   ELSE UPDATE dbo.chinh_sach_thanh_vien SET ma_hang=@hang,ty_le_giam=@rate,hieu_luc_tu=@tu,hieu_luc_den=@den WHERE ma_chinh_sach=@ma;
+   VALUES(@ma,@hang,@rate,@tu,@nhap_den);
+   ELSE UPDATE dbo.chinh_sach_thanh_vien SET ma_hang=@hang,ty_le_giam=@rate,hieu_luc_tu=@tu,hieu_luc_den=@nhap_den WHERE ma_chinh_sach=@ma;
   END
   ELSE
   BEGIN
@@ -1076,11 +1224,49 @@ BEGIN
    IF @ten IS NULL OR LEN(LTRIM(RTRIM(@ten)))=0 OR @nhom IS NULL OR LEN(LTRIM(RTRIM(@nhom)))=0 OR @bb IS NULL
    THROW 52006,N'Thiếu tên/loại/phân loại phụ thu',1;
    IF @moi=1 INSERT dbo.cau_hinh_phu_thu(ma_phu_thu,ma_loai,ten,bat_buoc,so_tien,hieu_luc_tu,hieu_luc_den)
-   VALUES(@ma,@nhom,@ten,@bb,@tien,@tu,@den);
-   ELSE UPDATE dbo.cau_hinh_phu_thu SET ma_loai=@nhom,ten=@ten,bat_buoc=@bb,so_tien=@tien,hieu_luc_tu=@tu,hieu_luc_den=@den WHERE ma_phu_thu=@ma;
+   VALUES(@ma,@nhom,@ten,@bb,@tien,@tu,@nhap_den);
+   ELSE UPDATE dbo.cau_hinh_phu_thu SET ma_loai=@nhom,ten=@ten,bat_buoc=@bb,so_tien=@tien,hieu_luc_tu=@tu,hieu_luc_den=@nhap_den WHERE ma_phu_thu=@ma;
   END;
   INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong,noi_dung)
    VALUES(@actor,@loai,@ma,CASE WHEN @moi=1 THEN 'TAO_NHAP' ELSE 'SUA_NHAP' END,@du_lieu);
+  END
+  ELSE IF @hanh_dong='XOA_NHAP'
+  BEGIN
+IF NOT EXISTS(SELECT 1 FROM dbo.v_phien_ban_chinh_sach WHERE loai=@loai AND ma=@ma AND trang_thai='NHAP')
+   THROW 52003,N'Chỉ xóa chính sách nháp tồn tại',1;
+  -- Nếu bị dữ liệu khác tham chiếu, FK từ chối và toàn bộ thao tác rollback.
+  IF @loai='CUOC' DELETE dbo.cau_hinh_cuoc WHERE ma_bieu_phi=@ma;
+  ELSE IF @loai='THANH_VIEN' DELETE dbo.chinh_sach_thanh_vien WHERE ma_chinh_sach=@ma;
+  ELSE DELETE dbo.cau_hinh_phu_thu WHERE ma_phu_thu=@ma;
+  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong) VALUES(@actor,@loai,@ma,'XOA_NHAP');
+  END
+  ELSE IF @hanh_dong='CONG_BO'
+  BEGIN
+DECLARE @cb_nhom VARCHAR(30),@cb_tu DATETIME2(3),@cb_den DATETIME2(3),@cb_now DATETIME2(3)=SYSUTCDATETIME();
+  SELECT @cb_nhom=nhom,@cb_tu=hieu_luc_tu,@cb_den=hieu_luc_den FROM dbo.v_phien_ban_chinh_sach
+   WHERE loai=@loai AND ma=@ma AND trang_thai='NHAP';
+  IF @cb_nhom IS NULL OR (@cb_den IS NOT NULL AND @cb_den<=@cb_now) THROW 52008,N'Chính sách nháp không hợp lệ hoặc đã hết hạn',1;
+  IF EXISTS(SELECT 1 FROM dbo.v_phien_ban_chinh_sach
+   WHERE loai=@loai AND nhom=@cb_nhom AND ma<>@ma AND trang_thai='CONG_BO'
+   AND (@cb_den IS NULL OR hieu_luc_tu<@cb_den) AND (hieu_luc_den IS NULL OR @cb_tu<hieu_luc_den))
+   THROW 52009,N'Khoảng hiệu lực bị chồng; đóng bản cũ tại mốc tương lai trước khi công bố bản mới',1;
+  IF @loai='CUOC' UPDATE dbo.cau_hinh_cuoc SET trang_thai='CONG_BO' WHERE ma_bieu_phi=@ma;
+  ELSE IF @loai='THANH_VIEN' UPDATE dbo.chinh_sach_thanh_vien SET trang_thai='CONG_BO' WHERE ma_chinh_sach=@ma;
+  ELSE UPDATE dbo.cau_hinh_phu_thu SET trang_thai='CONG_BO' WHERE ma_phu_thu=@ma;
+  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong) VALUES(@actor,@loai,@ma,'CONG_BO');
+  END
+  ELSE
+  BEGIN
+IF @den IS NULL OR @den<=SYSUTCDATETIME() OR NOT EXISTS(
+   SELECT 1 FROM dbo.v_phien_ban_chinh_sach WHERE loai=@loai AND ma=@ma AND trang_thai='CONG_BO'
+   AND hieu_luc_den IS NULL AND hieu_luc_tu<@den)
+   THROW 52007,N'Chỉ đóng một lần phiên bản công bố, ở mốc tương lai sau ngày bắt đầu',1;
+  IF @loai='CUOC' UPDATE dbo.cau_hinh_cuoc SET hieu_luc_den=@den WHERE ma_bieu_phi=@ma;
+  ELSE IF @loai='THANH_VIEN' UPDATE dbo.chinh_sach_thanh_vien SET hieu_luc_den=@den WHERE ma_chinh_sach=@ma;
+  ELSE UPDATE dbo.cau_hinh_phu_thu SET hieu_luc_den=@den WHERE ma_phu_thu=@ma;
+  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong,noi_dung)
+   VALUES(@actor,@loai,@ma,'DONG_HIEU_LUC',(SELECT @den AS hieu_luc_den FOR JSON PATH,WITHOUT_ARRAY_WRAPPER));
+  END;
   COMMIT;
   SELECT @ma AS ma_chinh_sach;
  END TRY
@@ -1090,83 +1276,53 @@ BEGIN
  END CATCH;
 END;
 GO
-CREATE OR ALTER PROCEDURE dbo.usp_xoa_chinh_sach_nhap
- @loai VARCHAR(15),@ma UNIQUEIDENTIFIER
+```
+
+### 7.10. Quản lý phương tiện qua một SP
+
+`LUU`: tạo nếu chưa có xe, sửa/ngừng hoạt động nếu có. `XOA`: chỉ tài xế chưa có lịch sử
+phân công. Không thay đổi xe khi tài xế đang có phân công mở. Thông tin lịch sử không bị xóa.
+
+```sql
+-- FILE: V7__create_business_procedures.sql
+CREATE OR ALTER PROCEDURE dbo.usp_quan_ly_phuong_tien
+ @hanh_dong VARCHAR(10),@ma_tx UNIQUEIDENTIFIER,@bien_so NVARCHAR(15)=NULL,
+ @loai_xe NVARCHAR(50)=NULL,@mau_xe NVARCHAR(30)=NULL,@hoat_dong BIT=1
 AS
 BEGIN
  SET NOCOUNT ON; SET XACT_ABORT ON;
+ DECLARE @khoa_rc INT;
  BEGIN TRY
   BEGIN TRAN;
   DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'chinh-sach';
-  IF NOT EXISTS(SELECT 1 FROM dbo.v_phien_ban_chinh_sach WHERE loai=@loai AND ma=@ma AND trang_thai='NHAP')
-   THROW 52003,N'Chỉ xóa chính sách nháp tồn tại',1;
-  -- Nếu bị dữ liệu khác tham chiếu, FK từ chối và toàn bộ thao tác rollback.
-  IF @loai='CUOC' DELETE dbo.cau_hinh_cuoc WHERE ma_bieu_phi=@ma;
-  ELSE IF @loai='THANH_VIEN' DELETE dbo.chinh_sach_thanh_vien WHERE ma_chinh_sach=@ma;
-  ELSE DELETE dbo.cau_hinh_phu_thu WHERE ma_phu_thu=@ma;
-  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong) VALUES(@actor,@loai,@ma,'XOA_NHAP');
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_dong_hieu_luc_chinh_sach
- @loai VARCHAR(15),@ma UNIQUEIDENTIFIER,@den DATETIME2(3)
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'chinh-sach';
-  IF @den IS NULL OR @den<=SYSUTCDATETIME() OR NOT EXISTS(
-   SELECT 1 FROM dbo.v_phien_ban_chinh_sach WHERE loai=@loai AND ma=@ma AND trang_thai='CONG_BO'
-   AND hieu_luc_den IS NULL AND hieu_luc_tu<@den)
-   THROW 52007,N'Chỉ đóng một lần phiên bản công bố, ở mốc tương lai sau ngày bắt đầu',1;
-  IF @loai='CUOC' UPDATE dbo.cau_hinh_cuoc SET hieu_luc_den=@den WHERE ma_bieu_phi=@ma;
-  ELSE IF @loai='THANH_VIEN' UPDATE dbo.chinh_sach_thanh_vien SET hieu_luc_den=@den WHERE ma_chinh_sach=@ma;
-  ELSE UPDATE dbo.cau_hinh_phu_thu SET hieu_luc_den=@den WHERE ma_phu_thu=@ma;
-  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong,noi_dung)
-   VALUES(@actor,@loai,@ma,'DONG_HIEU_LUC',(SELECT @den AS hieu_luc_den FOR JSON PATH,WITHOUT_ARRAY_WRAPPER));
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_cong_bo_chinh_sach
- @loai VARCHAR(15),@ma UNIQUEIDENTIFIER
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'chinh-sach';
-  DECLARE @nhom VARCHAR(30),@tu DATETIME2(3),@den DATETIME2(3),@now DATETIME2(3)=SYSUTCDATETIME();
-  SELECT @nhom=nhom,@tu=hieu_luc_tu,@den=hieu_luc_den FROM dbo.v_phien_ban_chinh_sach
-   WHERE loai=@loai AND ma=@ma AND trang_thai='NHAP';
-  IF @nhom IS NULL OR (@den IS NOT NULL AND @den<=@now) THROW 52008,N'Chính sách nháp không hợp lệ hoặc đã hết hạn',1;
-  IF EXISTS(SELECT 1 FROM dbo.v_phien_ban_chinh_sach
-   WHERE loai=@loai AND nhom=@nhom AND ma<>@ma AND trang_thai='CONG_BO'
-   AND (@den IS NULL OR hieu_luc_tu<@den) AND (hieu_luc_den IS NULL OR @tu<hieu_luc_den))
-   THROW 52009,N'Khoảng hiệu lực bị chồng; đóng bản cũ tại mốc tương lai trước khi công bố bản mới',1;
-  IF @loai='CUOC' UPDATE dbo.cau_hinh_cuoc SET trang_thai='CONG_BO' WHERE ma_bieu_phi=@ma;
-  ELSE IF @loai='THANH_VIEN' UPDATE dbo.chinh_sach_thanh_vien SET trang_thai='CONG_BO' WHERE ma_chinh_sach=@ma;
-  ELSE UPDATE dbo.cau_hinh_phu_thu SET trang_thai='CONG_BO' WHERE ma_phu_thu=@ma;
-  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong) VALUES(@actor,@loai,@ma,'CONG_BO');
+  SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
+  IF @role<>'CHU_DOI_XE' THROW 52001,N'Không đủ quyền',1;
+  EXEC @khoa_rc=sys.sp_getapplock @Resource=N'dieu-phoi',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
+  IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
+  IF @hanh_dong IS NULL OR @hanh_dong NOT IN ('LUU','XOA') THROW 52201,N'Sai hành động',1;
+  IF NOT EXISTS(SELECT 1 FROM dbo.tai_xe WHERE ma_tx=@ma_tx) THROW 52204,N'Không tìm thấy tài xế',1;
+  IF EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang WHERE ma_tx=@ma_tx AND ket_thuc_luc IS NULL)
+   THROW 52203,N'Không đổi xe khi đang có phân công',1;
+  IF @hanh_dong='XOA'
+  BEGIN
+   IF EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang WHERE ma_tx=@ma_tx)
+    THROW 52207,N'Có lịch sử; chỉ được ngừng hoạt động',1;
+   DELETE dbo.phuong_tien WHERE ma_tx=@ma_tx;
+   IF @@ROWCOUNT<>1 THROW 52208,N'Không có xe để xóa',1;
+  END
+  ELSE
+  BEGIN
+   IF @bien_so IS NULL OR LEN(LTRIM(RTRIM(@bien_so)))=0 OR @loai_xe IS NULL OR LEN(LTRIM(RTRIM(@loai_xe)))=0
+    OR @hoat_dong IS NULL THROW 52206,N'Thông tin xe không hợp lệ',1;
+   IF EXISTS(SELECT 1 FROM dbo.phuong_tien WHERE ma_tx=@ma_tx)
+    UPDATE dbo.phuong_tien SET bien_so=@bien_so,loai_xe=@loai_xe,mau_xe=@mau_xe,dang_hoat_dong=@hoat_dong WHERE ma_tx=@ma_tx;
+   ELSE INSERT dbo.phuong_tien(ma_tx,bien_so,loai_xe,mau_xe,dang_hoat_dong) VALUES(@ma_tx,@bien_so,@loai_xe,@mau_xe,@hoat_dong);
+  END;
+  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong)
+   VALUES(@actor,'PHUONG_TIEN',@ma_tx,CASE WHEN @hanh_dong='XOA' THEN 'XOA_XE' ELSE 'LUU_XE' END);
   COMMIT;
  END TRY
  BEGIN CATCH
@@ -1177,15 +1333,10 @@ END;
 GO
 ```
 
-### 7.10. CRUD tài khoản, khách hàng, tài xế và phương tiện
+### 7.11. Đăng ký khách
 
-`usp_dang_ky_khach` chỉ tạo KHACH_HANG, chạy bằng pool auth backend riêng; mật khẩu rõ
-không vào SQL. Bản này dùng BCrypt `$2a$` tương ứng PasswordHasher hiện tại; kiểm tra prefix
-không chứng minh hash đúng, backend phải tự sinh/kiểm tra bằng thư viện BCrypt.
-Chủ đội xe tạo tài xế/tổng đài; tài khoản CHU_DOI_XE đầu tiên do quản trị seed riêng.
-Mọi chỉnh trạng thái/giấy tờ/xe dùng khóa `dieu-phoi`; không sửa tài xế đang có phân công.
-Xóa vật lý chỉ cho dữ liệu chưa phát sinh; FK lịch sử bảo vệ và rollback toàn thao tác.
-Đơn không có UPDATE nội dung/DELETE công khai: dùng TX1 tạo, TX6 tiến trình, TX7 hủy.
+Chỉ pool auth backend được gọi; SP chỉ tạo KHACH_HANG. BCrypt hash do Java sinh từ mật
+khẩu người dùng, không nhận hash từ FE. Đây không phải quên mật khẩu/OTP/reset.
 
 ```sql
 -- FILE: V7__create_business_procedures.sql
@@ -1212,353 +1363,24 @@ BEGIN
  END CATCH;
 END;
 GO
-CREATE OR ALTER PROCEDURE dbo.usp_tao_tai_khoan_noi_bo
- @username NVARCHAR(50),@hash NVARCHAR(255),@ho_ten NVARCHAR(100),@sdt VARCHAR(10),
- @vai_tro VARCHAR(20),@cccd VARCHAR(12)=NULL,@so_gplx NVARCHAR(50)=NULL,@han_gplx DATE=NULL
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
-  IF @vai_tro IS NULL OR @vai_tro NOT IN ('TAI_XE','TONG_DAI') OR @hash IS NULL OR LEFT(@hash,4)<>'$2a$' OR LEN(@hash)<>60
-   THROW 52102,N'Chỉ tạo tài xế/tổng đài với BCrypt hash hợp lệ',1;
-  DECLARE @tk UNIQUEIDENTIFIER=NEWID();
-  INSERT dbo.tai_khoan(ma_tk,username,mat_khau_hash,ho_ten,so_dien_thoai,vai_tro) VALUES(@tk,@username,@hash,@ho_ten,@sdt,@vai_tro);
-  IF @vai_tro='TAI_XE'
-   INSERT dbo.tai_xe(ma_tk,cccd,so_giay_phep,ngay_het_han_gplx) VALUES(@tk,@cccd,@so_gplx,@han_gplx);
-  COMMIT;
-  SELECT @tk AS ma_tk;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_cap_nhat_ho_so
- @ma_tk UNIQUEIDENTIFIER,@ho_ten NVARCHAR(100),@sdt VARCHAR(10),@email NVARCHAR(150)=NULL,
- @dia_chi NVARCHAR(255)=NULL
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @ma_tk IS NULL OR (@role<>'CHU_DOI_XE' AND @ma_tk<>@actor) THROW 52103,N'Chỉ sửa hồ sơ của mình',1;
-  UPDATE dbo.tai_khoan SET ho_ten=@ho_ten,so_dien_thoai=@sdt,email=@email WHERE ma_tk=@ma_tk;
-  IF @@ROWCOUNT<>1 THROW 52104,N'Không tìm thấy tài khoản',1;
-  UPDATE dbo.khach_hang SET dia_chi_mac_dinh=@dia_chi WHERE ma_tk=@ma_tk;
-  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong) VALUES(@actor,'TAI_KHOAN',@ma_tk,'SUA_HO_SO');
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_doi_mat_khau
- @hash_moi NVARCHAR(255),@auth_version_cu BIGINT
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  -- Backend đã kiểm tra mật khẩu hiện tại bằng BCrypt trước khi gọi, không nhận hash từ FE.
-  IF @hash_moi IS NULL OR LEFT(@hash_moi,4)<>'$2a$' OR LEN(@hash_moi)<>60 OR @auth_version_cu IS NULL
-   THROW 52105,N'Hash hoặc phiên bản không hợp lệ',1;
-  UPDATE dbo.tai_khoan SET mat_khau_hash=@hash_moi,auth_version=auth_version+1
-   WHERE ma_tk=@actor AND auth_version=@auth_version_cu;
-  IF @@ROWCOUNT<>1 THROW 52106,N'Phiên đã thay đổi; đăng nhập lại',1;
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_khoa_tai_khoan
- @ma_tk UNIQUEIDENTIFIER,@khoa BIT
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
-  IF @ma_tk=@actor OR @khoa IS NULL THROW 52107,N'Không tự khóa hoặc thiếu trạng thái',1;
-  IF EXISTS(SELECT 1 FROM dbo.tai_xe t JOIN dbo.phan_cong_don_hang p ON p.ma_tx=t.ma_tx
-   WHERE t.ma_tk=@ma_tk AND p.ket_thuc_luc IS NULL) THROW 52108,N'Tài xế còn phân công đang mở',1;
-  UPDATE dbo.tai_khoan SET trang_thai=CASE WHEN @khoa=1 THEN 'KHOA' ELSE 'HOAT_DONG' END,
-   auth_version=auth_version+1 WHERE ma_tk=@ma_tk;
-  IF @@ROWCOUNT<>1 THROW 52104,N'Không tìm thấy tài khoản',1;
-  IF @khoa=1 UPDATE dbo.tai_xe SET trang_thai='OFFLINE',ranh_tu=NULL WHERE ma_tk=@ma_tk;
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_xoa_tai_khoan_chua_su_dung
- @ma_tk UNIQUEIDENTIFIER
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
-  IF @ma_tk=@actor OR NOT EXISTS(SELECT 1 FROM dbo.tai_khoan WHERE ma_tk=@ma_tk AND vai_tro<>'CHU_DOI_XE')
-   THROW 52109,N'Không được xóa tài khoản này',1;
-  IF EXISTS(SELECT 1 FROM dbo.don_hang d LEFT JOIN dbo.khach_hang k ON k.ma_kh=d.ma_kh WHERE d.ma_tk_tao=@ma_tk OR k.ma_tk=@ma_tk)
-   OR EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang p LEFT JOIN dbo.tai_xe t ON t.ma_tx=p.ma_tx WHERE p.ma_tk_dieu_phoi=@ma_tk OR t.ma_tk=@ma_tk)
-   THROW 52110,N'Đã có lịch sử; chỉ khóa, không xóa',1;
-  DELETE p FROM dbo.phuong_tien p JOIN dbo.tai_xe t ON t.ma_tx=p.ma_tx WHERE t.ma_tk=@ma_tk;
-  DELETE dbo.tai_xe WHERE ma_tk=@ma_tk;
-  DELETE dbo.khach_hang WHERE ma_tk=@ma_tk;
-  DELETE dbo.tai_khoan WHERE ma_tk=@ma_tk; -- Các FK lịch sử còn lại vẫn được kiểm tra.
-  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong) VALUES(@actor,'TAI_KHOAN',@ma_tk,'XOA_CHUA_SU_DUNG');
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_cap_nhat_hang_khach
- @ma_kh UNIQUEIDENTIFIER,@hang VARCHAR(15),@tu DATETIME2(3)=NULL,@den DATETIME2(3)=NULL
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'chinh-sach';
-  UPDATE dbo.khach_hang SET ma_hang=@hang,thanh_vien_tu=@tu,thanh_vien_den=@den WHERE ma_kh=@ma_kh;
-  IF @@ROWCOUNT<>1 THROW 52111,N'Không tìm thấy khách hàng',1;
-  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong) VALUES(@actor,'KHACH_HANG',@ma_kh,'DOI_HANG');
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_trang_thai_tai_xe
- @ma_tx UNIQUEIDENTIFIER,@trang_thai VARCHAR(10)
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('TAI_XE','CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
-  IF @trang_thai IS NULL OR @trang_thai NOT IN ('ONLINE','OFFLINE','NGHI') THROW 52201,N'Sai trạng thái tài xế',1;
-  IF NOT EXISTS(SELECT 1 FROM dbo.tai_xe t JOIN dbo.tai_khoan k ON k.ma_tk=t.ma_tk
-   WHERE t.ma_tx=@ma_tx AND k.trang_thai='HOAT_DONG' AND (@role='CHU_DOI_XE' OR t.ma_tk=@actor))
-   THROW 52202,N'Không đúng tài xế hoặc tài khoản bị khóa',1;
-  IF EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang WHERE ma_tx=@ma_tx AND ket_thuc_luc IS NULL)
-   THROW 52203,N'Đang có phân công; chưa được đổi trạng thái làm việc',1;
-  UPDATE dbo.tai_xe SET trang_thai=@trang_thai,
-   ranh_tu=CASE WHEN @trang_thai='ONLINE' THEN COALESCE(ranh_tu,SYSUTCDATETIME()) ELSE NULL END WHERE ma_tx=@ma_tx;
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_ho_so_tai_xe
- @ma_tx UNIQUEIDENTIFIER,@cccd VARCHAR(12),@so_gplx NVARCHAR(50),@han_gplx DATE
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
-  IF EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang WHERE ma_tx=@ma_tx AND ket_thuc_luc IS NULL)
-   THROW 52203,N'Không sửa giấy tờ khi đang có phân công',1;
-  UPDATE dbo.tai_xe SET cccd=@cccd,so_giay_phep=@so_gplx,ngay_het_han_gplx=@han_gplx WHERE ma_tx=@ma_tx;
-  IF @@ROWCOUNT<>1 THROW 52204,N'Không tìm thấy tài xế',1;
-  INSERT dbo.nhat_ky_kiem_toan(ma_tk,doi_tuong,ma_doi_tuong,hanh_dong) VALUES(@actor,'TAI_XE',@ma_tx,'SUA_GIAY_TO');
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_vi_tri_demo
- @ma_tx UNIQUEIDENTIFIER,@dia_chi NVARCHAR(255),@lat DECIMAL(10,7),@lng DECIMAL(10,7)
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('TONG_DAI','CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
-  -- Backend chỉ gọi sau khi Goong geocode thành công; SQL không gọi HTTP và không chứng minh được nguồn tọa độ.
-  IF @dia_chi IS NULL OR LEN(LTRIM(RTRIM(@dia_chi)))=0 OR @lat IS NULL OR @lng IS NULL
-   THROW 52205,N'Thiếu địa chỉ hoặc tọa độ đã xác minh',1;
-  UPDATE dbo.tai_xe SET vi_tri_demo_dia_chi=@dia_chi,vi_tri_demo_lat=@lat,vi_tri_demo_lng=@lng,
-   vi_tri_demo_luc=SYSUTCDATETIME(),vi_tri_demo_nguon='DEMO_CO_DINH' WHERE ma_tx=@ma_tx;
-  IF @@ROWCOUNT<>1 THROW 52204,N'Không tìm thấy tài xế',1;
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_luu_phuong_tien
- @ma_tx UNIQUEIDENTIFIER,@bien_so NVARCHAR(15),@loai_xe NVARCHAR(50),
- @mau_xe NVARCHAR(30)=NULL,@hoat_dong BIT=1
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
-  IF NOT EXISTS(SELECT 1 FROM dbo.tai_xe WHERE ma_tx=@ma_tx) THROW 52204,N'Không tìm thấy tài xế',1;
-  IF EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang WHERE ma_tx=@ma_tx AND ket_thuc_luc IS NULL)
-   THROW 52203,N'Không đổi xe khi đang có phân công',1;
-  IF @bien_so IS NULL OR LEN(LTRIM(RTRIM(@bien_so)))=0 OR @loai_xe IS NULL OR LEN(LTRIM(RTRIM(@loai_xe)))=0
-   OR @hoat_dong IS NULL THROW 52206,N'Thông tin xe không hợp lệ',1;
-  IF EXISTS(SELECT 1 FROM dbo.phuong_tien WHERE ma_tx=@ma_tx)
-   UPDATE dbo.phuong_tien SET bien_so=@bien_so,loai_xe=@loai_xe,mau_xe=@mau_xe,dang_hoat_dong=@hoat_dong WHERE ma_tx=@ma_tx;
-  ELSE INSERT dbo.phuong_tien(ma_tx,bien_so,loai_xe,mau_xe,dang_hoat_dong) VALUES(@ma_tx,@bien_so,@loai_xe,@mau_xe,@hoat_dong);
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_xoa_phuong_tien_chua_su_dung
- @ma_tx UNIQUEIDENTIFIER
-AS
-BEGIN
- SET NOCOUNT ON; SET XACT_ABORT ON;
- BEGIN TRY
-  BEGIN TRAN;
-  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
-  EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
-  IF @role NOT IN ('CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
-  EXEC dbo.usp_khoa N'dieu-phoi';
-  IF EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang WHERE ma_tx=@ma_tx)
-   THROW 52207,N'Xe gắn tài xế có lịch sử; chỉ ngừng hoạt động khi tài xế rảnh',1;
-  DELETE dbo.phuong_tien WHERE ma_tx=@ma_tx;
-  IF @@ROWCOUNT<>1 THROW 52208,N'Không có xe để xóa',1;
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF XACT_STATE()<>0 ROLLBACK;
-  THROW;
- END CATCH;
-END;
-GO
 ```
 
-### 7.11. Đọc dữ liệu theo session và tra cứu phân trang
+### 7.12. Đọc đơn theo quyền
 
-Chỉ pool `r_auth_backend` được gọi tra cứu hash, kiểm tra phiên và đăng ký; không cấp cho
-bốn role nghiệp vụ hay worker thanh toán. Backend kiểm tra BCrypt trước đăng nhập, mật khẩu
-cũ trước đổi mật khẩu; kiểm tra `auth_version` mỗi request rồi đặt actor lên kết nối nghiệp vụ.
-Không đưa hash, secret DB hay quyền chọn pool/actor cho trình duyệt. Cần giới hạn tần suất
-đăng nhập/đăng ký ở ứng dụng. `total` dùng window count: trang rỗng trả 0 dòng, BE phải xử lý.
+Không cấp SELECT toàn bộ đơn cho khách/tài xế. SP kiểm tra quyền sở hữu hoặc phân công,
+loại tài xế đã từ chối và không trả mật khẩu. @ma_don=NULL để xem danh sách.
 
 ```sql
 -- FILE: V7__create_business_procedures.sql
-CREATE OR ALTER PROCEDURE dbo.usp_xac_thuc_noi_bo @username NVARCHAR(50) AS
-BEGIN
- SET NOCOUNT ON;
- -- Chỉ r_auth_backend được gọi; dữ liệu này không được trả về trình duyệt.
- SELECT ma_tk,username,mat_khau_hash,vai_tro,trang_thai,auth_version FROM dbo.tai_khoan WHERE username=@username;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_phien_noi_bo @ma_tk UNIQUEIDENTIFIER AS
-BEGIN
- SET NOCOUNT ON;
- SELECT t.ma_tk,t.ho_ten,t.vai_tro,t.trang_thai,t.auth_version,k.ma_kh,x.ma_tx
- FROM dbo.tai_khoan t LEFT JOIN dbo.khach_hang k ON k.ma_tk=t.ma_tk
- LEFT JOIN dbo.tai_xe x ON x.ma_tk=t.ma_tk WHERE t.ma_tk=@ma_tk;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_ho_so_cua_toi AS
-BEGIN
- SET NOCOUNT ON;
- DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
- EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
- SELECT t.ma_tk,t.username,t.ho_ten,t.so_dien_thoai,t.email,t.vai_tro,t.trang_thai,t.auth_version,
- k.ma_kh,k.dia_chi_mac_dinh,k.ma_hang,x.ma_tx,x.trang_thai AS trang_thai_tai_xe
- FROM dbo.tai_khoan t LEFT JOIN dbo.khach_hang k ON k.ma_tk=t.ma_tk LEFT JOIN dbo.tai_xe x ON x.ma_tk=t.ma_tk WHERE t.ma_tk=@actor;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_tra_cuu_danh_muc
- @loai VARCHAR(15),@q NVARCHAR(100)=NULL,@page INT=0,@size INT=20 AS
-BEGIN
- SET NOCOUNT ON;
- DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
- EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
- IF @role NOT IN ('TONG_DAI','CHU_DOI_XE') OR @loai IS NULL OR @loai NOT IN ('KHACH','TAI_XE','XE','CHINH_SACH')
-  OR @page IS NULL OR @page<0 OR @size IS NULL OR @size NOT BETWEEN 1 AND 100 THROW 52301,N'Sai quyền hoặc tham số tra cứu',1;
- IF @loai='CHINH_SACH' AND @role<>'CHU_DOI_XE' THROW 52001,N'Chỉ chủ đội xe quản lý phiên bản',1;
- DECLARE @offset BIGINT=CONVERT(BIGINT,@page)*@size;
- IF @loai='KHACH'
-  SELECT k.ma_kh,t.ho_ten,t.so_dien_thoai,t.trang_thai,k.ma_hang,COUNT_BIG(*) OVER() AS total
-  FROM dbo.khach_hang k JOIN dbo.tai_khoan t ON t.ma_tk=k.ma_tk
-  WHERE @q IS NULL OR t.ho_ten LIKE N'%'+@q+N'%' OR t.so_dien_thoai LIKE '%'+@q+'%'
-  ORDER BY t.ho_ten,k.ma_kh OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;
- ELSE IF @loai='TAI_XE'
-  SELECT x.ma_tx,t.ho_ten,t.so_dien_thoai,x.trang_thai,x.ranh_tu,x.vi_tri_demo_dia_chi,x.vi_tri_demo_nguon,COUNT_BIG(*) OVER() AS total
-  FROM dbo.tai_xe x JOIN dbo.tai_khoan t ON t.ma_tk=x.ma_tk
-  WHERE @q IS NULL OR t.ho_ten LIKE N'%'+@q+N'%' OR t.so_dien_thoai LIKE '%'+@q+'%'
-  ORDER BY t.ho_ten,x.ma_tx OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;
- ELSE IF @loai='XE'
-  SELECT p.*,COUNT_BIG(*) OVER() AS total FROM dbo.phuong_tien p WHERE @q IS NULL OR p.bien_so LIKE N'%'+@q+N'%'
-  ORDER BY p.bien_so,p.ma_phuong_tien OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;
- ELSE SELECT p.*,COUNT_BIG(*) OVER() AS total FROM dbo.v_phien_ban_chinh_sach p WHERE @q IS NULL OR p.loai LIKE '%'+@q+'%'
-  ORDER BY p.loai,p.hieu_luc_tu,p.ma OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;
-END;
-GO
 CREATE OR ALTER PROCEDURE dbo.usp_doc_don
  @ma_don UNIQUEIDENTIFIER=NULL,@page INT=0,@size INT=20 AS
 BEGIN
  SET NOCOUNT ON;
  DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
- EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
+ SET @actor=TRY_CONVERT(UNIQUEIDENTIFIER,SESSION_CONTEXT(N'ma_tk'));
+  SET @role=NULL;
+  SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
+  IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
  IF @page IS NULL OR @page<0 OR @size IS NULL OR @size NOT BETWEEN 1 AND 100 THROW 52302,N'Sai phân trang',1;
  DECLARE @offset BIGINT=CONVERT(BIGINT,@page)*@size;
  DECLARE @quyen TABLE(ma_don UNIQUEIDENTIFIER PRIMARY KEY);
@@ -1578,53 +1400,25 @@ BEGIN
  END;
 END;
 GO
-CREATE OR ALTER PROCEDURE dbo.usp_goi_y_tai_xe @ma_don UNIQUEIDENTIFIER AS
-BEGIN
- SET NOCOUNT ON;
- DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
- EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
- IF @role NOT IN ('TONG_DAI','CHU_DOI_XE') THROW 52001,N'Không đủ quyền',1;
- IF NOT EXISTS(SELECT 1 FROM dbo.don_hang WHERE ma_don=@ma_don AND trang_thai='CHO_GAN') THROW 51202,N'Đơn không chờ gán',1;
- SELECT v.*,t.vi_tri_demo_dia_chi,t.vi_tri_demo_lat,t.vi_tri_demo_lng,t.vi_tri_demo_nguon,t.vi_tri_demo_luc
- FROM dbo.v_tai_xe_san_sang v JOIN dbo.tai_xe t ON t.ma_tx=v.ma_tx
- WHERE NOT EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang p WHERE p.ma_don=@ma_don AND p.ma_tx=v.ma_tx AND p.ket_qua='TU_CHOI')
- ORDER BY v.ranh_tu,v.ma_tx;
- -- BE tính Goong từ demo đến điểm lấy và xếp km; nếu lỗi, ghi nhãn dự phòng theo ranh_tu, không giữ transaction qua HTTP.
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_doc_chinh_sach @loai VARCHAR(15),@ma UNIQUEIDENTIFIER AS
-BEGIN
- SET NOCOUNT ON;
- DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20);
- EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
- IF @role<>'CHU_DOI_XE' THROW 52001,N'Không đủ quyền',1;
- IF NOT EXISTS(SELECT 1 FROM dbo.v_phien_ban_chinh_sach WHERE loai=@loai AND ma=@ma)
-  THROW 52003,N'Không tìm thấy chính sách',1;
- IF @loai='CUOC' SELECT * FROM dbo.cau_hinh_cuoc WHERE ma_bieu_phi=@ma;
- ELSE IF @loai='THANH_VIEN' SELECT * FROM dbo.chinh_sach_thanh_vien WHERE ma_chinh_sach=@ma;
- ELSE SELECT * FROM dbo.cau_hinh_phu_thu WHERE ma_phu_thu=@ma;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.usp_doc_giao_dich_nop
- @ma UNIQUEIDENTIFIER=NULL,@page INT=0,@size INT=20 AS
-BEGIN
- SET NOCOUNT ON;
- DECLARE @actor UNIQUEIDENTIFIER,@role VARCHAR(20),@tx UNIQUEIDENTIFIER;
- EXEC dbo.usp_actor @actor OUTPUT,@role OUTPUT;
- IF @role NOT IN ('TAI_XE','CHU_DOI_XE') OR @page IS NULL OR @page<0 OR @size IS NULL OR @size NOT BETWEEN 1 AND 100
-  THROW 52301,N'Sai quyền hoặc phân trang',1;
- SELECT @tx=ma_tx FROM dbo.tai_xe WHERE ma_tk=@actor;
- IF @role='TAI_XE' AND @tx IS NULL THROW 51402,N'Thiếu hồ sơ tài xế',1;
- IF @ma IS NOT NULL AND NOT EXISTS(SELECT 1 FROM dbo.giao_dich_nop_tien
-  WHERE ma_giao_dich=@ma AND (@role='CHU_DOI_XE' OR ma_tx=@tx)) THROW 52303,N'Không tìm thấy giao dịch được phép xem',1;
- DECLARE @offset BIGINT=CONVERT(BIGINT,@page)*@size;
- SELECT ma_giao_dich,ma_tx,ma_tham_chieu,so_tien_yeu_cau,trang_thai,tao_luc,giai_quyet_luc,so_tien_thuc_nhan,
-  COUNT_BIG(*) OVER() AS total FROM dbo.giao_dich_nop_tien
- WHERE (@ma IS NULL OR ma_giao_dich=@ma) AND (@role='CHU_DOI_XE' OR ma_tx=@tx)
- ORDER BY tao_luc DESC,ma_giao_dich OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;
-END;
-GO
 ```
+
+### 7.13. Chức năng giữ ở DAO/Service, không tạo thêm SP
+
+Đăng nhập/kiểm tra phiên, đổi mật khẩu khi đăng nhập (không OTP), hồ sơ, đổi trực/giấy tờ,
+vị trí demo, quản lý tài khoản nội bộ và tra cứu danh mục vẫn cần triển khai ở Java.
+Pool backend kỹ thuật ở mục 9 có quyền ghi trên ba bảng tài khoản/khách/tài xế và quyền đọc phương tiện; frontend/người dùng
+không nhận credential. DAO kiểm tra vai trò/sở hữu từ session và auth_version mỗi request.
+Mật khẩu cũ phải được BCrypt xác minh trước khi cập nhật hash mới + tăng auth_version bằng
+compare-and-set. Đăng nhập/đăng ký cần hạn chế tần suất ở ứng dụng, không thêm bảng reset.
+Đổi hạng thành viên lấy khóa chinh-sach; đổi trực/khóa tài khoản/sửa giấy tờ lấy dieu-phoi
+trong cùng transaction Java, kiểm tra phân công mở trước ghi. Không cấp DML bảng đơn,
+kiện/phụ thu đơn, chia cước hoặc giao dịch cho DAO để bỏ qua các SP nghiệp vụ.
+
+Gợi ý tài xế: DAO đọc view sẵn sàng và vị trí, loại NOT EXISTS phân công TU_CHOI cho chính
+đơn đang xét; Goong chạy ngoài transaction, gán vẫn kiểm tra lại trong usp_phan_cong.
+Vị trí chỉ ghi sau geocode; luôn lưu DEMO_CO_DINH/thời điểm UTC. Không quay lại GPS trực tiếp.
+CRUD xóa tài khoản chỉ khi chưa có lịch sử; giữ FK và kiểm tra toàn bộ vai trò/sở hữu ở backend.
+Đây là hợp đồng tích hợp cần viết/test Java sau, không phải khẳng định code đã hỗ trợ schema mới.
 
 ## 8. Quy tắc cần phối hợp code / phần cần hoàn thiện khi triển khai
 
@@ -1635,27 +1429,44 @@ GO
 | Khoản chia phụ thuộc giá bất biến | View suy tiền từ đơn/chính sách | Cấm sửa nguồn/phân công/thời điểm/xóa khoản chia. Chỉ TX4 gắn FK giao dịch; TX5 tháo FK sau KHONG_THU. Không cấp DML trực tiếp |
 | Khoản đang thanh toán giữ nguyên | TX4 chốt các khoản và số tiền trong một transaction | Không thêm khoản vào giao dịch đã trả về URL; đơn mới vẫn có FK NULL. Không có API ghép khoản thủ công |
 | Giao dịch thất bại và thành công | TX5 ghi kết quả + sự kiện; KHONG_THU còn tháo liên kết cùng transaction | Thành công giữ liên kết để xác định đã nộp. Không đặt công nợ = 0 trực tiếp; không giữ lịch sử ghép từng đơn với giao dịch thất bại |
-| Chính sách không chồng | TX1 phát hiện biểu phí/thành viên thiếu/chồng tại thời điểm dùng | Mục 7.9 đã có CRUD nháp, công bố kiểm tra overlap và đóng hiệu lực; cùng khóa chinh-sach và ghi audit. Cần test hai phiên công bố đồng thời và chặn sửa bản công bố |
-| Đăng ký/hồ sơ | FK unique + trigger đúng vai trò | Mục 7.10 có đăng ký khách, tạo tài xế/tổng đài, cập nhật hồ sơ và xóa khi chưa có lịch sử; BCrypt ở Java. Cần triển khai auth pool và kiểm thử FK/rollback |
+| Chính sách không chồng | TX1 phát hiện biểu phí/thành viên thiếu/chồng tại thời điểm dùng | usp_quan_ly_chinh_sach ở mục 7.9 có CRUD nháp, công bố kiểm tra overlap và đóng hiệu lực; cùng khóa chinh-sach và ghi audit. Cần test hai phiên công bố đồng thời và chặn sửa bản công bố |
+| Đăng ký/hồ sơ | FK unique + trigger đúng vai trò | usp_dang_ky_khach ở mục 7.11 tạo khách; các thao tác hồ sơ/tài khoản khác ở DAO/Service mục 7.13, BCrypt ở Java. Cần triển khai/test quyền và FK/rollback |
 | Đổi mật khẩu | Cột hash/auth_version | Xác minh mật khẩu cũ ở Java; cập nhật hash + tăng auth_version theo điều kiện phiên bản cũ; kiểm tra phiên bản ở mỗi phiên. Không log hash |
 | Quyền người dùng | Role SQL + kiểm tra vai trò/sở hữu trong các SP | Backend tự gắn ma_tk từ session vào SESSION_CONTEXT trước mỗi request, xóa khi trả connection về pool; không cho người dùng tự chọn actor. Kiểm tra auth_version và CSRF ở ứng dụng |
-| Thay đổi trạng thái tài xế/xe | TX2 kiểm tra sẵn sàng | Mục 7.10 có thủ tục đổi trực, khóa tài khoản, sửa giấy tờ, thêm/sửa/xóa xe; cùng khóa dieu-phoi và từ chối khi còn phân công. Cần nối API/UI và test tranh chấp |
+| Thay đổi trạng thái tài xế/xe | TX2 kiểm tra sẵn sàng | Xe qua usp_quan_ly_phuong_tien; đổi trực/khóa tài khoản/giấy tờ qua DAO mục 7.13. Cùng khóa dieu-phoi, từ chối khi còn phân công và test tranh chấp |
 | VNPay | Giao dịch, sự kiện, số tiền, mã tham chiếu unique, TX5 | Xác minh chữ ký/merchant/currency/response code; IPN/query đáng tin mới ghi thành công; Return chỉ hiển thị/tra cứu. Dùng đơn vị số tiền đúng tài liệu VNPay khi chuyển VND ↔ payload |
 | Timeout và retry | ux_gd_open chặn lần chưa giải quyết thứ hai | Worker đánh dấu CHUA_RO_KET_QUA và query; chỉ KHONG_THU sau bằng chứng. Không mở lại chỉ vì thời gian trôi qua. Chưa có job/endpoint query trong tài liệu |
 | Lỗi giữa DB commit và gửi HTTP | Mã tham chiếu cố định, khóa request tạo đơn/thanh toán, giao dịch chưa giải quyết tái sử dụng | Retry phải trả cùng đối tượng; không bấm lại thành giao dịch mới khi kết quả chưa rõ |
 | Sự kiện mâu thuẫn | CAN_DOI_SOAT, không đảo kết quả | Hiện cảnh báo cho chủ đội xe; nghiệp vụ hoàn tiền/điều chỉnh không tự triển khai trong phạm vi này |
-| CRUD báo cáo môn học | Schema + các nghiệp vụ chính đủ chỗ tích hợp | Mục 7.9–7.11 có CRUD nháp/hồ sơ/xe, tra cứu phân trang, đơn và giao dịch giới hạn theo actor. Cần test bằng role thật và nối UI; chưa coi UI localStorage là CRUD SQL Server |
+| CRUD báo cáo môn học | Schema + các nghiệp vụ chính đủ chỗ tích hợp | Chính sách/xe/đăng ký qua SP; hồ sơ và tra cứu qua DAO; đơn qua usp_doc_don. Cần test bằng role thật và nối UI; chưa coi UI localStorage là CRUD SQL Server |
 
 Lưu ý thiết kế: SQL Server CHECK chấp nhận UNKNOWN do NULL, nên các nhánh bắt buộc có giá trị đã dùng IS NOT NULL. Ràng buộc ngày giấy phép so với hôm nay đặt ở nghiệp vụ gán, không chỉ CHECK lúc INSERT. FK ngăn tham chiếu không tồn tại nhưng không tự chứng minh người gọi được thao tác bản ghi đó.
 
 **Chốt tài chính:** không lưu snapshot tổng cước lần hai trong phan_chia_cuoc để giảm dư thừa; đổi lại phải giữ nguyên đơn/kiện/phụ thu/policy đã dùng. Nếu sau này cho điều chỉnh cước sau hoàn tất, cần thêm nghiệp vụ điều chỉnh và lịch sử, không chỉnh trực tiếp dữ liệu nguồn. Chính sách 80/20 thay đổi trong tương lai cũng cần phiên bản/snapshot mới; bản này cố định 80/20 theo phạm vi đã thống nhất.
 
-## 9. [V8] Phân quyền SQL Server: bốn role nghiệp vụ, worker và auth backend
+## 9. [V8] Phân quyền cho bản 12 SP
 
-Không dùng sa/db_owner cho backend. Bốn role nghiệp vụ và hai role backend dưới đây là quyền SQL thực, không chỉ enum ứng dụng. User WITHOUT LOGIN dùng cho bài demo EXECUTE AS trong DB, **chưa phải tài khoản JDBC đăng nhập được**. Khi triển khai, quản trị tạo LOGIN riêng bằng secret bên ngoài tài liệu và CREATE USER FOR LOGIN tương ứng. Backend có thể dùng pool theo vai trò và một pool worker callback và một pool auth; việc chọn pool phải do session đã xác thực, không do request tự khai. Không cấp worker/auth backend cho khách/tài xế. Pool auth riêng chỉ được EXECUTE ba thủ tục đăng ký/xác thực/kiểm tra phiên; không SELECT trực tiếp bảng và không được áp dụng kết quả VNPay.
+Không dùng sa/db_owner cho backend. Bốn role nghiệp vụ, worker thanh toán và backend hồ sơ
+là sáu nhóm credential riêng; pool do session backend chọn, không nhận lựa chọn từ FE.
+User WITHOUT LOGIN dưới đây chỉ dùng demo EXECUTE AS; JDBC cần LOGIN do quản trị cấp riêng.
+
+**Thay đổi so với bản tách nhiều SP:** đăng nhập/đổi mật khẩu/hồ sơ chuyển về DAO, nên pool kỹ thuật
+r_auth_backend cần đọc hash và DML giới hạn ở tài khoản/khách/tài xế. Đây là pool backend
+**tin cậy**, không phải role của một cá nhân; nó có thể đọc nhiều hồ sơ nên backend phải
+kiểm tra quyền/sở hữu, auth_version và CSRF trước khi dùng. Không khẳng định SQL đã cô lập
+theo từng cá nhân cho pool này. Không cấp credential đó cho trình duyệt hay người demo trực tiếp.
+Phương tiện vẫn qua SP; các bảng đơn/tài chính không được DML trực tiếp bởi pool hồ sơ.
 
 ```sql
 -- FILE: V8__create_roles_and_permissions.sql
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 CREATE ROLE r_khach_hang;
 CREATE ROLE r_tai_xe;
 CREATE ROLE r_tong_dai;
@@ -1677,85 +1488,76 @@ ALTER ROLE r_auth_backend ADD MEMBER demo_auth;
 GO
 GRANT EXECUTE ON dbo.usp_tao_don TO r_khach_hang;
 GRANT EXECUTE ON dbo.usp_huy_don TO r_khach_hang;
-GRANT EXECUTE ON dbo.usp_tao_don TO r_tong_dai;
-GRANT EXECUTE ON dbo.usp_phan_cong TO r_tong_dai;
-GRANT EXECUTE ON dbo.usp_huy_don TO r_tong_dai;
-GRANT SELECT ON dbo.v_don_cho_dieu_phoi TO r_tong_dai;
-GRANT SELECT ON dbo.v_tai_xe_san_sang TO r_tong_dai;
+GRANT EXECUTE ON dbo.usp_doc_don TO r_khach_hang;
 GRANT EXECUTE ON dbo.usp_tien_trinh TO r_tai_xe;
 GRANT EXECUTE ON dbo.usp_hoan_tat TO r_tai_xe;
 GRANT EXECUTE ON dbo.usp_bat_dau_thanh_toan TO r_tai_xe;
 GRANT EXECUTE ON dbo.usp_thu_nhap_cua_toi TO r_tai_xe;
+GRANT EXECUTE ON dbo.usp_doc_don TO r_tai_xe;
+GRANT EXECUTE ON dbo.usp_tao_don TO r_tong_dai;
+GRANT EXECUTE ON dbo.usp_phan_cong TO r_tong_dai;
+GRANT EXECUTE ON dbo.usp_huy_don TO r_tong_dai;
+GRANT EXECUTE ON dbo.usp_doc_don TO r_tong_dai;
 GRANT EXECUTE ON dbo.usp_tao_don TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_phan_cong TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_huy_don TO r_chu_doi_xe;
+GRANT EXECUTE ON dbo.usp_quan_ly_chinh_sach TO r_chu_doi_xe;
+GRANT EXECUTE ON dbo.usp_quan_ly_phuong_tien TO r_chu_doi_xe;
+GRANT EXECUTE ON dbo.usp_doc_don TO r_chu_doi_xe;
+GRANT EXECUTE ON dbo.usp_ap_dung_ket_qua_nop TO r_payment_worker;
+GRANT EXECUTE ON dbo.usp_dang_ky_khach TO r_auth_backend;
+GRANT SELECT ON dbo.v_don_cho_dieu_phoi TO r_tong_dai;
+GRANT SELECT ON dbo.v_tai_xe_san_sang TO r_tong_dai;
+GRANT SELECT ON dbo.phan_cong_don_hang TO r_tong_dai;
+GRANT SELECT ON dbo.v_don_cho_dieu_phoi TO r_chu_doi_xe;
+GRANT SELECT ON dbo.v_tai_xe_san_sang TO r_chu_doi_xe;
+GRANT SELECT ON dbo.phan_cong_don_hang TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_chia_cuoc TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_so_du_tai_xe TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_giao_dich_nop TO r_chu_doi_xe;
 GRANT SELECT ON dbo.v_cong_ty_thuc_nhan_ngay TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_ap_dung_ket_qua_nop TO r_payment_worker;
-GRANT EXECUTE ON dbo.usp_dang_ky_khach TO r_auth_backend;
-GRANT EXECUTE ON dbo.usp_xac_thuc_noi_bo TO r_auth_backend;
-GRANT EXECUTE ON dbo.usp_phien_noi_bo TO r_auth_backend;
-GRANT EXECUTE ON dbo.usp_cap_nhat_ho_so TO r_khach_hang;
-GRANT EXECUTE ON dbo.usp_doi_mat_khau TO r_khach_hang;
-GRANT EXECUTE ON dbo.usp_ho_so_cua_toi TO r_khach_hang;
-GRANT EXECUTE ON dbo.usp_doc_don TO r_khach_hang;
-GRANT EXECUTE ON dbo.usp_cap_nhat_ho_so TO r_tai_xe;
-GRANT EXECUTE ON dbo.usp_doi_mat_khau TO r_tai_xe;
-GRANT EXECUTE ON dbo.usp_ho_so_cua_toi TO r_tai_xe;
-GRANT EXECUTE ON dbo.usp_doc_don TO r_tai_xe;
-GRANT EXECUTE ON dbo.usp_cap_nhat_ho_so TO r_tong_dai;
-GRANT EXECUTE ON dbo.usp_doi_mat_khau TO r_tong_dai;
-GRANT EXECUTE ON dbo.usp_ho_so_cua_toi TO r_tong_dai;
-GRANT EXECUTE ON dbo.usp_doc_don TO r_tong_dai;
-GRANT EXECUTE ON dbo.usp_cap_nhat_ho_so TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_doi_mat_khau TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_ho_so_cua_toi TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_doc_don TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_luu_chinh_sach_nhap TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_xoa_chinh_sach_nhap TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_dong_hieu_luc_chinh_sach TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_cong_bo_chinh_sach TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_tao_tai_khoan_noi_bo TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_khoa_tai_khoan TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_xoa_tai_khoan_chua_su_dung TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_cap_nhat_hang_khach TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_ho_so_tai_xe TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_luu_phuong_tien TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_xoa_phuong_tien_chua_su_dung TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_doc_chinh_sach TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_tra_cuu_danh_muc TO r_tong_dai;
-GRANT EXECUTE ON dbo.usp_goi_y_tai_xe TO r_tong_dai;
-GRANT EXECUTE ON dbo.usp_vi_tri_demo TO r_tong_dai;
-GRANT EXECUTE ON dbo.usp_tra_cuu_danh_muc TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_goi_y_tai_xe TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_vi_tri_demo TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_trang_thai_tai_xe TO r_tai_xe;
-GRANT EXECUTE ON dbo.usp_doc_giao_dich_nop TO r_tai_xe;
-GRANT EXECUTE ON dbo.usp_trang_thai_tai_xe TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_doc_giao_dich_nop TO r_chu_doi_xe;
-DENY SELECT,INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_auth_backend;
-DENY SELECT ON SCHEMA::dbo TO r_payment_worker;
+GRANT SELECT ON dbo.v_phien_ban_chinh_sach TO r_chu_doi_xe;
+-- Chỉ pool backend tin cậy. Không phải quyền cấp cho khách/tài xế trực tiếp.
+GRANT SELECT,INSERT,DELETE ON dbo.tai_khoan TO r_auth_backend;
+GRANT UPDATE (ho_ten,so_dien_thoai,email,mat_khau_hash,auth_version,trang_thai) ON dbo.tai_khoan TO r_auth_backend;
+GRANT SELECT,INSERT,UPDATE,DELETE ON dbo.khach_hang TO r_auth_backend;
+GRANT SELECT,INSERT,UPDATE,DELETE ON dbo.tai_xe TO r_auth_backend;
+GRANT SELECT ON dbo.phuong_tien TO r_auth_backend;
 DENY SELECT ON dbo.tai_khoan TO r_khach_hang;
-DENY SELECT ON dbo.tai_khoan TO r_tai_xe;
-DENY SELECT ON dbo.tai_khoan TO r_tong_dai;
-DENY SELECT ON dbo.tai_khoan TO r_chu_doi_xe;
 DENY INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_khach_hang;
+DENY SELECT ON dbo.tai_khoan TO r_tai_xe;
 DENY INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_tai_xe;
+DENY SELECT ON dbo.tai_khoan TO r_tong_dai;
 DENY INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_tong_dai;
+DENY SELECT ON dbo.tai_khoan TO r_chu_doi_xe;
 DENY INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_chu_doi_xe;
-DENY INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_payment_worker;
+DENY SELECT,INSERT,UPDATE,DELETE ON SCHEMA::dbo TO r_payment_worker;
+DENY INSERT,UPDATE,DELETE ON dbo.don_hang TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.chi_tiet_kien_hang TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.phu_thu_don_hang TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.phan_cong_don_hang TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.phan_chia_cuoc TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.giao_dich_nop_tien TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.su_kien_thanh_toan TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.nhat_ky_don_hang TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.nhat_ky_kiem_toan TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.cau_hinh_cuoc TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.cau_hinh_phu_thu TO r_auth_backend;
+DENY INSERT,UPDATE,DELETE ON dbo.chinh_sach_thanh_vien TO r_auth_backend;
 GO
--- Ví dụ cấp tạm quyền xem lịch sử giao dịch nộp cho tổng đài rồi thu hồi (trạng thái cuối: không có quyền).
+-- Minh họa quyền tạm; trạng thái cuối tổng đài không có view giao dịch nộp.
 GRANT SELECT ON dbo.v_giao_dich_nop TO r_tong_dai;
 REVOKE SELECT ON dbo.v_giao_dich_nop FROM r_tong_dai;
 GO
 ```
 
-Ownership chaining cùng chủ sở hữu dbo cho phép SP tĩnh được cấp EXECUTE truy cập bảng dù user không được DML trực tiếp. Không dùng dynamic SQL hoặc EXECUTE AS OWNER tràn lan để vượt kiểm tra quyền. Helper usp_actor/usp_khoa không cấp EXECUTE trực tiếp. Khách/tài xế không được SELECT view toàn bộ dữ liệu; truy vấn của mình phải đi qua SP kiểm tra actor. Mục 7.11 có thủ tục đọc hồ sơ, đơn/lịch sử và tra cứu theo actor; không trả hash trong các thủ tục nghiệp vụ.
-
-Giới hạn tin cậy: SESSION_CONTEXT do backend đặt không chống được người đã nắm credential DB của pool. Để demo cô lập theo từng cá nhân ở DB trực tiếp, ánh xạ DB user → ma_tk trong bảng/ cấu hình được quản trị bảo vệ, thay vì cho demo user tự đặt ma_tk. Không tuyên bố đã có row-level security. Với web, credential chỉ nằm ở backend; demo kiểm tra quyền role và sở hữu dùng đúng mô hình này.
+Ownership chaining dbo cho phép SP/View tĩnh truy cập bảng dù người dùng không có DML trực tiếp.
+Không dùng dynamic SQL/EXECUTE AS OWNER để bỏ qua kiểm tra actor. Worker chỉ EXEC thủ tục áp
+dụng kết quả đã xác minh, không được gọi tạo tài khoản. Backend hồ sơ không được EXEC áp dụng
+VNPay. Đăng ký chỉ EXEC usp_dang_ky_khach; đổi mật khẩu là cập nhật hash + auth_version sau
+BCrypt check ở Java, không có OTP/reset. Danh sách/chi tiết đơn vẫn bắt buộc qua usp_doc_don.
+SESSION_CONTEXT không chống được người đã giữ credential backend; phải bảo vệ credential,
+đặt/xóa actor đúng vòng đời connection và kiểm tra auth_version trước mỗi request.
 
 ## 10. Kịch bản transaction, lỗi và đồng thời để bảo vệ bài
 
@@ -1774,7 +1576,7 @@ Các bước dưới là **kế hoạch kiểm thử**, chưa chạy và chưa c
 ### 10.1. Demo hai tổng đài cùng gán
 
 1. Hai session thử, hai tài khoản tổng đài hợp lệ, cùng một đơn CHO_GAN.
-2. Session A BEGIN TRAN rồi gọi usp_khoa 'dieu-phoi', giữ khóa trong khi quan sát session B (không gọi SP tự quản transaction lồng vào A).
+2. Session A BEGIN TRAN rồi gọi sys.sp_getapplock với Resource='dieu-phoi', LockMode='Exclusive', LockOwner='Transaction', giữ khóa trong khi quan sát session B (không gọi SP tự quản transaction lồng vào A).
 3. Session B gọi usp_phan_cong; phải chờ khóa hoặc timeout có thông báo.
 4. A ROLLBACK để nhả khóa; B hoàn tất gán. Gọi lại gán đơn đó từ A → bị từ chối vì không còn CHO_GAN.
 5. Kiểm tra chỉ một phân công mở. Demo bổ sung cùng tài xế/hai đơn: chỉ một thành công nhờ kiểm tra dưới khóa + unique index.
@@ -1827,7 +1629,7 @@ Kịch bản chạy sau khi tạo DB test mới và seed riêng, không áp dụ
 
 | Trường hợp | Kết quả mong đợi |
 |---|---|
-| Tài xế đã TU_CHOI đơn A | Không xuất hiện trong usp_goi_y_tai_xe(A); usp_phan_cong(A, tài xế đó) báo 51204; có thể nhận đơn B nếu rảnh |
+| Tài xế đã TU_CHOI đơn A | Không xuất hiện trong gợi ý DAO cho đơn A; usp_phan_cong(A, tài xế đó) báo 51204; có thể nhận đơn B nếu rảnh |
 | ONLINE nhưng ranh_tu NULL | Không có trong view sẵn sàng; gán bị từ chối |
 | Cước 50.000 + phụ thu 5.000, giảm 10% | Giảm 5.500; tổng 49.500; hai phần 9.900/39.600 |
 | Giảm 100% cả cước và phụ thu | Tổng 0; tạo đơn/hoàn tất được, không tạo giao dịch nộp 0 đồng |
@@ -1842,10 +1644,10 @@ Kịch bản chạy sau khi tạo DB test mới và seed riêng, không áp dụ
 | Lưu vị trí demo thiếu tọa độ, sai miền lat/lng | Bị từ chối; dữ liệu hợp lệ luôn có nguồn DEMO_CO_DINH và thời điểm UTC |
 
 **Bằng chứng kiểm tra hiện tại:** đã trích các khối SQL định nghĩa ở mục 3–9 (không gồm
-các ví dụ đo/kiểm thử) và phân tích bằng SQLFluff 4.4.0 dialect `tsql`, không có lỗi parse.
+các ví dụ đo/kiểm thử) và phân tích bằng SQLFluff 4.4.0 dialect `tsql`, không có phần SQL không phân tích được sau khi rút còn 12 SP.
 Đã kiểm tra không trùng tên đối tượng, mọi GRANT EXECUTE trỏ đến SP tồn tại,
-helper không được cấp trực tiếp, ba SP auth chỉ cấp r_auth_backend và SP áp dụng
-VNPay chỉ cấp r_payment_worker. Có 16 bảng, 8 view, 5 UDF, 9 trigger, 34 SP.
+không có SP helper riêng, SP đăng ký chỉ cấp r_auth_backend và SP áp dụng
+VNPay chỉ cấp r_payment_worker. Có 16 bảng, 8 view, 5 UDF, 9 trigger, **đúng 12 SP tổng cộng**.
 Đây là kiểm tra tĩnh, **không chứng minh biên dịch/ràng buộc/quyền/concurrency trên SQL Server**.
 Lượt thử khởi động DB bị chặn tại tải image mcr.microsoft.com/mssql/server:2022-latest
 (`Forbidden`); các kịch bản trên chưa chạy, chưa có kết quả thực thi.
@@ -1876,7 +1678,7 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 | ≥5 trigger | 9 trigger ở mục 6 | Có SQL; chưa chạy multi-row/rollback test |
 | ≥5 view | 8 view ở mục 5 | Có SQL; cần tích hợp màn hình |
 | ≥5 index, có non-PK và đo hiệu năng | Unique + 7 index tra cứu thường ở mục 4 | Có SQL; chưa có kết quả đo |
-| ≥5 SP, TRY/CATCH | 7 SP transaction chính, SP CRUD/chính sách/tra cứu và 2 helper | Có SQL; cần biên dịch và kiểm thử rollback/quyền |
+| ≥5 SP, TRY/CATCH | 12 SP chức năng, không tạo helper riêng | Có SQL; cần biên dịch và kiểm thử rollback/quyền |
 | ≥5 UDF | 4 scalar + 1 inline TVF | Có SQL và vị trí sử dụng |
 | ≥5 nghiệp vụ transaction | TX1–TX7 | Có SQL; chưa có bằng chứng chạy |
 | Tranh chấp đồng thời | Gán đơn, bắt đầu thanh toán, callback/retry | Có kịch bản; chưa demo |
@@ -1892,7 +1694,7 @@ So sánh ở hai bản DB thử giống nhau hoặc bỏ/tạo lại **chỉ ind
 3. Đổi entity/DAO và đưa từng nghiệp vụ vào SP; tránh Java vừa tự ghi cùng bảng vừa gọi SP để ghi lặp. Không lồng transaction tùy tiện.
 4. Bỏ UI lựa chọn phương thức/người trả, thanh toán khách, COD điều phối, quên mật khẩu. Thêm xác nhận đã giao + thu đủ và màn công nợ tài xế.
 5. Chuyển VNPay sang mã tham chiếu giao dịch nộp tiền; sửa IPN/Return/query, job xử lý chưa rõ, chống trùng và quyền worker.
-6. Tích hợp các SP CRUD, đọc theo actor, quản lý chính sách, đăng ký/đổi mật khẩu ở mục 7.9–7.11; cấu hình pool/role và thực hiện checklist mục 8.
+6. Tích hợp 12 SP và các thao tác DAO đã phân định ở mục 7.9–7.13; cấu hình pool/role và thực hiện checklist mục 8.
 7. Chạy kiểm thử DB/API/UI trên DB test, lưu bằng chứng rollback, concurrency, quyền và index; chỉ sau đó viết migration/seed và cập nhật báo cáo chính thức.
 
 ## 13. [V9 — demo] INSERT dữ liệu mẫu thay Java seeder
@@ -1943,6 +1745,14 @@ không DELETE/TRUNCATE hay ghi đè. Flyway bảo đảm V9 bình thường ch�
 
 ```sql
 -- FILE: V9__insert_demo_data.sql
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 IF DB_NAME() NOT IN (N'mini_ong_vang_design_v2_demo',N'mini_ong_vang_design_v2_test')
@@ -1985,7 +1795,7 @@ BEGIN TRY
  ('40000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000001',N'59A00001',N'Xe máy',N'Vàng'),
  ('40000000-0000-0000-0000-000000000002','30000000-0000-0000-0000-000000000002',N'59A00002',N'Xe máy',N'Đen'),
  ('40000000-0000-0000-0000-000000000003','30000000-0000-0000-0000-000000000003',N'59A00003',N'Xe máy',N'Trắng');
- -- Vị trí demo để NULL: chỉ điền qua usp_vi_tri_demo sau khi BE đã geocode Goong.
+ -- Vị trí demo để NULL: chỉ điền qua DAO sau khi BE đã geocode Goong, kiểm tra quyền tổng đài/chủ đội xe và khóa dieu-phoi.
  -- 2. Chính sách mẫu công bố lần đầu; không UPDATE chính sách công bố.
  INSERT dbo.cau_hinh_cuoc(ma_bieu_phi,ten,cuoc_co_ban,don_gia_km,km_toi_thieu,km_toi_da,kg_bao_gom,kg_toi_da,don_gia_kg,hieu_luc_tu,trang_thai)
  VALUES(@bp,N'Biểu phí SQL demo',20000,5000,0,30,1,30,3000,@tu,'CONG_BO');
