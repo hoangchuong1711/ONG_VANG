@@ -9,7 +9,7 @@ Import `mini-ong-vang.postman_collection.json` và `local.postman_environment.js
 3. Chạy folder `01 - Implemented smoke`: kiểm tra spec, trang Swagger, health 200/database connected.
 4. Health 503 khi DB lỗi là response đã đặc tả, nhưng smoke môi trường khỏe phải FAIL. Không chấp nhận mọi status để làm test xanh.
 
-Hiện 29 operation đã có BE; `listCustomers` nằm trong folder implemented và cần phiên tổng đài. Không chạy toàn bộ collection như một kịch bản liên tục: các request cần vai trò/fixture khác nhau.
+OpenAPI hiện có 80 operation: hợp đồng designV1 hiện hữu và các endpoint admin/ví tài xế designV2 đã đối chiếu với servlet. `listCustomers` designV1 cần phiên tổng đài. Các request V2 được nhóm riêng và có guard dù endpoint đã triển khai; không chạy toàn bộ collection như một kịch bản liên tục.
 
 ## Sau khi từng task BE hoàn thành
 
@@ -23,6 +23,8 @@ Session được Postman cookie jar giữ qua Set-Cookie. Không đặt Cookie/J
 2. `login` dùng username/password đã điền; xóa token cũ sau thành công.
 3. `getCsrf` lần nữa lấy token mới, rồi `getCurrentUser` kiểm tra vai trò.
 4. Khi đổi người: `logout`, đổi credential rồi làm lại 1–3. Cookie jar theo host; không chạy song song nhiều vai trò với cùng jar/environment.
+
+Đăng nhập V2 tương ứng: `getV2Csrf` → `loginV2` → `getV2Csrf` lần nữa → `getV2CurrentUser`. Các thao tác designV2 nằm trong `02 - Contract and controlled requests / Admin V2 (manual; isolated test DB only)` và mặc định bị bỏ qua. Chỉ đặt `runPlanned=true` sau khi URL trỏ DB test riêng; một số request thay đổi DB thật như tạo/khóa nhân sự, khóa khách, cập nhật chính sách, phân công/hủy đơn và đổi hồ sơ.
 
 ## Main Flow thủ công có lưu biến
 
@@ -57,7 +59,7 @@ Folder `03 - Negative fixtures` có assertion HTTP + code cụ thể:
 
 Các case biên, callback lặp/muộn, gán đồng thời, rollback và Alternative Flow được ghi trong [T20 acceptance](../T20-acceptance.md) và [T19 validation](../T19-validation.md), triển khai bằng JUnit/integration. Postman đơn lẻ không chứng minh an toàn đồng thời.
 
-IPN/return trong folder VNPay là mẫu hợp đồng, không tự tạo chữ ký hợp lệ. Điền query **nguyên bản** của callback sandbox đã ký; không sửa amount/reference sau ký. Trường optional từ callback nếu có phải bật lại query tương ứng. Không đặt secret ký VNPay trong collection/environment. Request mẫu không thay bằng chứng IPN thực từ cổng.
+IPN/return trong folder VNPay là mẫu hợp đồng, không tự tạo chữ ký hợp lệ. Điền query **nguyên bản** của callback sandbox đã ký; không sửa amount/reference sau ký. Trường optional từ callback nếu có phải bật lại query tương ứng. Không đặt secret ký VNPay trong collection/environment. Request mẫu không thay bằng chứng IPN thực từ cổng. Callback V2 chỉ được gửi tới backend đang nối DB test; không chạy callback thử trên DB demo.
 
 ## Cập nhật collection
 

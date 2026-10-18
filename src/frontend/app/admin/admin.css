@@ -28,7 +28,6 @@ a.admin-nav-item:hover { background:#32302a; color:#fff; }
 .admin-breadcrumb { color:#8a857d; font-size:12px; }
 .admin-breadcrumb span { padding:0 7px; color:#c1bdb5; }
 .admin-breadcrumb strong { color:#332f29; }
-.admin-demo-pill { background:#fff7dc; color:#805500; border:1px solid #f7dda0; border-radius:99px; padding:5px 10px; font-size:11px; font-weight:800; }
 .admin-reset { border:0; background:none; color:#746e63; font-size:11px!important; font-weight:700; }
 .admin-reset:hover { color:#28241d; text-decoration:underline; }
 .admin-menu-button { display:none; border:0; background:none; font-size:22px!important; line-height:1; }
@@ -148,7 +147,7 @@ a.admin-nav-item:hover { background:#32302a; color:#fff; }
 body:has(.admin-shell) aside[aria-label="Hỗ trợ khách hàng"] { display:none; }
 @media(max-width:1200px) { .admin-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-filter-reset { justify-self:start; } }
 @media(max-width:900px) { .admin-sidebar { position:fixed; left:0; transform:translateX(-100%); transition:transform .2s ease; } .admin-sidebar.is-open { transform:translateX(0); } .admin-scrim { display:block; position:fixed; inset:0; border:0; background:rgb(0 0 0 / .35); z-index:20; } .admin-menu-button { display:block; } .admin-main-grid,.admin-detail-grid { grid-template-columns:1fr; } }
-@media(max-width:650px) { .admin-topbar { padding:0 16px; } .admin-content { padding:22px 15px 35px; } .admin-page-heading { align-items:stretch; flex-direction:column; } .admin-page-heading h1 { font-size:25px; } .admin-stat-grid { gap:9px; } .admin-stat { padding:15px; min-height:112px; } .admin-stat-value { font-size:23px; } .admin-filter-grid { grid-template-columns:1fr; } .admin-filter-reset { padding:8px 0; } .admin-demo-pill { font-size:10px; } .admin-reset { display:none; } .admin-chart-row { grid-template-columns:90px 1fr 30px; gap:7px; } .admin-detail-pair { grid-template-columns:105px 1fr; } }
+@media(max-width:650px) { .admin-topbar { padding:0 16px; } .admin-content { padding:22px 15px 35px; } .admin-page-heading { align-items:stretch; flex-direction:column; } .admin-page-heading h1 { font-size:25px; } .admin-stat-grid { gap:9px; } .admin-stat { padding:15px; min-height:112px; } .admin-stat-value { font-size:23px; } .admin-filter-grid { grid-template-columns:1fr; } .admin-filter-reset { padding:8px 0; } .admin-reset { display:none; } .admin-chart-row { grid-template-columns:90px 1fr 30px; gap:7px; } .admin-detail-pair { grid-template-columns:105px 1fr; } }
 @media(prefers-reduced-motion:reduce) { .admin-sidebar { transition:none; } }
 .admin-filter-grid.admin-filter-compact { grid-template-columns:minmax(240px,2fr) minmax(160px,1fr); max-width:700px; }
 .admin-filter-grid.admin-report-filters { grid-template-columns:repeat(3,minmax(150px,1fr)) auto; max-width:750px; }
@@ -187,5 +186,17 @@ body:has(.admin-shell) aside[aria-label="Hỗ trợ khách hàng"] { display:non
 .admin-quote-lines .admin-quote-total { border-top:1px solid #ded8cb; margin-top:4px; font-weight:800; color:#282219; font-size:13px; }.admin-quote-total strong { color:#946100; font-size:22px; }
 .admin-setting-toggle { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 0; border-bottom:1px solid #eeeae2; }
 .admin-setting-toggle strong,.admin-setting-toggle small { display:block; }.admin-setting-toggle strong { font-size:12px; }.admin-setting-toggle small { margin-top:5px; color:#817b71; font-size:11px; }.admin-setting-toggle input { accent-color:#d89900; width:18px; height:18px; }
+.admin-form-body { padding:20px 22px; }.admin-form-body .admin-inline-actions { margin-top:18px; }
+.admin-pricing-form,.admin-staff-form,.admin-quote-panel { margin-bottom:18px; }
+.admin-policy-table { margin-bottom:18px; }
+.admin-policy-table .admin-table { min-width:980px; }
+.admin-policy-table .admin-table td:nth-child(2) { white-space:normal; min-width:300px; line-height:1.5; }
+.admin-policy-table .admin-table td:nth-child(5) { min-width:210px; }
+.admin-text-button.danger { color:#ae3028; }
+.admin-quote-result { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 24px; margin:0 22px 20px; padding:6px 18px; border-radius:10px; background:#faf9f5; }
+.admin-quote-result > div { display:flex; justify-content:space-between; gap:14px; padding:12px 0; border-bottom:1px solid #ebe7df; font-size:12px; }
+.admin-quote-result span { color:#746e63; }.admin-quote-result strong { text-align:right; }
+.admin-quote-result .total { grid-column:1/-1; border:0; font-weight:800; }.admin-quote-result .total strong { color:#956500; font-size:19px; }
+@media(max-width:650px) { .admin-form-body { padding:16px; }.admin-quote-result { grid-template-columns:1fr; margin:0 16px 16px; }.admin-quote-result .total { grid-column:auto; } }
 @media(max-width:750px) { .admin-filter-grid.admin-report-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-policy-row { grid-template-columns:1fr 1fr; }.admin-policy-row > div:first-child { grid-column:1 / -1; } }
 @media(max-width:650px) { .admin-filter-grid.admin-filter-compact,.admin-filter-grid.admin-report-filters { grid-template-columns:1fr; } .admin-form-grid,.admin-summary-grid { grid-template-columns:1fr; } .admin-policy-row { grid-template-columns:1fr 1fr; } .admin-report-bar { grid-template-columns:75px 1fr 90px; } }

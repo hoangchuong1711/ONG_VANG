@@ -2,14 +2,14 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Mini Ong Vàng API",
-    "version": "0.6.0",
-    "description": "DesignV1 API with TX3 route based ordering, versioned km/kg fares and DB order history. Goong requires a server side key; FAKE routes are finite demo fixtures."
+    "version": "0.7.0",
+    "description": "DesignV1 legacy API plus implemented DesignV2 runtime and Admin APIs. /api/v2 paths use the DesignV2 database and session contract."
   },
   "x-tx1-target-design": {
     "status": "planned",
     "businessAndData": "docs/database/designTX.md",
     "apiContract": "docs/api/TX1-contract.md",
-    "note": "The paths and schemas below still describe the implemented designV1 API. TX3–TX7 update them together with runtime code and tests."
+    "note": "The unversioned /api paths retain the legacy designV1 contract. Implemented designV2 admin and settlement routes are documented separately under /api/v2."
   },
   "servers": [
     {
@@ -22,7 +22,8 @@
       "name": "Infrastructure"
     },
     {
-      "name": "Auth"
+      "name": "Auth",
+      "description": "Authentication endpoints; DesignV1 and DesignV2 use their matching CSRF endpoints."
     },
     {
       "name": "Customers"
@@ -50,6 +51,14 @@
     },
     {
       "name": "Reports"
+    },
+    {
+      "name": "Admin V2",
+      "description": "DesignV2 operations used by the live admin and supporting account/order screens."
+    },
+    {
+      "name": "V2 Payments",
+      "description": "DesignV2 driver-company settlement and public VNPay callbacks."
     }
   ],
   "security": [
@@ -6429,96 +6438,4160 @@
     },
     "/api/orders/{maDon}/driver-route": {
       "get": {
-        "tags": ["Dispatch"],
+        "tags": [
+          "Dispatch"
+        ],
         "summary": "Bản đồ hai chặng cho tài xế được gán",
         "operationId": "getDriverRoute",
         "x-implementation-status": "implemented",
-        "x-uc": ["UC-13"],
-        "x-roles": ["TAI_XE"],
-        "security": [{"sessionCookie": []}],
-        "parameters": [{"name":"maDon","in":"path","required":true,"schema":{"$ref":"#/components/schemas/Id"}}],
+        "x-uc": [
+          "UC-13"
+        ],
+        "x-roles": [
+          "TAI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "maDon",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
         "responses": {
-          "200": {"description":"Tuyến Goong; chặng đi lấy không tính vào cước khách.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/DriverRoute"}}}},
-          "401": {"description":"Cần đăng nhập"},
-          "404": {"description":"Đơn không thuộc tài xế"},
-          "409": {"description":"Thiếu vị trí demo"},
-          "429": {"description":"Goong đã hết quota"},
-          "502": {"description":"Goong không khả dụng"},
-          "504": {"description":"Goong quá thời gian chờ"}
+          "200": {
+            "description": "Tuyến Goong; chặng đi lấy không tính vào cước khách.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverRoute"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Cần đăng nhập"
+          },
+          "404": {
+            "description": "Đơn không thuộc tài xế"
+          },
+          "409": {
+            "description": "Thiếu vị trí demo"
+          },
+          "429": {
+            "description": "Goong đã hết quota"
+          },
+          "502": {
+            "description": "Goong không khả dụng"
+          },
+          "504": {
+            "description": "Goong quá thời gian chờ"
+          }
         }
       }
     },
     "/api/orders/{maDon}/arrival": {
       "post": {
-        "tags": ["Dispatch"],
+        "tags": [
+          "Dispatch"
+        ],
         "summary": "Tài xế xác nhận đã đến điểm nhận",
         "operationId": "arriveAtReceiver",
         "x-implementation-status": "implemented",
-        "x-uc": ["UC-13"],
-        "x-roles": ["TAI_XE"],
-        "security": [{"sessionCookie":[],"csrfToken":[]}],
-        "parameters": [{"name":"maDon","in":"path","required":true,"schema":{"$ref":"#/components/schemas/Id"}}],
+        "x-uc": [
+          "UC-13"
+        ],
+        "x-roles": [
+          "TAI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "maDon",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
         "responses": {
-          "200": {"description":"Sự kiện đã đến điểm nhận","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Event"}}}},
-          "401": {"description":"Cần đăng nhập"},
-          "403": {"description":"Sai quyền hoặc CSRF"},
-          "404": {"description":"Đơn không thuộc tài xế"},
-          "409": {"description":"Trạng thái không hợp lệ"}
+          "200": {
+            "description": "Sự kiện đã đến điểm nhận",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Cần đăng nhập"
+          },
+          "403": {
+            "description": "Sai quyền hoặc CSRF"
+          },
+          "404": {
+            "description": "Đơn không thuộc tài xế"
+          },
+          "409": {
+            "description": "Trạng thái không hợp lệ"
+          }
         }
       }
     },
     "/api/cod/drivers": {
       "get": {
-        "tags": ["Reports"], "summary": "Tiền mặt COD từng tài xế và các đơn cấu thành",
-        "operationId": "getCodDrivers", "x-implementation-status": "implemented", "x-uc": ["UC-08"], "x-roles": ["TONG_DAI", "CHU_DOI_XE"],
-        "security": [{"sessionCookie": []}],
-        "responses": {"200": {"description": "Danh sách tài xế với số đang giữ và đủ điều kiện nộp", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CodDriverList"}}}}}
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Tiền mặt COD từng tài xế và các đơn cấu thành",
+        "operationId": "getCodDrivers",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-08"
+        ],
+        "x-roles": [
+          "TONG_DAI",
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách tài xế với số đang giữ và đủ điều kiện nộp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodDriverList"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/cod/drivers/{maTx}/settlements": {
       "post": {
-        "tags": ["Payments"], "summary": "Chốt batch COD và mở VNPay Sandbox",
-        "operationId": "createCodSettlement", "x-implementation-status": "implemented", "x-uc": ["UC-08"], "x-roles": ["TONG_DAI"],
-        "security": [{"sessionCookie": [], "csrfToken": []}],
-        "parameters": [{"name": "maTx", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string"}}],
-        "requestBody": {"content": {"application/json": {"schema": {"type": "object", "additionalProperties": false}, "example": {}}}},
-        "responses": {"201": {"description": "Batch và URL thanh toán", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CodBatch"}}}}, "409": {"description": "COD_EMPTY hoặc đang chờ batch cũ"}}
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Chốt batch COD và mở VNPay Sandbox",
+        "operationId": "createCodSettlement",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-08"
+        ],
+        "x-roles": [
+          "TONG_DAI"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "maTx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              },
+              "example": {}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Batch và URL thanh toán",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodBatch"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "COD_EMPTY hoặc đang chờ batch cũ"
+          }
+        }
       }
     },
     "/api/cod/settlements/{maDot}": {
       "get": {
-        "tags": ["Payments"], "summary": "Trạng thái batch COD sau Return",
-        "operationId": "getCodSettlement", "x-implementation-status": "implemented", "x-uc": ["UC-08"], "x-roles": ["TONG_DAI", "CHU_DOI_XE"],
-        "security": [{"sessionCookie": []}],
-        "parameters": [{"name": "maDot", "in": "path", "required": true, "schema": {"type": "string"}}],
-        "responses": {"200": {"description": "Batch COD", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CodBatch"}}}}}
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Trạng thái batch COD sau Return",
+        "operationId": "getCodSettlement",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-08"
+        ],
+        "x-roles": [
+          "TONG_DAI",
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "maDot",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batch COD",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodBatch"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/cod/settlements/{maDot}/reconcile": {
       "post": {
-        "tags": ["Payments"], "summary": "Truy vấn đối soát batch COD từ VNPay",
-        "operationId": "reconcileCodSettlement", "x-implementation-status": "implemented", "x-uc": ["UC-08"], "x-roles": ["TONG_DAI"],
-        "security": [{"sessionCookie": [], "csrfToken": []}],
-        "parameters": [{"name": "maDot", "in": "path", "required": true, "schema": {"type": "string"}}],
-        "responses": {"200": {"description": "Trạng thái sau đối soát", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CodBatch"}}}}}
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Truy vấn đối soát batch COD từ VNPay",
+        "operationId": "reconcileCodSettlement",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-08"
+        ],
+        "x-roles": [
+          "TONG_DAI"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "maDot",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trạng thái sau đối soát",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodBatch"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/reports/drivers": {
       "get": {
-        "tags": ["Reports"], "summary": "Thu nhập và COD theo tài xế",
-        "operationId": "getDriverRevenueReport", "x-implementation-status": "implemented", "x-uc": ["UC-15"], "x-roles": ["CHU_DOI_XE"],
-        "security": [{"sessionCookie": []}],
-        "parameters": [{"name": "tuNgay", "in": "query", "required": true, "schema": {"type": "string", "format": "date"}}, {"name": "denNgay", "in": "query", "required": true, "schema": {"type": "string", "format": "date"}}],
-        "responses": {"200": {"description": "Số liệu từng tài xế", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DriverEarningsList"}}}}}
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Thu nhập và COD theo tài xế",
+        "operationId": "getDriverRevenueReport",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-15"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tuNgay",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "denNgay",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Số liệu từng tài xế",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverEarningsList"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/drivers/me/earnings": {
       "get": {
-        "tags": ["Reports"], "summary": "Thu nhập phát sinh và đủ điều kiện chi trả của tài xế",
-        "operationId": "getMyEarnings", "x-implementation-status": "implemented", "x-uc": ["UC-15"], "x-roles": ["TAI_XE"],
-        "security": [{"sessionCookie": []}],
-        "parameters": [{"name": "tuNgay", "in": "query", "required": true, "schema": {"type": "string", "format": "date"}}, {"name": "denNgay", "in": "query", "required": true, "schema": {"type": "string", "format": "date"}}],
-        "responses": {"200": {"description": "Số liệu của tài xế đăng nhập", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DriverEarnings"}}}}}
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Thu nhập phát sinh và đủ điều kiện chi trả của tài xế",
+        "operationId": "getMyEarnings",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-15"
+        ],
+        "x-roles": [
+          "TAI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tuNgay",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "denNgay",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Số liệu của tài xế đăng nhập",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverEarnings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/auth/csrf": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "L?y token CSRF designV2",
+        "operationId": "getV2Csrf",
+        "description": "T?o ho?c ??c token CSRF trong session hi?n t?i. G?i l?i sau ??ng nh?p.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-01"
+        ],
+        "x-roles": [
+          "PUBLIC"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Csrf"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/auth/login": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "??ng nh?p designV2",
+        "operationId": "loginV2",
+        "description": "??ng nh?p b?ng username/password. C?n l?y token t? /api/v2/auth/csrf tr??c.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-01"
+        ],
+        "x-roles": [
+          "PUBLIC"
+        ],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2LoginRequest"
+              },
+              "example": {
+                "username": "{{username}}",
+                "password": "{{password}}"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/auth/me": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "??c t?i kho?n hi?n t?i",
+        "operationId": "getV2CurrentUser",
+        "description": "Tr? m? t?i kho?n, vai tr? v? t?n c?a session hi?n t?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-01"
+        ],
+        "x-roles": [
+          "SESSION"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/auth/logout": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "??ng xu?t designV2",
+        "operationId": "logoutV2",
+        "description": "K?t th?c session hi?n t?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-01"
+        ],
+        "x-roles": [
+          "SESSION"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Th?nh c?ng"
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/overview": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "T?ng quan admin designV2",
+        "operationId": "getV2AdminOverview",
+        "description": "T?ng s? ??n theo tr?ng th?i, n?m ??n g?n nh?t v? s? d? t?i ch?nh hi?n t?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-19"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Overview"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/orders": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Danh s?ch ??n admin designV2",
+        "operationId": "listV2AdminOrders",
+        "description": "Danh s?ch ??n ph?n trang tr?n m?y ch?. status ch? nh?n tr?ng th?i V2.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-19"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Page"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CHO_GAN",
+                "DA_GAN",
+                "DA_LAY_HANG",
+                "DANG_GIAO",
+                "HOAN_TAT",
+                "DA_HUY"
+              ]
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/orders/{maDon}": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Chi ti?t ??n designV2",
+        "operationId": "getV2Order",
+        "description": "??c ??n theo quy?n c?a ch? ??n, t?i x? ???c g?n, t?ng ??i ho?c ch? ??i xe.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-19",
+          "UC-13",
+          "UC-08"
+        ],
+        "x-roles": [
+          "KHACH_HANG",
+          "TAI_XE",
+          "TONG_DAI",
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maDon",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/drivers": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Danh s?ch t?i x? cho ?i?u ph?i",
+        "operationId": "listV2DispatchDrivers",
+        "description": "Danh s?ch t?i x? v? tr?ng th?i ph?n c?ng hi?n t?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-12"
+        ],
+        "x-roles": [
+          "TONG_DAI",
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Items"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/orders/{maDon}/assign": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Ph?n c?ng t?i x?",
+        "operationId": "assignV2Driver",
+        "description": "Ph?n c?ng ??n ?ang ch?. G?i maTx c?a t?i x?; xung ??t tr? 409.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-12"
+        ],
+        "x-roles": [
+          "TONG_DAI",
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maDon",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2AssignDriver"
+              },
+              "example": {
+                "maTx": "{{driverId}}"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/orders/{maDon}/cancel": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "H?y ??n",
+        "operationId": "cancelV2Order",
+        "description": "H?y ??n theo c?a s? v? quy t?c nghi?p v? designV2.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-14"
+        ],
+        "x-roles": [
+          "KHACH_HANG",
+          "TONG_DAI",
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maDon",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2CancelOrder"
+              },
+              "example": {
+                "lyDo": "H?y theo y?u c?u"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/drivers": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Danh s?ch h? s? t?i x?",
+        "operationId": "listV2AdminDrivers",
+        "description": "H? s? t?i x?, t?i kho?n, ph??ng ti?n v? c? ?ang b?n.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-12"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Items"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      },
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "T?o t?i x?",
+        "operationId": "createV2AdminDriver",
+        "description": "T?o t?i kho?n v? h? s? t?i x?. M?t kh?u kh?ng ???c tr? l?i trong response.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-12"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2DriverCreate"
+              },
+              "example": {
+                "username": "driver.new",
+                "matKhau": "{{password}}",
+                "hoTen": "T?i x? m?i",
+                "soDienThoai": "0901234567",
+                "email": null,
+                "cccd": "012345678901",
+                "soGiayPhep": "B012345678",
+                "ngayHetHanGPLX": "2028-12-31"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/drivers/{maTx}": {
+      "patch": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "S?a h? s? t?i x?",
+        "operationId": "updateV2AdminDriver",
+        "description": "C?p nh?t th?ng tin h? s?; kh?ng ??i username ho?c m?t kh?u.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-12"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maTx",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2DriverUpdate"
+              },
+              "example": {
+                "hoTen": "T?i x? m?i",
+                "soDienThoai": "0901234567",
+                "email": null,
+                "cccd": "012345678901",
+                "soGiayPhep": "B012345678",
+                "ngayHetHanGPLX": "2028-12-31"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/drivers/{maTx}/status": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Kh?a ho?c m? kh?a t?i x?",
+        "operationId": "setV2AdminDriverStatus",
+        "description": "H?nh ??ng KHOA/MO_KHOA; t?i x? ?ang c? chuy?n ho?t ??ng kh?ng th? kh?a.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-12"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maTx",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2StatusAction"
+              },
+              "example": {
+                "hanhDong": "KHOA"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/customers": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Danh s?ch kh?ch h?ng",
+        "operationId": "listV2AdminCustomers",
+        "description": "Danh s?ch h? s? kh?ch h?ng v? tr?ng th?i t?i kho?n.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Items"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/customers/{maKh}": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Chi ti?t kh?ch h?ng",
+        "operationId": "getV2AdminCustomer",
+        "description": "H? s?, t?ng s? ??n v? trang ??n g?n ??y c?a kh?ch h?ng.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maKh",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/customers/{maKh}/status": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Kh?a ho?c m? kh?a kh?ch h?ng",
+        "operationId": "setV2AdminCustomerStatus",
+        "description": "Kh?a/m? kh?a t?i kho?n kh?ch h?ng v? thu h?i session c?.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maKh",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2StatusAction"
+              },
+              "example": {
+                "hanhDong": "KHOA"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/vehicles": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Danh s?ch ph??ng ti?n",
+        "operationId": "listV2Vehicles",
+        "description": "Danh s?ch ph??ng ti?n g?n v?i h? s? t?i x?.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-12"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE",
+          "TONG_DAI"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Items"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      },
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "T?o ho?c c?p nh?t ph??ng ti?n",
+        "operationId": "manageV2Vehicle",
+        "description": "G?i thao t?c ph??ng ti?n qua hanhDong, maTx v? c?c tr??ng xe.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-12"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Items"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2VehicleAction"
+              },
+              "example": {
+                "hanhDong": "GAN",
+                "maTx": "{{driverId}}",
+                "bienSo": "51A-12345",
+                "loaiXe": "XE_MAY",
+                "mauXe": "?en",
+                "hoatDong": true
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/incidents": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Danh s?ch s? c?",
+        "operationId": "listV2AdminIncidents",
+        "description": "??c s? ki?n SU_CO t? nh?t k? ??n; API ch? cung c?p danh s?ch, kh?ng c?p nh?t k?t qu? x? l?.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-13"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Page"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/payments": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Giao d?ch n?p ti?n t?i x?",
+        "operationId": "listV2AdminPayments",
+        "description": "??c s? d? t?ng h?p, giao d?ch ph?n trang v? tr?ng th?i x?c minh g?n nh?t. Kh?ng s?a k?t qu? thanh to?n.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-08",
+          "UC-10"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2PaymentPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CHO_XU_LY",
+                "CHUA_RO_KET_QUA",
+                "THANH_CONG",
+                "KHONG_THU",
+                "CAN_DOI_SOAT"
+              ]
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/payments/{maGiaoDich}/events": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "S? ki?n x?c minh giao d?ch",
+        "operationId": "listV2PaymentEvents",
+        "description": "Tr? ngu?n, k?t qu? v? th?i gian; kh?ng tr? payload callback nh?y c?m.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-08",
+          "UC-10"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Items"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maGiaoDich",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/reports/finance": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "B?o c?o t?i ch?nh designV2",
+        "operationId": "getV2FinanceReport",
+        "description": "Kho?ng ng?y [tu, den) theo Asia/Ho_Chi_Minh; s? li?u d?ng chung v?i Excel.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-15"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2FinanceReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tu",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "den",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/reports/finance.xlsx": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Xu?t Excel b?o c?o t?i ch?nh",
+        "operationId": "exportV2FinanceReport",
+        "description": "T?i XLSX ???c t?nh b?ng c?ng service v?i endpoint JSON.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-15"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng"
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tu",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "den",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/policies": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Danh s?ch ch?nh s?ch gi?",
+        "operationId": "listV2Policies",
+        "description": "C?c phi?n b?n bi?u ph?, h?ng th?nh vi?n v? ph? thu.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-03",
+          "UC-05"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Items"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      },
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Qu?n l? ch?nh s?ch gi?",
+        "operationId": "manageV2Policies",
+        "description": "T?o/c?p nh?t b?n nh?p, c?ng b?, x?a b?n nh?p ho?c ??ng hi?u l?c.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-03",
+          "UC-05"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Items"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2PolicyAction"
+              },
+              "example": {
+                "hanhDong": "LUU_NHAP",
+                "loai": "CUOC",
+                "ma": null,
+                "duLieu": {
+                  "ten": "Bi?u ph? m?i",
+                  "cuoc_co_ban": 25000,
+                  "don_gia_km": 7000,
+                  "km_toi_thieu": 1,
+                  "km_toi_da": 30,
+                  "kg_bao_gom": 1,
+                  "kg_toi_da": 100,
+                  "don_gia_kg": 1000,
+                  "hieu_luc_tu": "2026-12-01T00:00:00"
+                }
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/staff": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Danh s?ch nh?n s?",
+        "operationId": "listV2AdminStaff",
+        "description": "Danh s?ch t?i kho?n TONG_DAI v? CHU_DOI_XE.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Items"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      },
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "T?o nh?n s? t?ng ??i",
+        "operationId": "createV2AdminStaff",
+        "description": "T?o t?i kho?n TONG_DAI. M?t kh?u kh?ng ???c tr? l?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2StaffCreate"
+              },
+              "example": {
+                "username": "tongdai.new",
+                "matKhau": "{{password}}",
+                "hoTen": "Nh?n vi?n m?i",
+                "soDienThoai": "0901234567",
+                "email": null
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/staff/{maTk}": {
+      "patch": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "S?a nh?n s? t?ng ??i",
+        "operationId": "updateV2AdminStaff",
+        "description": "C?p nh?t h? t?n, s? ?i?n tho?i v? email.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maTk",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2StaffUpdate"
+              },
+              "example": {
+                "hoTen": "Nh?n vi?n m?i",
+                "soDienThoai": "0901234567",
+                "email": null
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/staff/{maTk}/status": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Kh?a ho?c m? kh?a nh?n s?",
+        "operationId": "setV2AdminStaffStatus",
+        "description": "Thay ??i tr?ng th?i v? thu h?i session theo quy t?c backend.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maTk",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2StatusAction"
+              },
+              "example": {
+                "hanhDong": "KHOA"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/staff/{maTk}/password": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "??t l?i m?t kh?u nh?n s?",
+        "operationId": "setV2AdminStaffPassword",
+        "description": "C?p m?t kh?u m?i; backend thu h?i session ?ang d?ng.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maTk",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2SetPassword"
+              },
+              "example": {
+                "matKhau": "{{password}}"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/profile": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "??c h? s? hi?n t?i",
+        "operationId": "getV2Profile",
+        "description": "Tr? username, h? t?n, li?n h? v? vai tr? c?a t?i kho?n hi?n t?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-01"
+        ],
+        "x-roles": [
+          "SESSION"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      },
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "C?p nh?t h? s? hi?n t?i",
+        "operationId": "updateV2Profile",
+        "description": "C?p nh?t h? t?n, s? ?i?n tho?i v? email.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-01"
+        ],
+        "x-roles": [
+          "SESSION"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2ProfileUpdate"
+              },
+              "example": {
+                "hoTen": "T?n hi?n th?",
+                "soDienThoai": "0901234567",
+                "email": null
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/auth/change-password": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "??i m?t kh?u hi?n t?i",
+        "operationId": "changeV2Password",
+        "description": "Y?u c?u m?t kh?u c? v? m?i; th?nh c?ng s? k?t th?c session hi?n t?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-01"
+        ],
+        "x-roles": [
+          "SESSION"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Th?nh c?ng"
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2ChangePassword"
+              },
+              "example": {
+                "matKhauCu": "{{password}}",
+                "matKhauMoi": "{{password}}"
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/fare/quote": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Xem th? b?o gi? V2",
+        "operationId": "quoteV2Fare",
+        "description": "T?nh gi? theo v? tr?, ki?n h?ng, ch?nh s?ch hi?u l?c v? h? s? kh?ch h?ng; kh?ng t?o ??n.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-03",
+          "UC-04",
+          "UC-05"
+        ],
+        "x-roles": [
+          "CHU_DOI_XE",
+          "TONG_DAI",
+          "KHACH_HANG"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2QuoteRequest"
+              },
+              "example": {
+                "maKh": "{{customerId}}",
+                "diemLay": "??a ch? l?y h?ng th?t",
+                "diemGiao": "??a ch? giao h?ng th?t",
+                "kienHang": [
+                  {
+                    "loaiHang": "H?ng h?a",
+                    "kg": "1"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/payments/vnpay/ipn": {
+      "get": {
+        "tags": [
+          "V2 Payments"
+        ],
+        "summary": "VNPay IPN designV2",
+        "operationId": "vnpayV2Ipn",
+        "description": "Callback server-to-server. Ch? ch? k? h?p l?, merchant/reference/amount/VND kh?p m?i c? th? ?p d?ng k?t qu?. Callback l?p ???c kh? tr?ng.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-10"
+        ],
+        "x-roles": [
+          "VNPAY"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "vnp_TmnCode",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_Amount",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_BankCode",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_BankTranNo",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_CardType",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_PayDate",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_OrderInfo",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_TransactionNo",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_ResponseCode",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_TransactionStatus",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_TxnRef",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_CurrCode",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_SecureHashType",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_SecureHash",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_Version",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_Command",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_Locale",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_CreateDate",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_IpAddr",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_OrderType",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/payments/vnpay/return": {
+      "get": {
+        "tags": [
+          "V2 Payments"
+        ],
+        "summary": "VNPay browser return designV2",
+        "operationId": "vnpayV2Return",
+        "description": "Return c?a tr?nh duy?t ch? chuy?n v? v? t?i x? ?? tra c?u; kh?ng quy?t to?n giao d?ch.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-10"
+        ],
+        "x-roles": [
+          "PUBLIC"
+        ],
+        "security": [],
+        "responses": {
+          "302": {
+            "description": "Th?nh c?ng",
+            "headers": {
+              "Location": {
+                "description": "Frontend return URL; this redirect does not settle the payment.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "vnp_TmnCode",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_Amount",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_BankCode",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_BankTranNo",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_CardType",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_PayDate",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_OrderInfo",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_TransactionNo",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_ResponseCode",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_TransactionStatus",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_TxnRef",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_CurrCode",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_SecureHashType",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_SecureHash",
+            "in": "query",
+            "required": true,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_Version",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_Command",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_Locale",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_CreateDate",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_IpAddr",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vnp_OrderType",
+            "in": "query",
+            "required": false,
+            "description": "VNPay callback field; preserve the original signed value.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/drivers/me": {
+      "get": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "H? s? t?i x? hi?n t?i",
+        "operationId": "getV2DriverMe",
+        "description": "??c tr?ng th?i tr?c tuy?n, ph??ng ti?n v? t?nh tr?ng ph?n c?ng hi?n t?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "TAI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/drivers/me/availability": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "C?p nh?t tr?ng th?i tr?c tuy?n",
+        "operationId": "updateV2DriverAvailability",
+        "description": "B?t/t?t kh? n?ng nh?n ??n. T?i x? c? ph?n c?ng ?ang ho?t ??ng kh?ng th? ??i tr?ng th?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-12"
+        ],
+        "x-roles": [
+          "TAI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2OnlineRequest"
+              },
+              "example": {
+                "online": true
+              }
+            }
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/drivers/me/finance": {
+      "get": {
+        "tags": [
+          "V2 Payments"
+        ],
+        "summary": "S? d? t?i x?",
+        "operationId": "getV2DriverFinance",
+        "description": "??c thu nh?p, c?ng n? c?ng ty v? giao d?ch ?ang ch? c?a t?i x? hi?n t?i.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-08",
+          "UC-10",
+          "UC-15"
+        ],
+        "x-roles": [
+          "TAI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/drivers/me/earnings": {
+      "get": {
+        "tags": [
+          "V2 Payments"
+        ],
+        "summary": "Thu nh?p t?i x? theo k?",
+        "operationId": "getV2DriverEarnings",
+        "description": "B?o c?o thu nh?p trong kho?ng ng?y [tu, den) theo gi? Vi?t Nam.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-15"
+        ],
+        "x-roles": [
+          "TAI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tu",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "den",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/drivers/me/settlements": {
+      "post": {
+        "tags": [
+          "V2 Payments"
+        ],
+        "summary": "B?t ??u n?p ti?n c?ng ty qua VNPay",
+        "operationId": "beginV2Settlement",
+        "description": "T?o ho?c ti?p t?c giao d?ch n?p c?ng n?; ph?i g?i Idempotency-Key ?? retry an to?n.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-08",
+          "UC-10"
+        ],
+        "x-roles": [
+          "TAI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          }
+        ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/drivers/me/settlements/reconcile": {
+      "post": {
+        "tags": [
+          "V2 Payments"
+        ],
+        "summary": "Tra c?u giao d?ch n?p ti?n",
+        "operationId": "reconcileV2Settlement",
+        "description": "G?i tra c?u VNPay cho giao d?ch ch?a ???c quy?t to?n; k?t qu? ch?a r? kh?ng ??ng ngh?a kh?ng thu.",
+        "x-implementation-status": "implemented",
+        "x-uc": [
+          "UC-10"
+        ],
+        "x-roles": [
+          "TAI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
       }
     }
   },
@@ -6534,50 +10607,194 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-CSRF-Token",
-        "description": "Lấy từ GET /api/auth/csrf; dùng cùng session cho request thay đổi dữ liệu, kể cả login/logout."
+        "description": "Use the matching CSRF endpoint for the API version: GET /api/v2/auth/csrf for DesignV2 or GET /api/auth/csrf for legacy DesignV1."
       }
     },
     "schemas": {
-      "CodDriverList": {"type": "array", "items": {"$ref": "#/components/schemas/CodDriver"}},
-      "DriverEarningsList": {"type": "array", "items": {"$ref": "#/components/schemas/DriverEarnings"}},
+      "CodDriverList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/CodDriver"
+        }
+      },
+      "DriverEarningsList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/DriverEarnings"
+        }
+      },
       "CodItem": {
-        "type": "object", "additionalProperties": false,
-        "required": ["maDon", "maGiaoDich", "soTien", "trangThaiDon"],
-        "properties": {"maDon": {"type": "string"}, "maGiaoDich": {"type": "string"}, "soTien": {"$ref": "#/components/schemas/Money"}, "trangThaiDon": {"type": "string"}}
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maDon",
+          "maGiaoDich",
+          "soTien",
+          "trangThaiDon"
+        ],
+        "properties": {
+          "maDon": {
+            "type": "string"
+          },
+          "maGiaoDich": {
+            "type": "string"
+          },
+          "soTien": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "trangThaiDon": {
+            "type": "string"
+          }
+        }
       },
       "CodDriver": {
-        "type": "object", "additionalProperties": false,
-        "required": ["maTx", "hoTen", "bienSoXe", "soTienDangGiu", "soTienDuDieuKienNop", "soTienCanDoiSoat", "soDon", "items"],
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maTx",
+          "hoTen",
+          "bienSoXe",
+          "soTienDangGiu",
+          "soTienDuDieuKienNop",
+          "soTienCanDoiSoat",
+          "soDon",
+          "items"
+        ],
         "properties": {
-          "maTx": {"type": "string"}, "hoTen": {"type": "string"}, "bienSoXe": {"type": "string"},
-          "khuVuc": {"type": ["string", "null"]}, "soTienDangGiu": {"$ref": "#/components/schemas/Money"},
-          "soTienDuDieuKienNop": {"$ref": "#/components/schemas/Money"}, "soTienCanDoiSoat": {"$ref": "#/components/schemas/Money"},
-          "soDon": {"type": "integer"}, "maDotDangCho": {"type": ["string", "null"]},
-          "items": {"type": "array", "items": {"$ref": "#/components/schemas/CodItem"}}
+          "maTx": {
+            "type": "string"
+          },
+          "hoTen": {
+            "type": "string"
+          },
+          "bienSoXe": {
+            "type": "string"
+          },
+          "khuVuc": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "soTienDangGiu": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "soTienDuDieuKienNop": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "soTienCanDoiSoat": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "soDon": {
+            "type": "integer"
+          },
+          "maDotDangCho": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CodItem"
+            }
+          }
         }
       },
       "CodBatch": {
-        "type": "object", "additionalProperties": false,
-        "required": ["maDot", "maTx", "soTien", "trangThai", "taoLuc", "items"],
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maDot",
+          "maTx",
+          "soTien",
+          "trangThai",
+          "taoLuc",
+          "items"
+        ],
         "properties": {
-          "maDot": {"type": "string"}, "maTx": {"type": "string"}, "soTien": {"$ref": "#/components/schemas/Money"},
-          "trangThai": {"type": "string"}, "paymentUrl": {"type": ["string", "null"]},
-          "maThamChieu": {"type": ["string", "null"]}, "taoLuc": {"type": "string", "format": "date-time"},
-          "xacNhanLuc": {"type": ["string", "null"], "format": "date-time"},
-          "items": {"type": "array", "items": {"$ref": "#/components/schemas/CodItem"}}
+          "maDot": {
+            "type": "string"
+          },
+          "maTx": {
+            "type": "string"
+          },
+          "soTien": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "trangThai": {
+            "type": "string"
+          },
+          "paymentUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "maThamChieu": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taoLuc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "xacNhanLuc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CodItem"
+            }
+          }
         }
       },
       "DriverEarnings": {
-        "type": "object", "additionalProperties": false,
-        "required": ["maTx", "hoTen", "tongCuocDaHoanTat", "phanTaiXePhatSinh", "phanTaiXeDuDieuKienChiTra", "thuNhapDangChoCod", "tienMatDangGiu", "tienCodDaNop"],
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maTx",
+          "hoTen",
+          "tongCuocDaHoanTat",
+          "phanTaiXePhatSinh",
+          "phanTaiXeDuDieuKienChiTra",
+          "thuNhapDangChoCod",
+          "tienMatDangGiu",
+          "tienCodDaNop"
+        ],
         "properties": {
-          "maTx": {"type": "string"}, "hoTen": {"type": "string"},
-          "tongCuocDaHoanTat": {"$ref": "#/components/schemas/Money"},
-          "phanTaiXePhatSinh": {"$ref": "#/components/schemas/Money"},
-          "phanTaiXeDuDieuKienChiTra": {"$ref": "#/components/schemas/Money"},
-          "thuNhapDangChoCod": {"$ref": "#/components/schemas/Money"},
-          "tienMatDangGiu": {"$ref": "#/components/schemas/Money"},
-          "tienCodDaNop": {"$ref": "#/components/schemas/Money"}
+          "maTx": {
+            "type": "string"
+          },
+          "hoTen": {
+            "type": "string"
+          },
+          "tongCuocDaHoanTat": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "phanTaiXePhatSinh": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "phanTaiXeDuDieuKienChiTra": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "thuNhapDangChoCod": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "tienMatDangGiu": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "tienCodDaNop": {
+            "$ref": "#/components/schemas/Money"
+          }
         }
       },
       "Id": {
@@ -7694,27 +11911,48 @@
             ]
           },
           "viTriDemoDiaChi": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Địa chỉ demo cố định trong DB; không phải GPS trực tiếp."
           },
           "viTriDemoNguon": {
-            "type": ["string", "null"],
-            "enum": ["DEMO_CO_DINH", null]
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "DEMO_CO_DINH",
+              null
+            ]
           },
           "viTriDemoCauHinhLuc": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Thời điểm cấu hình vị trí demo theo giờ địa phương."
           },
           "kmDenDiemLay": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Quãng đường từ vị trí demo tài xế đến điểm lấy hàng."
           },
           "giayDenDiemLay": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "minimum": 0
           },
           "nguonDinhTuyen": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Nguồn định tuyến hoặc nhãn thứ tự dự phòng."
           }
         },
@@ -8258,36 +12496,93 @@
       "MapPoint": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["diaChi", "lat", "lng", "nguon"],
+        "required": [
+          "diaChi",
+          "lat",
+          "lng",
+          "nguon"
+        ],
         "properties": {
-          "diaChi": {"type":"string"},
-          "lat": {"type":"number","minimum":-90,"maximum":90},
-          "lng": {"type":"number","minimum":-180,"maximum":180},
-          "nguon": {"type":"string"}
+          "diaChi": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lng": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "nguon": {
+            "type": "string"
+          }
         }
       },
       "MapLeg": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["polyline", "quangDuongKm", "thoiGianDuKienGiay", "nguon"],
+        "required": [
+          "polyline",
+          "quangDuongKm",
+          "thoiGianDuKienGiay",
+          "nguon"
+        ],
         "properties": {
-          "polyline": {"type":"string","minLength":1},
-          "quangDuongKm": {"type":"string"},
-          "thoiGianDuKienGiay": {"type":"integer","minimum":0},
-          "nguon": {"type":"string","enum":["GOONG"]}
+          "polyline": {
+            "type": "string",
+            "minLength": 1
+          },
+          "quangDuongKm": {
+            "type": "string"
+          },
+          "thoiGianDuKienGiay": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "nguon": {
+            "type": "string",
+            "enum": [
+              "GOONG"
+            ]
+          }
         }
       },
       "DriverRoute": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["taiXe", "diemLay", "diemGiao", "denDiemLay", "denDiemGiao", "nguon"],
+        "required": [
+          "taiXe",
+          "diemLay",
+          "diemGiao",
+          "denDiemLay",
+          "denDiemGiao",
+          "nguon"
+        ],
         "properties": {
-          "taiXe": {"$ref":"#/components/schemas/MapPoint"},
-          "diemLay": {"$ref":"#/components/schemas/MapPoint"},
-          "diemGiao": {"$ref":"#/components/schemas/MapPoint"},
-          "denDiemLay": {"$ref":"#/components/schemas/MapLeg"},
-          "denDiemGiao": {"$ref":"#/components/schemas/MapLeg"},
-          "nguon": {"type":"string","enum":["GOONG"]}
+          "taiXe": {
+            "$ref": "#/components/schemas/MapPoint"
+          },
+          "diemLay": {
+            "$ref": "#/components/schemas/MapPoint"
+          },
+          "diemGiao": {
+            "$ref": "#/components/schemas/MapPoint"
+          },
+          "denDiemLay": {
+            "$ref": "#/components/schemas/MapLeg"
+          },
+          "denDiemGiao": {
+            "$ref": "#/components/schemas/MapLeg"
+          },
+          "nguon": {
+            "type": "string",
+            "enum": [
+              "GOONG"
+            ]
+          }
         }
       },
       "DriverPage": {
@@ -9036,6 +13331,549 @@
             ]
           }
         }
+      },
+      "V2Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "V2Resource": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "V2Items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/V2Resource"
+            }
+          }
+        }
+      },
+      "V2Page": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/V2Resource"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
+      "V2Csrf": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "token",
+          "header"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "header": {
+            "type": "string"
+          }
+        }
+      },
+      "V2Overview": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "tong_don",
+          "cho_gan",
+          "dang_xu_ly",
+          "hoan_tat",
+          "da_huy",
+          "don_gan_day",
+          "tai_chinh"
+        ],
+        "properties": {
+          "tong_don": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cho_gan": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "dang_xu_ly": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hoan_tat": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "da_huy": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "don_gan_day": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/V2Resource"
+            }
+          },
+          "tai_chinh": {
+            "$ref": "#/components/schemas/V2Resource"
+          }
+        }
+      },
+      "V2PaymentPage": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "giao_dich_total",
+          "giao_dich_page",
+          "giao_dich_size",
+          "giao_dich"
+        ],
+        "properties": {
+          "giao_dich_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "giao_dich_page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "giao_dich_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "giao_dich": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/V2Resource"
+            }
+          }
+        }
+      },
+      "V2FinanceReport": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "V2LoginRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "format": "password"
+          }
+        }
+      },
+      "V2DriverCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "matKhau",
+          "hoTen",
+          "soDienThoai",
+          "cccd",
+          "soGiayPhep",
+          "ngayHetHanGPLX"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "matKhau": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8
+          },
+          "hoTen": {
+            "type": "string"
+          },
+          "soDienThoai": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          },
+          "cccd": {
+            "type": "string"
+          },
+          "soGiayPhep": {
+            "type": "string"
+          },
+          "ngayHetHanGPLX": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "V2DriverUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hoTen",
+          "soDienThoai",
+          "cccd",
+          "soGiayPhep",
+          "ngayHetHanGPLX"
+        ],
+        "properties": {
+          "hoTen": {
+            "type": "string"
+          },
+          "soDienThoai": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          },
+          "cccd": {
+            "type": "string"
+          },
+          "soGiayPhep": {
+            "type": "string"
+          },
+          "ngayHetHanGPLX": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "V2StatusAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hanhDong"
+        ],
+        "properties": {
+          "hanhDong": {
+            "type": "string",
+            "enum": [
+              "KHOA",
+              "MO_KHOA"
+            ]
+          }
+        }
+      },
+      "V2VehicleAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hanhDong",
+          "maTx"
+        ],
+        "properties": {
+          "hanhDong": {
+            "type": "string"
+          },
+          "maTx": {
+            "type": "string"
+          },
+          "bienSo": {
+            "type": "string"
+          },
+          "loaiXe": {
+            "type": "string"
+          },
+          "mauXe": {
+            "type": "string"
+          },
+          "hoatDong": {
+            "type": "boolean"
+          }
+        }
+      },
+      "V2PolicyAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hanhDong",
+          "loai"
+        ],
+        "properties": {
+          "hanhDong": {
+            "type": "string"
+          },
+          "loai": {
+            "type": "string",
+            "enum": [
+              "CUOC",
+              "THANH_VIEN",
+              "PHU_THU"
+            ]
+          },
+          "ma": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duLieu": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "den": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "V2StaffCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "matKhau",
+          "hoTen"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "matKhau": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8
+          },
+          "hoTen": {
+            "type": "string"
+          },
+          "soDienThoai": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          }
+        }
+      },
+      "V2StaffUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hoTen"
+        ],
+        "properties": {
+          "hoTen": {
+            "type": "string"
+          },
+          "soDienThoai": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          }
+        }
+      },
+      "V2SetPassword": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "matKhau"
+        ],
+        "properties": {
+          "matKhau": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8
+          }
+        }
+      },
+      "V2ProfileUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hoTen"
+        ],
+        "properties": {
+          "hoTen": {
+            "type": "string"
+          },
+          "soDienThoai": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          }
+        }
+      },
+      "V2ChangePassword": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "matKhauCu",
+          "matKhauMoi"
+        ],
+        "properties": {
+          "matKhauCu": {
+            "type": "string",
+            "format": "password"
+          },
+          "matKhauMoi": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8
+          }
+        }
+      },
+      "V2AssignDriver": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "maTx"
+        ],
+        "properties": {
+          "maTx": {
+            "type": "string"
+          }
+        }
+      },
+      "V2CancelOrder": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lyDo"
+        ],
+        "properties": {
+          "lyDo": {
+            "type": "string"
+          }
+        }
+      },
+      "V2QuoteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "diemLay",
+          "diemGiao",
+          "kienHang"
+        ],
+        "properties": {
+          "maKh": {
+            "type": "string"
+          },
+          "diemLay": {
+            "type": "string"
+          },
+          "diemGiao": {
+            "type": "string"
+          },
+          "kienHang": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "loaiHang",
+                "kg"
+              ],
+              "properties": {
+                "loaiHang": {
+                  "type": "string"
+                },
+                "kg": {
+                  "type": "string",
+                  "pattern": "^[0-9]+(\\.[0-9]+)?$"
+                }
+              }
+            }
+          },
+          "maPhuThuTuyChon": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "V2OnlineRequest": {
+        "type": "object",
+        "required": [
+          "online"
+        ],
+        "properties": {
+          "online": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       }
     },
     "responses": {
@@ -9400,6 +14238,106 @@
                   "traceId": "trace-demo-001"
                 }
               }
+            }
+          }
+        }
+      },
+      "V2BadRequest": {
+        "description": "D? li?u ??u v?o kh?ng h?p l?",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
+            }
+          }
+        }
+      },
+      "V2Unauthorized": {
+        "description": "Ch?a ??ng nh?p ho?c phi?n h?t hi?u l?c",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
+            }
+          }
+        }
+      },
+      "V2Forbidden": {
+        "description": "Kh?ng c? quy?n ho?c CSRF kh?ng h?p l?",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
+            }
+          }
+        }
+      },
+      "V2NotFound": {
+        "description": "Kh?ng t?m th?y b?n ghi",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
+            }
+          }
+        }
+      },
+      "V2Conflict": {
+        "description": "Xung ??t nghi?p v?",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
+            }
+          }
+        }
+      },
+      "V2UnprocessableEntity": {
+        "description": "Y?u c?u h?p l? v? c? ph?p nh?ng vi ph?m gi?i h?n nghi?p v?",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
+            }
+          }
+        }
+      },
+      "V2TooManyRequests": {
+        "description": "V??t gi?i h?n t?n su?t",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
+            }
+          }
+        }
+      },
+      "V2InternalError": {
+        "description": "L?i m?y ch?",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
+            }
+          }
+        }
+      },
+      "V2BadGateway": {
+        "description": "K?t qu? t? nh? cung c?p kh?ng h?p l?",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
+            }
+          }
+        }
+      },
+      "V2ServiceUnavailable": {
+        "description": "D?ch v? ph? thu?c ch?a kh? d?ng",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/V2Error"
             }
           }
         }

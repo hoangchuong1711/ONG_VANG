@@ -1,48 +1,69 @@
 "use client";
 
 import { useState } from "react";
-import { useAdmin } from "@/components/admin/AdminProvider";
-import { AdminDialog, AdminEmpty, AdminHeading, AdminStat, adminActivity } from "@/components/admin/AdminUI";
-import type { AdminVehicle } from "@/lib/admin-extras";
+import { AdminDialog, AdminEmpty, AdminHeading } from "@/components/admin/AdminUI";
+import { useAdminResource } from "@/lib/admin-live";
+import { request } from "@/lib/api-client";
 
-const newVehicle = (): AdminVehicle => ({ id: "", plate: "", type: "", capacityKg: 10, driverId: null, status: "HOAT_DONG" });
-const statusText: Record<AdminVehicle["status"], string> = { HOAT_DONG: "Hoạt động", BAO_TRI: "Bảo trì", NGUNG: "Ngừng sử dụng" };
+type Vehicle = { ma_tx: string; bien_so: string; loai_xe: string; mau_xe: string | null; dang_hoat_dong: boolean; ho_ten: string };
+type DriverOption = { ma_tx: string; ho_ten: string; trang_thai_tai_khoan: string; trang_thai: string; dang_ban_chuyen: boolean };
+type Form = { maTx: string; bienSo: string; loaiXe: string; mauXe: string; hoatDong: boolean };
+const fresh = (): Form => ({ maTx: "", bienSo: "", loaiXe: "", mauXe: "", hoatDong: true });
 
 export default function AdminVehiclesPage() {
-  const { vehicles, drivers, updateDemo } = useAdmin();
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("ALL");
-  const [form, setForm] = useState<AdminVehicle | null>(null);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const visible = vehicles.filter((vehicle) => `${vehicle.plate} ${vehicle.type} ${drivers.find((driver) => driver.id === vehicle.driverId)?.name ?? ""}`.toLocaleLowerCase("vi-VN").includes(query.toLocaleLowerCase("vi-VN")) && (filter === "ALL" || vehicle.status === filter));
-  const save = () => {
-    if (!form) return;
-    if (form.plate.trim().length < 6 || form.type.trim().length < 3 || !Number.isFinite(form.capacityKg) || form.capacityKg <= 0) { setError("Nhập biển số, loại xe và tải trọng hợp lệ."); return; }
-    if (vehicles.some((vehicle) => vehicle.plate.toLocaleLowerCase() === form.plate.trim().toLocaleLowerCase() && vehicle.id !== form.id)) { setError("Biển số đã tồn tại."); return; }
-    if (form.driverId && vehicles.some((vehicle) => vehicle.driverId === form.driverId && vehicle.id !== form.id)) { setError("Tài xế này đã được gán cho xe khác."); return; }
-    const isNew = !form.id;
-    const saved = { ...form, id: form.id || `XE-${String(vehicles.length + 1).padStart(3, "0")}`, plate: form.plate.trim().toUpperCase(), type: form.type.trim() };
-    const priorDriverId = vehicles.find((vehicle) => vehicle.id === saved.id)?.driverId;
-    updateDemo((previous) => ({ ...previous,
-      vehicles: isNew ? [...previous.vehicles, saved] : previous.vehicles.map((vehicle) => vehicle.id === saved.id ? saved : vehicle),
-      drivers: previous.drivers.map((driver) => driver.id === saved.driverId ? { ...driver, vehiclePlate: saved.plate, vehicleType: saved.type } : driver.id === priorDriverId ? { ...driver, vehiclePlate: "Chưa gán", vehicleType: "Chưa gán" } : driver),
-      orders: previous.orders.map((order) => order.driver?.id === saved.driverId ? { ...order, driver: { ...order.driver, vehiclePlate: saved.plate, vehicleType: saved.type } } : order),
-      activity: [adminActivity(isNew ? "Thêm phương tiện" : "Cập nhật phương tiện", saved.plate), ...previous.activity],
-    }));
-    setForm(null); setNotice("Đã lưu phương tiện trong dữ liệu demo.");
-  };
-  const changeStatus = (vehicle: AdminVehicle, status: AdminVehicle["status"]) => {
-    updateDemo((previous) => ({ ...previous, vehicles: previous.vehicles.map((item) => item.id === vehicle.id ? { ...item, status } : item), activity: [adminActivity("Đổi trạng thái xe", `${vehicle.plate}: ${statusText[status]}`), ...previous.activity] }));
-    setNotice(`Đã chuyển ${vehicle.plate} sang ${statusText[status].toLocaleLowerCase("vi-VN")}.`);
-  };
+  const { data, error, loading, refresh } = useAdminResource<{ items: Vehicle[] }>("/vehicles");
+  const { data: drivers } = useAdminResource<{ items: DriverOption[] }>("/admin/drivers");
+  const [form, setForm] = useState<Form>(fresh());
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [actionError, setActionError] = useState("");
 
+  function edit(vehicle?: Vehicle) {
+    setForm(vehicle ? { maTx: vehicle.ma_tx, bienSo: vehicle.bien_so, loaiXe: vehicle.loai_xe, mauXe: vehicle.mau_xe ?? "", hoatDong: vehicle.dang_hoat_dong } : fresh());
+    setFormError(""); setOpen(true);
+  }
+  async function save() {
+    setSaving(true); setFormError("");
+    try {
+      await request("/vehicles", "POST", { hanhDong: "LUU", maTx: form.maTx, bienSo: form.bienSo.trim(),
+        loaiXe: form.loaiXe.trim(), mauXe: form.mauXe.trim() || null, hoatDong: form.hoatDong });
+      setOpen(false); await refresh();
+    } catch (cause) { setFormError(cause instanceof Error ? cause.message : "Không lưu được phương tiện"); }
+    finally { setSaving(false); }
+  }
+  async function toggle(vehicle: Vehicle) {
+    setActionError("");
+    try {
+      await request("/vehicles", "POST", { hanhDong: "LUU", maTx: vehicle.ma_tx, bienSo: vehicle.bien_so,
+        loaiXe: vehicle.loai_xe, mauXe: vehicle.mau_xe, hoatDong: !vehicle.dang_hoat_dong }); await refresh();
+    } catch (cause) { setActionError(cause instanceof Error ? cause.message : "Không cập nhật được phương tiện"); }
+  }
+  const activeDrivers = drivers?.items.filter((driver) => driver.trang_thai_tai_khoan === "HOAT_DONG") ?? [];
   return <>
-    <AdminHeading eyebrow="Điều hành đội xe" title="Phương tiện" description="Quản lý xe, tải trọng và người đang sử dụng." actions={<button className="admin-button primary" onClick={() => { setError(""); setForm(newVehicle()); }}>+ Thêm phương tiện</button>} />
-    {notice && <p className="admin-feedback" role="status">{notice}</p>}
-    <div className="admin-stat-grid"><AdminStat label="Tổng phương tiện" value={vehicles.length} note="Trong danh sách" /><AdminStat label="Hoạt động" value={vehicles.filter((vehicle) => vehicle.status === "HOAT_DONG").length} note="Có thể vận hành" tone="accent" /><AdminStat label="Bảo trì" value={vehicles.filter((vehicle) => vehicle.status === "BAO_TRI").length} note="Tạm dừng sử dụng" /><AdminStat label="Chưa gán tài xế" value={vehicles.filter((vehicle) => !vehicle.driverId).length} note="Có thể phân bổ" /></div>
-    <section className="admin-panel admin-filter-panel"><div className="admin-filter-grid admin-filter-compact"><div className="admin-field"><label htmlFor="vehicle-search">Tìm phương tiện</label><input id="vehicle-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Biển số, loại xe hoặc tài xế" /></div><div className="admin-field"><label htmlFor="vehicle-filter">Trạng thái</label><select id="vehicle-filter" value={filter} onChange={(event) => setFilter(event.target.value)}><option value="ALL">Tất cả</option><option value="HOAT_DONG">Hoạt động</option><option value="BAO_TRI">Bảo trì</option><option value="NGUNG">Ngừng sử dụng</option></select></div></div></section>
-    <section className="admin-panel"><div className="admin-result-bar"><strong>{visible.length} phương tiện</strong><span>Danh sách đội xe</span></div>{visible.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Biển số</th><th>Loại xe</th><th>Tải trọng</th><th>Tài xế sử dụng</th><th>Trạng thái</th><th className="action">Thao tác</th></tr></thead><tbody>{visible.map((vehicle) => <tr key={vehicle.id}><td><strong>{vehicle.plate}</strong><small>{vehicle.id}</small></td><td>{vehicle.type}</td><td>{vehicle.capacityKg} kg</td><td>{drivers.find((driver) => driver.id === vehicle.driverId)?.name ?? "Chưa gán"}</td><td><span className={`admin-status ${vehicle.status === "HOAT_DONG" ? "success" : vehicle.status === "BAO_TRI" ? "warning" : "muted"}`}>{statusText[vehicle.status]}</span></td><td className="action"><button className="admin-text-button" onClick={() => { setError(""); setForm({ ...vehicle }); }}>Sửa</button><select className="admin-inline-select" aria-label={`Đổi trạng thái ${vehicle.plate}`} value={vehicle.status} onChange={(event) => changeStatus(vehicle, event.target.value as AdminVehicle["status"])}><option value="HOAT_DONG">Hoạt động</option><option value="BAO_TRI">Bảo trì</option><option value="NGUNG">Ngừng sử dụng</option></select></td></tr>)}</tbody></table></div> : <AdminEmpty title="Không tìm thấy phương tiện" detail="Thử từ khóa hoặc trạng thái khác." />}</section>
-    {form && <AdminDialog title={form.id ? "Sửa phương tiện" : "Thêm phương tiện"} description="Liên kết xe với một tài xế trong đội xe demo." onClose={() => setForm(null)} onSubmit={save} submitLabel="Lưu phương tiện" error={error}><div className="admin-form-grid"><div className="admin-field"><label htmlFor="vehicle-plate">Biển số</label><input id="vehicle-plate" value={form.plate} onChange={(event) => setForm({ ...form, plate: event.target.value })} /></div><div className="admin-field"><label htmlFor="vehicle-type">Loại xe</label><input id="vehicle-type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })} /></div><div className="admin-field"><label htmlFor="vehicle-capacity">Tải trọng (kg)</label><input id="vehicle-capacity" type="number" min="1" value={form.capacityKg} onChange={(event) => setForm({ ...form, capacityKg: Number(event.target.value) })} /></div><div className="admin-field"><label htmlFor="vehicle-driver">Tài xế sử dụng</label><select id="vehicle-driver" value={form.driverId ?? ""} onChange={(event) => setForm({ ...form, driverId: event.target.value || null })}><option value="">Chưa gán</option>{drivers.filter((driver) => !vehicles.some((vehicle) => vehicle.id !== form.id && vehicle.driverId === driver.id)).map((driver) => <option value={driver.id} key={driver.id}>{driver.name}</option>)}</select></div><div className="admin-field"><label htmlFor="vehicle-state">Trạng thái</label><select id="vehicle-state" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as AdminVehicle["status"] })}><option value="HOAT_DONG">Hoạt động</option><option value="BAO_TRI">Bảo trì</option><option value="NGUNG">Ngừng sử dụng</option></select></div></div></AdminDialog>}
+    <AdminHeading eyebrow="Điều hành" title="Phương tiện" description="Quản lý xe theo dữ liệu designV2; mỗi tài xế gắn tối đa một phương tiện."
+      actions={<button className="admin-button primary" onClick={() => edit()}>Thêm phương tiện</button>} />
+    {loading && <p role="status" className="admin-feedback">Đang tải phương tiện...</p>}
+    {(error || actionError) && <p role="alert" className="admin-feedback error">{error || actionError}</p>}
+    {data && <section className="admin-panel"><div className="admin-result-bar"><strong>{data.items.length} phương tiện</strong></div>
+      {data.items.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Biển số</th><th>Loại xe</th><th>Màu xe</th><th>Tài xế</th><th>Hoạt động</th><th>Thao tác</th></tr></thead><tbody>
+        {data.items.map((vehicle) => <tr key={vehicle.ma_tx}><td><strong>{vehicle.bien_so}</strong></td><td>{vehicle.loai_xe}</td><td>{vehicle.mau_xe ?? "—"}</td><td>{vehicle.ho_ten}</td><td>{vehicle.dang_hoat_dong ? "Có" : "Ngừng"}</td>
+          <td><div className="admin-inline-actions"><button className="admin-button" onClick={() => edit(vehicle)}>Sửa</button><button className="admin-button" onClick={() => void toggle(vehicle)}>{vehicle.dang_hoat_dong ? "Ngừng hoạt động" : "Kích hoạt"}</button></div></td></tr>)}
+      </tbody></table></div> : <AdminEmpty title="Chưa có phương tiện" detail="Thêm phương tiện và liên kết với một tài xế đang hoạt động." />}
+    </section>}
+    {open && <AdminDialog title={form.maTx ? "Cập nhật phương tiện" : "Thêm phương tiện"}
+      description="Biển số phải duy nhất; mỗi tài xế chỉ gắn một xe. Thao tác được máy chủ kiểm tra trạng thái phân công."
+      onClose={() => setOpen(false)} onSubmit={() => void save()} submitLabel={saving ? "Đang lưu..." : "Lưu phương tiện"}
+      submitDisabled={saving || !form.maTx || !form.bienSo.trim() || !form.loaiXe.trim()} error={formError}>
+      <div className="admin-form-grid">
+        <div className="admin-field admin-field-wide"><label htmlFor="vehicle-driver">Tài xế</label><select id="vehicle-driver" disabled={!!data?.items.some((item) => item.ma_tx === form.maTx)} value={form.maTx} onChange={(e) => setForm({ ...form, maTx: e.target.value })}><option value="">Chọn tài xế</option>
+          {activeDrivers.filter((driver) => !driver.dang_ban_chuyen && (!data?.items.some((item) => item.ma_tx === driver.ma_tx) || driver.ma_tx === form.maTx)).map((driver) => <option key={driver.ma_tx} value={driver.ma_tx}>{driver.ho_ten} · {driver.trang_thai}</option>)}
+        </select></div>
+        <div className="admin-field"><label htmlFor="vehicle-plate">Biển số</label><input id="vehicle-plate" required maxLength={15} value={form.bienSo} onChange={(e) => setForm({ ...form, bienSo: e.target.value.toUpperCase() })} /></div>
+        <div className="admin-field"><label htmlFor="vehicle-type">Loại xe</label><input id="vehicle-type" required maxLength={50} value={form.loaiXe} onChange={(e) => setForm({ ...form, loaiXe: e.target.value })} /></div>
+        <div className="admin-field"><label htmlFor="vehicle-color">Màu xe</label><input id="vehicle-color" maxLength={30} value={form.mauXe} onChange={(e) => setForm({ ...form, mauXe: e.target.value })} /></div>
+        <label className="admin-field"><span>Trạng thái</span><span><input type="checkbox" checked={form.hoatDong} onChange={(e) => setForm({ ...form, hoatDong: e.target.checked })} /> Đang hoạt động</span></label>
+      </div>
+    </AdminDialog>}
   </>;
 }
