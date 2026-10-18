@@ -1353,7 +1353,8 @@ class DesignV1IntegrationTest {
                 "vnp_TxnRef","vnp_Amount","vnp_BankCode","vnp_PayDate","vnp_TransactionNo",
                 "vnp_TransactionType","vnp_TransactionStatus","vnp_OrderInfo"};
         String canonical=java.util.Arrays.stream(names).map(name -> result.getOrDefault(name,""))
-                .collect(java.util.stream.Collectors.joining("|"));
+                .collect(java.util.stream.Collectors.joining("|"))
+                + "||";
         Mac mac=Mac.getInstance("HmacSHA512");
         mac.init(new SecretKeySpec(VNPAY_TEST_SECRET.getBytes(StandardCharsets.UTF_8),"HmacSHA512"));
         result.put("vnp_SecureHash",java.util.HexFormat.of().formatHex(mac.doFinal(canonical.getBytes(StandardCharsets.UTF_8))));

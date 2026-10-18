@@ -145,10 +145,10 @@ public final class VnpayGateway {
                 "vnp_TransactionType","vnp_TransactionStatus","vnp_OrderInfo"};
         StringBuilder data=new StringBuilder();
         for (String name:names) { if (data.length()>0) data.append('|'); data.append(response.getOrDefault(name,"")); }
-        if (response.containsKey("vnp_PromotionCode") || response.containsKey("vnp_PromotionAmount")) {
-            data.append('|').append(response.getOrDefault("vnp_PromotionCode",""));
-            data.append('|').append(response.getOrDefault("vnp_PromotionAmount",""));
-        }
+        // QueryDr's checksum format always reserves these final two fields. They
+        // must be represented as empty values when no promotion was applied.
+        data.append('|').append(response.getOrDefault("vnp_PromotionCode",""));
+        data.append('|').append(response.getOrDefault("vnp_PromotionAmount",""));
         return MessageDigest.isEqual(hmac(data.toString()).getBytes(StandardCharsets.US_ASCII),
                 supplied.toLowerCase(java.util.Locale.ROOT).getBytes(StandardCharsets.US_ASCII));
     }
