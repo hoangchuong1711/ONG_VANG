@@ -17,6 +17,10 @@ FROM dbo.don_hang d OUTER APPLY (
  JOIN dbo.cau_hinh_phu_thu c ON c.ma_phu_thu=x.ma_phu_thu WHERE x.ma_don=d.ma_don
 ) p;
 GO
+CREATE OR ALTER VIEW dbo.v_tong_cuoc AS
+SELECT ma_don,tong_cuoc
+FROM dbo.v_cuoc_don;
+GO
 CREATE OR ALTER VIEW dbo.v_chia_cuoc AS
 SELECT c.ma_don,p.ma_tx,c.ghi_nhan_luc,c.ma_giao_dich_nop,v.tong_cuoc,
  dbo.fn_phan_cong_ty(v.tong_cuoc) AS tien_cong_ty,
