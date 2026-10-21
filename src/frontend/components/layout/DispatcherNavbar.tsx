@@ -35,7 +35,6 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
     { href: "/dispatcher", label: "Bàn điều phối" },
     { href: "/dispatcher/create-order", label: "Hotline tạo đơn" },
     { href: "/dispatcher/fleet", label: "Đội xe & Tài xế" },
-    { href: "/dispatcher/reports", label: "Báo cáo & Đối soát" },
   ];
 
   return (
