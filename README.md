@@ -8,7 +8,7 @@
 
 1. Tạo `.env` từ [.env.example](.env.example) nếu chưa có. Đặt `MSSQL_SA_PASSWORD` và
    `MSSQL_DATABASE=mini_ong_vang_design_v2_demo`.
-2. Để `DESIGN_V2_DEMO=true` nếu muốn Flyway nạp 8 tài khoản demo, hồ sơ khách/tài xế và cấu hình tối thiểu để báo giá, tạo đơn, điều phối. V9 là seed lịch sử có 30 đơn và 3 giao dịch fixture; V20 dọn đúng các fixture đó sau khi migration hoàn tất. Với database
+2. Để `DESIGN_V2_DEMO=true` nếu muốn Flyway nạp 8 tài khoản demo, hồ sơ khách/tài xế và cấu hình tối thiểu để báo giá, tạo đơn, điều phối. V9 là seed lịch sử có 30 đơn và 3 giao dịch fixture; V20 dọn đúng các fixture đó, rồi V21 thêm 3 đơn `CHO_GAN` cho mỗi tài khoản khách demo. Với database
    không phải demo/test, đặt `DESIGN_V2_DEMO=false`; Flyway chỉ chạy phần schema.
 3. Chạy `docker compose up --build` trong thư mục gốc.
 4. Mở [http://localhost:3001](http://localhost:3001) và đăng nhập. Ứng dụng đưa mỗi vai trò
@@ -23,7 +23,9 @@ Trong SSMS, dùng lại kết nối SQL Server `127.0.0.1,1433`, rồi chọn da
 
 Mật khẩu của 8 tài khoản demo SQL sau migration V19: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
 tổng đài: `demo_dispatcher`; chủ đội xe: `demo_admin`; tài xế: `0800000001`,
-`0800000002`, `0800000003`. V9–V11 giữ nguyên để khớp lịch sử Flyway; V18 tạo cấu hình/xe cần cho demo, V19 đặt mật khẩu, V20 xóa 30 đơn và 3 giao dịch fixture theo ID cố định. DB demo sau migration giữ tài khoản và cấu hình nhưng không còn fixture đơn/giao dịch. DB đang dùng không cần tạo lại; hãy cập nhật mã nguồn rồi để Flyway chạy tiếp.
+`0800000002`, `0800000003`. V9–V11 giữ nguyên để khớp lịch sử Flyway; V18 tạo cấu hình/xe cần cho demo, V19 đặt mật khẩu, V20 xóa 30 đơn và 3 giao dịch fixture theo ID cố định. V21 tạo 9 đơn demo mới ở trạng thái `CHO_GAN`, chưa có phân công hay giao dịch nộp tiền; quãng đường và thời gian là dữ liệu mô phỏng. DB đang dùng không cần tạo lại; hãy cập nhật mã nguồn rồi để Flyway chạy tiếp.
+
+Trang `/admin/customers` cho chủ đội xe gán hạng khách hàng. Hạng ưu đãi có hiệu lực ngay, không tự hết hạn và cần một chính sách đang hiệu lực; chuyển về `THUONG` sẽ xóa thời hạn ưu đãi. Ngày “Thành viên từ” là ngày tạo tài khoản.
 
 `ROUTE_PROVIDER=fake` dùng tuyến cố định cho demo. Muốn dùng Goong, đặt `ROUTE_PROVIDER=goong`
 và `GOONG_API_KEY`; báo giá/tạo đơn cần quota Goong còn hiệu lực.

@@ -1,5 +1,7 @@
 # Kế hoạch chuyển cổng admin sang dữ liệu thật designV2
 
+> Lưu ý: đây là kế hoạch lịch sử. Từ V25–V26, cấu hình giá được nạp bằng migration và trang `/admin/pricing` cùng API `/api/v2/policies` đã được gỡ.
+
 ## 1. Mục tiêu và ranh giới
 
 - Mọi màn còn xuất hiện dưới `/admin` chỉ đọc/ghi dữ liệu của backend designV2. Không dùng `sample-data`, `admin-demo`, `demo-store` hoặc `localStorage` làm nguồn dữ liệu nghiệp vụ.
@@ -153,5 +155,3 @@ Mục tiêu là các màn admin hiển thị bản ghi và kết quả tính t�
 **Cập nhật kiểm kê ngày 18/10/2026:** các màn `/admin` không còn import kho demo hoặc đọc/ghi `localStorage` nghiệp vụ. Những phụ thuộc ngoài admin cũng đã xử lý: `/tracking/[id]` và `/payment/[id]` chuyển tới chi tiết đơn V2; `/dispatcher/create-order` dùng `LiveOrderForm` nối API V2; `/driver/history` đọc đơn và trạng thái tài xế từ API V2; `/rating/[id]` trả 404 vì schema không có bảng/API đánh giá. Sau khi xác nhận không còn import, đã xóa `admin-demo.ts`, `admin-extras.ts`, `sample-data.ts`, `demo-store.ts`, `customer-demo.ts`, `demo-pricing.ts` và component hồ sơ demo. `localStorage` còn dùng duy nhất để giữ `Idempotency-Key` cho thao tác nộp tiền của tài xế, không làm nguồn trạng thái nghiệp vụ. `npm.cmd run build --prefix src/frontend` thành công. Smoke vai trò cho các trang vừa chuyển chưa chạy do Docker Desktop không kết nối được; phần này còn trong cổng kiểm thử giai đoạn 6.
 
 **Hoàn tất toàn kế hoạch khi:** mọi màn admin còn trong menu lấy số liệu từ API/DB designV2; các thao tác ghi lưu vào DB và hiện ở trình duyệt khác; lỗi API không bị che bằng dữ liệu mẫu; báo cáo/tiền đối chiếu được với SQL; các tài khoản và bản ghi demo hiện có vẫn đăng nhập/hiển thị theo dữ liệu DB; giao dịch đang chờ được giữ nguyên để đối soát. Không có yêu cầu xóa seed, migration hoặc DB demo trong phạm vi kế hoạch này.
-
-\n

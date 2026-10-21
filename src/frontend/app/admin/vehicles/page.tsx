@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AdminDialog, AdminEmpty, AdminHeading } from "@/components/admin/AdminUI";
+import { AdminTableControls, useAdminTable } from "@/components/admin/AdminTableControls";
 import { useAdminResource } from "@/lib/admin-live";
 import { request } from "@/lib/api-client";
 
@@ -18,6 +19,7 @@ export default function AdminVehiclesPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [actionError, setActionError] = useState("");
+  const table = useAdminTable(data?.items ?? [], (vehicle) => `${vehicle.bien_so} ${vehicle.loai_xe} ${vehicle.mau_xe ?? ""} ${vehicle.ho_ten}`);
 
   function edit(vehicle?: Vehicle) {
     setForm(vehicle ? { maTx: vehicle.ma_tx, bienSo: vehicle.bien_so, loaiXe: vehicle.loai_xe, mauXe: vehicle.mau_xe ?? "", hoatDong: vehicle.dang_hoat_dong } : fresh());
@@ -46,8 +48,9 @@ export default function AdminVehiclesPage() {
     {loading && <p role="status" className="admin-feedback">Đang tải phương tiện...</p>}
     {(error || actionError) && <p role="alert" className="admin-feedback error">{error || actionError}</p>}
     {data && <section className="admin-panel"><div className="admin-result-bar"><strong>{data.items.length} phương tiện</strong></div>
-      {data.items.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Biển số</th><th>Loại xe</th><th>Màu xe</th><th>Tài xế</th><th>Hoạt động</th><th>Thao tác</th></tr></thead><tbody>
-        {data.items.map((vehicle) => <tr key={vehicle.ma_tx}><td><strong>{vehicle.bien_so}</strong></td><td>{vehicle.loai_xe}</td><td>{vehicle.mau_xe ?? "—"}</td><td>{vehicle.ho_ten}</td><td>{vehicle.dang_hoat_dong ? "Có" : "Ngừng"}</td>
+      <AdminTableControls label="phương tiện" query={table.query} onQuery={table.setQuery} page={table.page} onPage={table.setPage} total={table.total} />
+      {table.rows.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Biển số</th><th>Loại xe</th><th>Màu xe</th><th>Tài xế</th><th>Hoạt động</th><th>Thao tác</th></tr></thead><tbody>
+        {table.rows.map((vehicle) => <tr key={vehicle.ma_tx}><td><strong>{vehicle.bien_so}</strong></td><td>{vehicle.loai_xe}</td><td>{vehicle.mau_xe ?? "—"}</td><td>{vehicle.ho_ten}</td><td>{vehicle.dang_hoat_dong ? "Có" : "Ngừng"}</td>
           <td><div className="admin-inline-actions"><button className="admin-button" onClick={() => edit(vehicle)}>Sửa</button><button className="admin-button" onClick={() => void toggle(vehicle)}>{vehicle.dang_hoat_dong ? "Ngừng hoạt động" : "Kích hoạt"}</button></div></td></tr>)}
       </tbody></table></div> : <AdminEmpty title="Chưa có phương tiện" detail="Thêm phương tiện và liên kết với một tài xế đang hoạt động." />}
     </section>}

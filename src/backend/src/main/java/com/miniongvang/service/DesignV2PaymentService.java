@@ -55,8 +55,8 @@ public final class DesignV2PaymentService {
     public List<Map<String, Object>> findExpiredPendingAccounts(Connection c) throws SQLException {
         return payments.findExpiredPendingAccounts(c);
     }
-    public PaymentPage findAdminPayments(Connection c, String status, int page, int size) throws SQLException {
-        DesignV2PaymentDAO.PaymentPage result = payments.findAdminPayments(c, status, page, size);
+    public PaymentPage findAdminPayments(Connection c, String status, String search, int page, int size) throws SQLException {
+        DesignV2PaymentDAO.PaymentPage result = payments.findAdminPayments(c, status, search, page, size);
         return new PaymentPage(result.items(), result.total());
     }
     public boolean paymentExists(Connection c, String id) throws SQLException { return payments.paymentExists(c, id); }

@@ -1,6 +1,8 @@
 # Thiết kế CSDL đề xuất — Mini Ong Vang / DBMS330284
 
-> Lưu ý hiện hành: V9–V11 là migration lịch sử đã áp dụng, cần giữ nguyên checksum. V9 tạo tài khoản và các fixture đơn/giao dịch cũ; V20 chỉ xóa các fixture có ID và khóa yêu cầu cố định, giữ tài khoản, hồ sơ, cấu hình cùng dữ liệu người dùng. V17–V19 là các migration demo mới, được đánh số sau schema V16 để không trùng phiên bản Flyway.
+> Trạng thái hiện tại sau V25–V26: biểu phí cước, ưu đãi thành viên và phụ thu được nạp sẵn bằng migration; admin không còn trang hay API quản lý chính sách giá. V26 xóa `usp_quan_ly_chinh_sach`, `usp_admin_dong_hieu_luc_hien_tai`, `v_phien_ban_chinh_sach` và ba trigger `tr_policy_*`. Các đoạn SQL cũ bên dưới là tài liệu baseline/migration lịch sử, không phải danh sách đối tượng còn tồn tại sau V26. Bảng cấu hình, hàm và view tính cước vẫn được giữ để tạo đơn và đọc lịch sử.
+
+> Lưu ý hiện hành: V9–V11 là migration lịch sử đã áp dụng, cần giữ nguyên checksum. V9 tạo tài khoản và các fixture đơn/giao dịch cũ; V20 chỉ xóa các fixture có ID và khóa yêu cầu cố định, giữ tài khoản, hồ sơ, cấu hình cùng dữ liệu người dùng. V21 thêm 3 đơn chờ gán cho mỗi khách demo. Các migration demo mới được đánh số sau schema V16 để không trùng phiên bản Flyway.
 
 Ngày cập nhật: 18/10/2026. Đây là baseline designV2 trên SQL Server 2022, không phải script nâng cấp V1–V12. SQL V1–V9 đã được tách từ các khối `-- FILE:` và chạy trên database designV2 demo/test riêng; backend và giao diện V2 dùng các đối tượng này. Không chạy nguyên tài liệu trên database V1. Các ví dụ kiểm thử/phân quyền ở cuối là kịch bản riêng, không nối vào khối tạo đối tượng.
 
@@ -26,7 +28,12 @@ src/backend/src/main/resources/db/designV2/sqlserver/
 │   ├── V13__admin_staff_profile_management.sql
 │   ├── V14__recover_validated_vnpay_ipn.sql
 │   ├── V15__drop_unused_business_views.sql
-│   └── V16__list_orders_with_filters.sql
+│   ├── V16__list_orders_with_filters.sql
+│   ├── V22__admin_customer_membership.sql
+│   ├── V23__close_policy_now.sql
+│   ├── V24__driver_profile_without_license_expiry.sql
+│   ├── V25__seed_fixed_pricing.sql
+│   └── V26__remove_admin_pricing_management.sql
 └── demo/
     ├── V9__insert_demo_data.sql
     ├── V10__update_demo_credentials_and_positions.sql
@@ -34,7 +41,8 @@ src/backend/src/main/resources/db/designV2/sqlserver/
     ├── V17__restore_demo_password_hash.sql
     ├── V18__seed_demo_operating_config.sql
     ├── V19__change_demo_account_password.sql
-    └── V20__remove_legacy_demo_orders.sql
+    ├── V20__remove_legacy_demo_orders.sql
+    └── V21__seed_pending_demo_orders.sql
 ```
 
 | Thứ tự | File | Lấy nội dung tại | Phạm vi và phụ thuộc |
@@ -52,6 +60,11 @@ src/backend/src/main/resources/db/designV2/sqlserver/
 | 12–16 | Các migration trong `schema/` | Thay đổi schema admin/VNPay | Nằm cùng lịch sử Flyway với demo; chạy sau V9–V11 |
 | 17–19 | `V17__restore_demo_password_hash.sql`, `V18__seed_demo_operating_config.sql`, `V19__change_demo_account_password.sql` | Các migration demo mới | Được chạy sau schema V12–V16; không trùng số với migration schema |
 | 20 | `V20__remove_legacy_demo_orders.sql` | Dọn fixture V9 | Chỉ xóa 30 đơn, 3 giao dịch giả và dữ liệu liên quan theo ID cố định; giữ các tài khoản demo và dữ liệu người dùng |
+| 21 | `V21__seed_pending_demo_orders.sql` | Seed đơn chờ gán | Tạo 3 đơn `CHO_GAN` cho mỗi tài khoản khách demo, không tạo phân công hay giao dịch nộp tiền |
+| 22 | `V22__admin_customer_membership.sql` | Gán hạng khách hàng | Chủ đội xe chọn hạng, kiểm tra chính sách hiệu lực và ghi audit; không sửa lịch sử đơn đã tạo |
+| 23–24 | `V23__close_policy_now.sql`, `V24__driver_profile_without_license_expiry.sql` | Migration lịch sử | V23 từng thêm thao tác đóng biểu phí, V24 bỏ ngày hết hạn GPLX khỏi hồ sơ tài xế |
+| 25 | `V25__seed_fixed_pricing.sql` | Cấu hình giá cố định | Bổ sung biểu phí, ưu đãi thành viên và phụ thu đang hiệu lực nếu chưa có; cũng chạy trên DB không bật demo |
+| 26 | `V26__remove_admin_pricing_management.sql` | Gỡ quản lý biểu phí | Xóa hai SP, ba trigger và view chỉ phục vụ admin; giữ bảng và logic tính cước |
 
 **Quy tắc tách file:** chỉ sao chép nội dung bên trong hàng rào `sql` có dòng `-- FILE:`
 đúng tên file; không sao chép Markdown, truy vấn kiểm tra mục 10/11/13.3 hay cả tài liệu vào
@@ -64,7 +77,7 @@ không phụ thuộc tùy chọn của kết nối trước. Không chèn SET tr
 
 - DB schema sạch: location `classpath:db/designV2/sqlserver/schema` chạy V1–V8 và V12–V16.
 - DB demo/test: cấu hình **hai locations**, schema ở trên và `classpath:db/designV2/sqlserver/demo`.
-  Flyway chạy V9–V11 đã áp dụng, schema V12–V16, rồi demo V17–V20; V20 dọn fixture V9.
+  Flyway chạy V9–V11 đã áp dụng, schema V12–V16, demo V17–V21, rồi schema V22; V20 dọn fixture V9 và V21 tạo 9 đơn chờ gán.
 - Dùng `mini_ong_vang_design_v2_demo` hoặc `mini_ong_vang_design_v2_test`; không gọi SeedCommand.
   DB CI V2 cũng dùng tên `mini_ong_vang_design_v2_test` để khớp guard của seed.
 - Không đưa designV1 và designV2 vào cùng locations/history, không chạy designV2 lên DB cũ.
@@ -682,7 +695,7 @@ END;
 GO
 ```
 
-Ba trigger chính sách bên dưới giữ nội dung phiên bản đã công bố; cho phép đóng hieu_luc_den một lần ở tương lai. Việc kiểm tra chồng thời gian được thủ tục công bố/đóng hiệu lực ở mục 7.9 bảo vệ dưới cùng khóa `chinh-sach` với TX1. Không chỉ dựa vào UNIQUE mốc bắt đầu.
+Ba trigger chính sách bên dưới thuộc baseline lịch sử và đã được gỡ ở V26 khi bỏ quản lý chính sách giá qua admin.
 
 ```sql
 -- FILE: V6__create_integrity_triggers.sql
@@ -738,7 +751,7 @@ usp_actor/usp_khoa hoặc các SP CRUD nhỏ của bản trước.
 | 5 | usp_huy_don | Hủy trước lấy hàng, đóng phân công và giải phóng tài xế |
 | 6 | usp_bat_dau_thanh_toan | Tài xế nộp phần công ty |
 | 7 | usp_ap_dung_ket_qua_nop | Worker áp dụng kết quả VNPay đã xác minh |
-| 8 | usp_quan_ly_chinh_sach | Lưu/xóa NHAP, công bố, đóng hiệu lực |
+| 8 | usp_quan_ly_chinh_sach | Lịch sử: lưu/xóa NHAP, công bố, đóng hiệu lực; đã gỡ ở V26 |
 | 9 | usp_quan_ly_phuong_tien | Thêm/sửa/xóa xe chưa dùng hoặc ngừng hoạt động |
 | 10 | usp_dang_ky_khach | Tài khoản và hồ sơ khách cùng transaction |
 | 11 | usp_doc_don | Đơn/lịch sử theo quyền, có phân trang |
@@ -1161,7 +1174,7 @@ END;
 GO
 ```
 
-### 7.9. Quản lý chính sách qua một SP
+### 7.9. Quản lý chính sách qua một SP (lịch sử, đã gỡ ở V26)
 
 `LUU_NHAP`: @ma=NULL để tạo, có @ma để thay toàn bộ nháp; @du_lieu là JSON đầy đủ.
 `XOA_NHAP`, `CONG_BO`: truyền @loai và @ma. `DONG_HIEU_LUC`: thêm @den ở tương lai.
@@ -1435,11 +1448,11 @@ CRUD xóa tài khoản chỉ khi chưa có lịch sử; giữ FK và kiểm tra 
 | Quy tắc | Đã có trong bản SQL | Công việc backend hoặc SQL tiếp theo |
 |---|---|---|
 | Xác nhận khách đã trả | TX3 ghi hoàn tất + khoản chia | UI yêu cầu xác nhận rõ; không khẳng định đã xác minh ngân hàng khách |
-| Giá lịch sử | Giá chốt trên đơn; trigger policy; trigger không đổi giá đơn | Các role không có DML trực tiếp; chỉ TX1 được thêm kiện/phụ thu, không có SP công khai sửa/xóa chúng. Khi thêm SP mới phải giữ giới hạn này. Nếu bổ sung sửa đơn sau này phải thiết kế lại cơ chế chốt, không chỉ mở quyền UPDATE |
+| Giá lịch sử | Giá chốt trên đơn; trigger không đổi giá đơn | Các role không có DML trực tiếp trên bảng cấu hình; chỉ TX1 được thêm kiện/phụ thu, không có SP công khai sửa/xóa chúng. Nếu bổ sung sửa đơn sau này phải thiết kế lại cơ chế chốt. |
 | Khoản chia phụ thuộc giá bất biến | View suy tiền từ đơn/chính sách | Cấm sửa nguồn/phân công/thời điểm/xóa khoản chia. Chỉ TX4 gắn FK giao dịch; TX5 tháo FK sau KHONG_THU. Không cấp DML trực tiếp |
 | Khoản đang thanh toán giữ nguyên | TX4 chốt các khoản và số tiền trong một transaction | Không thêm khoản vào giao dịch đã trả về URL; đơn mới vẫn có FK NULL. Không có API ghép khoản thủ công |
 | Giao dịch thất bại và thành công | TX5 ghi kết quả + sự kiện; KHONG_THU còn tháo liên kết cùng transaction | Thành công giữ liên kết để xác định đã nộp. Không đặt công nợ = 0 trực tiếp; không giữ lịch sử ghép từng đơn với giao dịch thất bại |
-| Chính sách không chồng | TX1 phát hiện biểu phí/thành viên thiếu/chồng tại thời điểm dùng | usp_quan_ly_chinh_sach ở mục 7.9 có CRUD nháp, công bố kiểm tra overlap và đóng hiệu lực; cùng khóa chinh-sach và ghi audit. Cần test hai phiên công bố đồng thời và chặn sửa bản công bố |
+| Chính sách không chồng | TX1 phát hiện biểu phí/thành viên thiếu/chồng tại thời điểm dùng | V25 nạp cấu hình mặc định; admin không còn công bố/đóng hiệu lực từ V26. Các phiên bản lịch sử vẫn được giữ để bảo toàn FK trên đơn. |
 | Đăng ký/hồ sơ | FK unique + trigger đúng vai trò | usp_dang_ky_khach ở mục 7.11 tạo khách; các thao tác hồ sơ/tài khoản khác ở DAO/Service mục 7.13, BCrypt ở Java. Cần triển khai/test quyền và FK/rollback |
 | Đổi mật khẩu | Cột hash/auth_version | Xác minh mật khẩu cũ ở Java; cập nhật hash + tăng auth_version theo điều kiện phiên bản cũ; kiểm tra phiên bản ở mỗi phiên. Không log hash |
 | Quyền người dùng | Role SQL + kiểm tra vai trò/sở hữu trong các SP | Backend tự gắn ma_tk từ session vào SESSION_CONTEXT trước mỗi request, xóa khi trả connection về pool; không cho người dùng tự chọn actor. Kiểm tra auth_version và CSRF ở ứng dụng |
@@ -1657,7 +1670,7 @@ không có SP helper riêng, SP đăng ký chỉ cấp r_auth_backend và SP áp
 VNPay chỉ cấp r_payment_worker. Thiết kế ban đầu có 16 bảng, 8 view, 5 UDF, 9 trigger và 12 SP.
 Trên DB đã chạy, migration V15 bỏ `v_don_cho_dieu_phoi` và `v_cong_ty_thuc_nhan_ngay`, còn 6 view;
 migration V16 thêm `usp_doc_don_trang` để lọc và phân trang đơn tại SQL (13 SP).
-Màn `/admin/pricing` dùng `/api/v2/policies` để lưu/sửa/xóa nháp, công bố và đóng hiệu lực;
+Sau V26, `/admin/pricing` và `/api/v2/policies` đã được gỡ. V25 đảm bảo có biểu phí, chính sách thành viên và phụ thu được nạp sẵn;
 màn `/admin/orders` gửi `trangThai`, `page`, `size` xuống API thay vì lọc tối đa 100 dòng trong trình duyệt.
 Ca kiểm chứng có thể chạy lại từ [script SQL](../../tests/design-v2-integrity-check.sql),
 với [đầu ra](../../tests/evidence/design-v2-integrity-output.txt) và [ảnh tổng hợp kết quả](../../tests/evidence/design-v2-results.svg).

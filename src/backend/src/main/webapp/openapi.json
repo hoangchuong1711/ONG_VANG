@@ -7278,6 +7278,16 @@
                 "DA_HUY"
               ]
             }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Tìm theo mã đơn, người nhận hoặc địa chỉ",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
           }
         ],
         "x-postman-mode": "controlled"
@@ -7756,8 +7766,7 @@
                 "soDienThoai": "0901234567",
                 "email": null,
                 "cccd": "012345678901",
-                "soGiayPhep": "B012345678",
-                "ngayHetHanGPLX": "2028-12-31"
+                "soGiayPhep": "B012345678"
               }
             }
           }
@@ -7852,8 +7861,7 @@
                 "soDienThoai": "0901234567",
                 "email": null,
                 "cccd": "012345678901",
-                "soGiayPhep": "B012345678",
-                "ngayHetHanGPLX": "2028-12-31"
+                "soGiayPhep": "B012345678"
               }
             }
           }
@@ -8108,8 +8116,108 @@
               "maximum": 100,
               "default": 20
             }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Tìm đơn hàng của khách theo mã hoặc trạng thái",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
           }
         ],
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/customers/{maKh}/membership": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Gán hạng thành viên cho khách hàng",
+        "operationId": "setV2AdminCustomerMembership",
+        "description": "Chỉ chủ đội xe được gán hạng. Hạng ưu đãi có hiệu lực ngay, không tự hết hạn và cần một chính sách đang hiệu lực; hạng thường xóa thời hạn ưu đãi.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "maKh",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "maHang"
+                ],
+                "properties": {
+                  "maHang": {
+                    "type": "string",
+                    "enum": [
+                      "THUONG",
+                      "BAC",
+                      "VANG",
+                      "KIM_CUONG"
+                    ]
+                  }
+                }
+              },
+              "example": {
+                "maHang": "VANG"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hạng thành viên đã cập nhật",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          }
+        },
         "x-postman-mode": "controlled"
       }
     },
@@ -8435,6 +8543,16 @@
               "maximum": 100,
               "default": 20
             }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Tìm theo mã đơn hoặc nội dung sự cố",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
           }
         ],
         "x-postman-mode": "controlled"
@@ -8541,6 +8659,16 @@
                 "KHONG_THU",
                 "CAN_DOI_SOAT"
               ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Tìm theo mã giao dịch, tham chiếu hoặc tên tài xế",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
             }
           }
         ],
@@ -8789,163 +8917,6 @@
             }
           }
         ],
-        "x-postman-mode": "controlled"
-      }
-    },
-    "/api/v2/policies": {
-      "get": {
-        "tags": [
-          "Admin V2"
-        ],
-        "summary": "Danh s?ch ch?nh s?ch gi?",
-        "operationId": "listV2Policies",
-        "description": "C?c phi?n b?n bi?u ph?, h?ng th?nh vi?n v? ph? thu.",
-        "x-implementation-status": "implemented",
-        "x-uc": [
-          "UC-03",
-          "UC-05"
-        ],
-        "x-roles": [
-          "CHU_DOI_XE"
-        ],
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Th?nh c?ng",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/V2Items"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/V2BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/V2Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/V2Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/V2NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/V2Conflict"
-          },
-          "500": {
-            "$ref": "#/components/responses/V2InternalError"
-          },
-          "422": {
-            "$ref": "#/components/responses/V2UnprocessableEntity"
-          },
-          "429": {
-            "$ref": "#/components/responses/V2TooManyRequests"
-          },
-          "502": {
-            "$ref": "#/components/responses/V2BadGateway"
-          },
-          "503": {
-            "$ref": "#/components/responses/V2ServiceUnavailable"
-          }
-        },
-        "x-postman-mode": "controlled"
-      },
-      "post": {
-        "tags": [
-          "Admin V2"
-        ],
-        "summary": "Qu?n l? ch?nh s?ch gi?",
-        "operationId": "manageV2Policies",
-        "description": "T?o/c?p nh?t b?n nh?p, c?ng b?, x?a b?n nh?p ho?c ??ng hi?u l?c.",
-        "x-implementation-status": "implemented",
-        "x-uc": [
-          "UC-03",
-          "UC-05"
-        ],
-        "x-roles": [
-          "CHU_DOI_XE"
-        ],
-        "security": [
-          {
-            "sessionCookie": [],
-            "csrfToken": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Th?nh c?ng",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/V2Items"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/V2BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/V2Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/V2Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/V2NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/V2Conflict"
-          },
-          "500": {
-            "$ref": "#/components/responses/V2InternalError"
-          },
-          "422": {
-            "$ref": "#/components/responses/V2UnprocessableEntity"
-          },
-          "429": {
-            "$ref": "#/components/responses/V2TooManyRequests"
-          },
-          "502": {
-            "$ref": "#/components/responses/V2BadGateway"
-          },
-          "503": {
-            "$ref": "#/components/responses/V2ServiceUnavailable"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/V2PolicyAction"
-              },
-              "example": {
-                "hanhDong": "LUU_NHAP",
-                "loai": "CUOC",
-                "ma": null,
-                "duLieu": {
-                  "ten": "Bi?u ph? m?i",
-                  "cuoc_co_ban": 25000,
-                  "don_gia_km": 7000,
-                  "km_toi_thieu": 1,
-                  "km_toi_da": 30,
-                  "kg_bao_gom": 1,
-                  "kg_toi_da": 100,
-                  "don_gia_kg": 1000,
-                  "hieu_luc_tu": "2026-12-01T00:00:00"
-                }
-              }
-            }
-          }
-        },
         "x-postman-mode": "controlled"
       }
     },
@@ -10200,14 +10171,14 @@
           "409": {
             "$ref": "#/components/responses/V2Conflict"
           },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
           "422": {
             "$ref": "#/components/responses/V2UnprocessableEntity"
           },
           "429": {
             "$ref": "#/components/responses/V2TooManyRequests"
-          },
-          "500": {
-            "$ref": "#/components/responses/V2InternalError"
           },
           "502": {
             "$ref": "#/components/responses/V2BadGateway"
@@ -10266,14 +10237,14 @@
           "409": {
             "$ref": "#/components/responses/V2Conflict"
           },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
           "422": {
             "$ref": "#/components/responses/V2UnprocessableEntity"
           },
           "429": {
             "$ref": "#/components/responses/V2TooManyRequests"
-          },
-          "500": {
-            "$ref": "#/components/responses/V2InternalError"
           },
           "502": {
             "$ref": "#/components/responses/V2BadGateway"
@@ -10346,14 +10317,14 @@
           "409": {
             "$ref": "#/components/responses/V2Conflict"
           },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
           "422": {
             "$ref": "#/components/responses/V2UnprocessableEntity"
           },
           "429": {
             "$ref": "#/components/responses/V2TooManyRequests"
-          },
-          "500": {
-            "$ref": "#/components/responses/V2InternalError"
           },
           "502": {
             "$ref": "#/components/responses/V2BadGateway"
@@ -10411,14 +10382,14 @@
           "409": {
             "$ref": "#/components/responses/V2Conflict"
           },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
           "422": {
             "$ref": "#/components/responses/V2UnprocessableEntity"
           },
           "429": {
             "$ref": "#/components/responses/V2TooManyRequests"
-          },
-          "500": {
-            "$ref": "#/components/responses/V2InternalError"
           },
           "502": {
             "$ref": "#/components/responses/V2BadGateway"
@@ -10498,14 +10469,14 @@
           "409": {
             "$ref": "#/components/responses/V2Conflict"
           },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
           "422": {
             "$ref": "#/components/responses/V2UnprocessableEntity"
           },
           "429": {
             "$ref": "#/components/responses/V2TooManyRequests"
-          },
-          "500": {
-            "$ref": "#/components/responses/V2InternalError"
           },
           "502": {
             "$ref": "#/components/responses/V2BadGateway"
@@ -10575,20 +10546,109 @@
           "409": {
             "$ref": "#/components/responses/V2Conflict"
           },
+          "500": {
+            "$ref": "#/components/responses/V2InternalError"
+          },
           "422": {
             "$ref": "#/components/responses/V2UnprocessableEntity"
           },
           "429": {
             "$ref": "#/components/responses/V2TooManyRequests"
           },
+          "502": {
+            "$ref": "#/components/responses/V2BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "x-postman-mode": "controlled"
+      }
+    },
+    "/api/v2/admin/drivers/{maTx}/password": {
+      "post": {
+        "tags": [
+          "Admin V2"
+        ],
+        "summary": "Cấp mật khẩu mới cho tài xế",
+        "operationId": "setV2AdminDriverPassword",
+        "description": "Quản trị viên cấp mật khẩu mới và thu hồi các phiên đăng nhập cũ.",
+        "x-implementation-status": "implemented",
+        "x-uc": [],
+        "x-roles": [
+          "CHU_DOI_XE"
+        ],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Th?nh c?ng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/V2BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/V2Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/V2Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/V2NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/V2Conflict"
+          },
           "500": {
             "$ref": "#/components/responses/V2InternalError"
+          },
+          "422": {
+            "$ref": "#/components/responses/V2UnprocessableEntity"
+          },
+          "429": {
+            "$ref": "#/components/responses/V2TooManyRequests"
           },
           "502": {
             "$ref": "#/components/responses/V2BadGateway"
           },
           "503": {
             "$ref": "#/components/responses/V2ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "maTx",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2SetPassword"
+              },
+              "example": {
+                "matKhau": "{{password}}"
+              }
+            }
           }
         },
         "x-postman-mode": "controlled"
@@ -13519,8 +13579,7 @@
           "hoTen",
           "soDienThoai",
           "cccd",
-          "soGiayPhep",
-          "ngayHetHanGPLX"
+          "soGiayPhep"
         ],
         "properties": {
           "username": {
@@ -13549,10 +13608,6 @@
           },
           "soGiayPhep": {
             "type": "string"
-          },
-          "ngayHetHanGPLX": {
-            "type": "string",
-            "format": "date"
           }
         }
       },
@@ -13563,8 +13618,7 @@
           "hoTen",
           "soDienThoai",
           "cccd",
-          "soGiayPhep",
-          "ngayHetHanGPLX"
+          "soGiayPhep"
         ],
         "properties": {
           "hoTen": {
@@ -13585,10 +13639,6 @@
           },
           "soGiayPhep": {
             "type": "string"
-          },
-          "ngayHetHanGPLX": {
-            "type": "string",
-            "format": "date"
           }
         }
       },
@@ -13633,44 +13683,6 @@
           },
           "hoatDong": {
             "type": "boolean"
-          }
-        }
-      },
-      "V2PolicyAction": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "hanhDong",
-          "loai"
-        ],
-        "properties": {
-          "hanhDong": {
-            "type": "string"
-          },
-          "loai": {
-            "type": "string",
-            "enum": [
-              "CUOC",
-              "THANH_VIEN",
-              "PHU_THU"
-            ]
-          },
-          "ma": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "duLieu": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "den": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
           }
         }
       },

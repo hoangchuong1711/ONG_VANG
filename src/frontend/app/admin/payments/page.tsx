@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { AdminEmpty, AdminHeading, AdminStat } from "@/components/admin/AdminUI";
+import { AdminTableControls, useAdminTable } from "@/components/admin/AdminTableControls";
 import { amount, dateTime, type FinanceRow, useAdminResource } from "@/lib/admin-live";
 
 type Payment = {
@@ -43,8 +44,10 @@ function PaymentEvents({ paymentId }: { paymentId: string }) {
 export default function AdminPaymentsPage() {
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState("ALL");
-  const query = `page=${page}&size=20${status === "ALL" ? "" : `&status=${encodeURIComponent(status)}`}`;
+  const [search, setSearch] = useState("");
+  const query = `page=${page}&size=20${status === "ALL" ? "" : `&status=${encodeURIComponent(status)}`}&q=${encodeURIComponent(search)}`;
   const { data, error, loading, refresh } = useAdminResource<Payments>(`/admin/payments?${query}`);
+  const drivers = useAdminTable(data?.tai_xe ?? [], (driver) => `${driver.ho_ten} ${driver.ma_tx}`);
   const [expanded, setExpanded] = useState<string | null>(null);
   return <>
     <AdminHeading eyebrow="Tài chính" title="Tài xế nộp tiền công ty"
@@ -60,10 +63,11 @@ export default function AdminPaymentsPage() {
         <AdminStat label="Đang thanh toán" value={amount(data.dang_thanh_toan)} note="Chưa được tính là đã nhận" />
       </div>
       <section className="admin-panel"><div className="admin-section-head"><h2>Theo tài xế</h2></div>
-        {data.tai_xe.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr>
+        <AdminTableControls label="tài xế" query={drivers.query} onQuery={drivers.setQuery} page={drivers.page} onPage={drivers.setPage} total={drivers.total} />
+        {drivers.rows.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr>
           <th>Tài xế</th><th className="money">Công ty được hưởng</th><th className="money">Đã nhận</th>
           <th className="money">Đang thanh toán</th><th className="money">Khoản mới</th><th className="money">Còn phải nộp</th>
-        </tr></thead><tbody>{data.tai_xe.map((driver) => <tr key={driver.ma_tx}>
+        </tr></thead><tbody>{drivers.rows.map((driver) => <tr key={driver.ma_tx}>
           <td>{driver.ho_ten}</td><td className="money">{amount(driver.cong_ty_duoc_huong)}</td>
           <td className="money">{amount(driver.da_nop)}</td><td className="money">{amount(driver.dang_thanh_toan)}</td>
           <td className="money">{amount(driver.chua_dua_vao_thanh_toan)}</td>
@@ -71,6 +75,7 @@ export default function AdminPaymentsPage() {
         </tr>)}</tbody></table></div> : <AdminEmpty title="Chưa có tài xế" detail="Chưa có hồ sơ tài xế trong DB." />}
       </section>
       <section className="admin-panel"><div className="admin-section-head"><h2>Giao dịch nộp tiền</h2></div>
+        <div className="admin-field"><label htmlFor="payment-search">Tìm giao dịch</label><input id="payment-search" type="search" value={search} placeholder="Mã giao dịch, tham chiếu, tài xế..." onChange={(event) => { setSearch(event.target.value); setPage(0); setExpanded(null); }} /></div>
         <div className="admin-field"><label htmlFor="payment-status">Trạng thái</label>
           <select id="payment-status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); setExpanded(null); }}>
             <option value="ALL">Tất cả</option>

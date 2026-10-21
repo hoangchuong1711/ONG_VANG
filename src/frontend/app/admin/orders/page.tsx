@@ -8,15 +8,16 @@ import { amount, dateTime, orderStatus, type OrderRow, useAdminResource } from "
 export default function AdminOrdersPage() {
   const [page, setPage] = useState(0);
   const [filter, setFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
   const status = filter === "ALL" ? "" : `&status=${encodeURIComponent(filter)}`;
-  const { data, error, loading, refresh } = useAdminResource<{ items: OrderRow[]; total: number }>(`/admin/orders?page=${page}&size=20${status}`);
+  const { data, error, loading, refresh } = useAdminResource<{ items: OrderRow[]; total: number }>(`/admin/orders?page=${page}&size=20${status}&q=${encodeURIComponent(search)}`);
   return <>
     <AdminHeading eyebrow="Điều hành" title="Đơn hàng" description="Danh sách đơn lưu trong designV2."
       actions={<button className="admin-button" onClick={() => void refresh()}>Làm mới</button>} />
     <section className="admin-panel admin-filter-panel"><div className="admin-field"><label htmlFor="order-state">Trạng thái</label>
       <select id="order-state" value={filter} onChange={(event) => { setFilter(event.target.value); setPage(0); }}>
         <option value="ALL">Tất cả</option>{Object.entries(orderStatus).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
-      </select></div></section>
+      </select></div><div className="admin-field"><label htmlFor="order-search">Tìm đơn hàng</label><input id="order-search" type="search" value={search} placeholder="Mã đơn, người nhận, địa chỉ..." onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></div></section>
     {loading && <p role="status" className="admin-feedback">Đang tải đơn...</p>}
     {error && <p role="alert" className="admin-feedback error">{error}</p>}
     {data && <section className="admin-panel"><div className="admin-result-bar"><strong>{Number(data.total)} đơn</strong><span>Trang {page + 1}</span></div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { AdminDialog, AdminHeading } from "@/components/admin/AdminUI";
+import { AdminTableControls, useAdminTable } from "@/components/admin/AdminTableControls";
 import { amount, dateTime, orderStatus, type DriverRow, type OrderRow, useAdminResource } from "@/lib/admin-live";
 import { request } from "@/lib/api-client";
 
@@ -17,6 +18,9 @@ export default function AdminOrderDetailPage() {
   const [reason, setReason] = useState("");
   const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
+  const parcels = useAdminTable(order?.kien_hang ?? [], (item) => `${item.loai_hang} ${item.ghi_chu ?? ""}`);
+  const assignments = useAdminTable(order?.lich_su_phan_cong ?? [], (item) => `${item.tai_xe} ${item.bien_so ?? ""} ${item.ket_qua ?? ""}`);
+  const events = useAdminTable(order?.nhat_ky ?? [], (item) => `${item.loai} ${item.trang_thai_sau} ${item.ghi_chu ?? ""}`);
 
   async function submit() {
     if (!action) return;
@@ -51,18 +55,21 @@ export default function AdminOrderDetailPage() {
         </div></div>
       </section>
       <section className="admin-panel admin-extra-detail"><div className="admin-section-head"><h2>Kiện hàng</h2><span>{order.kien_hang?.length ?? 0} kiện</span></div>
+        <AdminTableControls label="kiện hàng" query={parcels.query} onQuery={parcels.setQuery} page={parcels.page} onPage={parcels.setPage} total={parcels.total} />
         {order.kien_hang?.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>#</th><th>Loại hàng</th><th>Khối lượng</th><th>Ghi chú</th></tr></thead><tbody>
-          {order.kien_hang.map((parcel) => <tr key={parcel.thu_tu}><td>{parcel.thu_tu}</td><td>{parcel.loai_hang}</td><td>{Number(parcel.khoi_luong_kg).toLocaleString("vi-VN")} kg</td><td>{parcel.ghi_chu ?? "—"}</td></tr>)}
+          {parcels.rows.map((parcel) => <tr key={parcel.thu_tu}><td>{parcel.thu_tu}</td><td>{parcel.loai_hang}</td><td>{Number(parcel.khoi_luong_kg).toLocaleString("vi-VN")} kg</td><td>{parcel.ghi_chu ?? "—"}</td></tr>)}
         </tbody></table></div> : <p className="admin-muted">Đơn không có thông tin kiện hàng.</p>}
       </section>
       <section className="admin-panel admin-extra-detail"><div className="admin-section-head"><h2>Lịch sử phân công</h2></div>
+        <AdminTableControls label="phân công" query={assignments.query} onQuery={assignments.setQuery} page={assignments.page} onPage={assignments.setPage} total={assignments.total} />
         {order.lich_su_phan_cong?.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Tài xế</th><th>Biển số</th><th>Bắt đầu</th><th>Kết thúc</th><th>Kết quả</th><th>Lý do</th></tr></thead><tbody>
-          {order.lich_su_phan_cong.map((assignment) => <tr key={assignment.ma_phan_cong}><td>{assignment.tai_xe}</td><td>{assignment.bien_so ?? "—"}</td><td>{dateTime(assignment.bat_dau_luc)}</td><td>{dateTime(assignment.ket_thuc_luc)}</td><td>{assignment.ket_qua ?? "Đang thực hiện"}</td><td>{assignment.ly_do ?? "—"}</td></tr>)}
+          {assignments.rows.map((assignment) => <tr key={assignment.ma_phan_cong}><td>{assignment.tai_xe}</td><td>{assignment.bien_so ?? "—"}</td><td>{dateTime(assignment.bat_dau_luc)}</td><td>{dateTime(assignment.ket_thuc_luc)}</td><td>{assignment.ket_qua ?? "Đang thực hiện"}</td><td>{assignment.ly_do ?? "—"}</td></tr>)}
         </tbody></table></div> : <p className="admin-muted">Chưa có lịch sử phân công.</p>}
       </section>
       <section className="admin-panel admin-extra-detail"><div className="admin-section-head"><h2>Nhật ký đơn</h2></div>
+        <AdminTableControls label="sự kiện" query={events.query} onQuery={events.setQuery} page={events.page} onPage={events.setPage} total={events.total} />
         {order.nhat_ky?.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Thời gian</th><th>Sự kiện</th><th>Trạng thái sau</th><th>Ghi chú</th></tr></thead><tbody>
-          {order.nhat_ky.map((event) => <tr key={event.ma_su_kien}><td>{dateTime(event.thoi_gian)}</td><td>{event.loai}</td><td>{orderStatus[event.trang_thai_sau] ?? event.trang_thai_sau}</td><td>{event.ghi_chu ?? "—"}</td></tr>)}
+          {events.rows.map((event) => <tr key={event.ma_su_kien}><td>{dateTime(event.thoi_gian)}</td><td>{event.loai}</td><td>{orderStatus[event.trang_thai_sau] ?? event.trang_thai_sau}</td><td>{event.ghi_chu ?? "—"}</td></tr>)}
         </tbody></table></div> : <p className="admin-muted">Chưa có sự kiện.</p>}
       </section>
     </>}

@@ -9,11 +9,13 @@ type Incident = { ma_su_kien: number; ma_don: string; thoi_gian: string; ghi_chu
 
 export default function AdminIncidentsPage() {
   const [page, setPage] = useState(0);
-  const { data, error, loading, refresh } = useAdminResource<{ items: Incident[]; total: number }>(`/admin/incidents?page=${page}&size=20`);
+  const [search, setSearch] = useState("");
+  const { data, error, loading, refresh } = useAdminResource<{ items: Incident[]; total: number }>(`/admin/incidents?page=${page}&size=20&q=${encodeURIComponent(search)}`);
   return <>
     <AdminHeading eyebrow="Điều hành" title="Sự cố giao hàng"
       description="Sự kiện sự cố từ nhật ký đơn hàng; hiện chỉ có chức năng xem."
       actions={<button className="admin-button" onClick={() => void refresh()}>Làm mới</button>} />
+    <section className="admin-panel admin-filter-panel"><div className="admin-field"><label htmlFor="incident-search">Tìm sự cố</label><input id="incident-search" type="search" value={search} placeholder="Mã đơn, nội dung..." onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></div></section>
     {loading && <p role="status" className="admin-feedback">Đang tải sự cố...</p>}
     {error && <p role="alert" className="admin-feedback error">{error}</p>}
     {data && <section className="admin-panel"><div className="admin-result-bar"><strong>{Number(data.total)} sự cố</strong><span>Trang {page + 1}</span></div>

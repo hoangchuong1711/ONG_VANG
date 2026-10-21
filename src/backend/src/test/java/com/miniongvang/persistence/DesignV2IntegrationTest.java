@@ -42,13 +42,13 @@ class DesignV2IntegrationTest {
     }
 
     @Test
-    void v6CreatesEnabledDesignV2PolicyTriggers() throws Exception {
+    void keepsCoreTriggersAndRemovesAdminPricingTriggers() throws Exception {
         try (var connection = persistence.dataSource().getConnection();
              var statement = connection.createStatement();
              var migration = statement.executeQuery(
-                     "SELECT COUNT(*) FROM dbo.flyway_schema_history WHERE version='6' AND success=1")) {
+                     "SELECT COUNT(*) FROM dbo.flyway_schema_history WHERE version='26' AND success=1")) {
             assertTrue(migration.next());
-            assertEquals(1, migration.getInt(1), "DesignV2 V6 must be applied successfully");
+            assertEquals(1, migration.getInt(1), "DesignV2 V26 must be applied successfully");
         }
 
         try (var connection = persistence.dataSource().getConnection();
@@ -57,13 +57,23 @@ class DesignV2IntegrationTest {
                      SELECT COUNT(*)
                      FROM sys.triggers
                      WHERE is_ms_shipped=0 AND is_disabled=0
-                       AND name IN ('tr_policy_cau_hinh_cuoc', 'tr_policy_chinh_sach_thanh_vien',
-                                    'tr_policy_cau_hinh_phu_thu', 'tr_kh_role', 'tr_tx_role',
+                       AND name IN ('tr_kh_role', 'tr_tx_role',
                                     'tr_tk_role_audit', 'tr_don_transition_log', 'tr_chia_hop_le',
                                     'tr_gd_bao_ve')
                      """)) {
             assertTrue(triggers.next());
-            assertEquals(9, triggers.getInt(1), "All V2 integrity triggers must exist and be enabled");
+            assertEquals(6, triggers.getInt(1), "Core V2 integrity triggers must exist and be enabled");
+        }
+
+        try (var connection = persistence.dataSource().getConnection();
+             var statement = connection.createStatement();
+             var triggers = statement.executeQuery("""
+                     SELECT COUNT(*) FROM sys.triggers
+                     WHERE name IN ('tr_policy_cau_hinh_cuoc', 'tr_policy_chinh_sach_thanh_vien',
+                                    'tr_policy_cau_hinh_phu_thu')
+                     """)) {
+            assertTrue(triggers.next());
+            assertEquals(0, triggers.getInt(1), "Admin pricing triggers must be removed");
         }
     }
 

@@ -57,16 +57,14 @@ def main():
     drivers = expect(owner, "/api/v2/admin/drivers")["items"]
     customers = expect(owner, "/api/v2/admin/customers")["items"]
     vehicles = expect(owner, "/api/v2/vehicles")["items"]
-    policies = expect(owner, "/api/v2/policies")["items"]
     staff = expect(owner, "/api/v2/admin/staff")["items"]
     assert all("cccd" in row and "ngay_het_han_gplx" in row and "trang_thai_tai_khoan" in row for row in drivers)
     assert all("ma_hang" in row and "thanh_vien_tu" in row and "thanh_vien_den" in row for row in customers)
-    assert all("don_gia_km" in row and "don_gia_kg" in row for row in policies if row["loai"] == "CUOC")
     assert any(row["vai_tro"] == "CHU_DOI_XE" and row["trang_thai"] == "HOAT_DONG" for row in staff)
     if customers:
         detail = expect(owner, f"/api/v2/admin/customers/{customers[0]['ma_kh']}?page=0&size=20")
         assert detail["ma_kh"] == customers[0]["ma_kh"] and "don_hang" in detail
-    print(f"OK: directories and stage-5 policy/staff read from {health['databaseName']}; drivers={len(drivers)}, vehicles={len(vehicles)}, customers={len(customers)}, policies={len(policies)}, staff={len(staff)}")
+    print(f"OK: admin directories from {health['databaseName']}; drivers={len(drivers)}, vehicles={len(vehicles)}, customers={len(customers)}, staff={len(staff)}")
 
 
 if __name__ == "__main__":

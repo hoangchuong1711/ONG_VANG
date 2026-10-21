@@ -27,7 +27,7 @@ public class TaiXe {
     private String cccd;
     @Column(name = "so_giay_phep", nullable = false, length = 50)
     private String soGiayPhep;
-    @Column(name = "ngay_het_han_gplx", nullable = false)
+    @Column(name = "ngay_het_han_gplx")
     private LocalDate ngayHetHanGplx;
     @Enumerated(EnumType.STRING) @Column(name = "trang_thai", nullable = false, length = 40)
     private DriverStatus trangThai = DriverStatus.OFFLINE;

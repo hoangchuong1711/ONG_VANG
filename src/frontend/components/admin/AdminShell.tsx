@@ -9,10 +9,8 @@ import {
   Motorcycle,
   Package,
   SquaresFour,
-  Tag,
   Truck,
   UserCircle,
-  Users,
   UsersThree,
   WarningCircle,
 } from "@phosphor-icons/react";
@@ -23,7 +21,7 @@ const groups = [
   { label: "Điều hành", items: [
     { label: "Tổng quan", href: "/admin", icon: SquaresFour },
     { label: "Đơn hàng", href: "/admin/orders", icon: Package },
-    { label: "Tài xế", href: "/admin/drivers", icon: Motorcycle },
+    { label: "Tài xế & điều phối viên", href: "/admin/drivers", icon: Motorcycle },
     { label: "Phương tiện", href: "/admin/vehicles", icon: Truck },
     { label: "Sự cố", href: "/admin/incidents", icon: WarningCircle },
   ] },
@@ -31,10 +29,8 @@ const groups = [
     { label: "Khách hàng", href: "/admin/customers", icon: UsersThree },
     { label: "Thanh toán", href: "/admin/payments", icon: CreditCard },
     { label: "Báo cáo", href: "/admin/reports", icon: ChartBar },
-    { label: "Biểu phí", href: "/admin/pricing", icon: Tag },
   ] },
   { label: "Hệ thống", items: [
-    { label: "Nhân sự & quyền", href: "/admin/staff", icon: Users },
     { label: "Tài khoản", href: "/admin/account", icon: UserCircle },
   ] },
 ];

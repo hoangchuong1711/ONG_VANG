@@ -18,7 +18,6 @@ Phạm vi này mô tả các endpoint mà giao diện `/admin` hiện dùng. T�
 | Thanh toán | `/admin/payments?page=0&size=20&status=...`; `/admin/payments/{maGiaoDich}/events` | GET | `CHU_DOI_XE` |
 | Ví tài xế | `/drivers/me/finance`, `/drivers/me/earnings?tu=...&den=...`, `/drivers/me/settlements`, `/drivers/me/settlements/reconcile` | GET, POST | `TAI_XE` |
 | Báo cáo | `/admin/reports/finance?tu=YYYY-MM-DD&den=YYYY-MM-DD`; `/admin/reports/finance.xlsx?...` | GET | `CHU_DOI_XE` |
-| Chính sách | `/policies` | GET, POST | `CHU_DOI_XE` |
 | Nhân sự | `/admin/staff`; `/admin/staff/{maTk}`; `/admin/staff/{maTk}/status`; `/admin/staff/{maTk}/password` | GET, POST, PATCH | `CHU_DOI_XE` |
 | Tài khoản hiện tại | `/profile`; `/auth/change-password` | GET, POST | Phiên hiện tại |
 

@@ -172,6 +172,14 @@ public final class DesignV2ApiController {
             throw new Rejected(400, "VALIDATION_ERROR", "Phân trang không hợp lệ");
         }
     }
+
+    private static String adminSearch(HttpServletRequest req) {
+        String value = req.getParameter("q");
+        if (value == null || value.isBlank()) return null;
+        value = value.trim();
+        if (value.length() > 100) throw new Rejected(400, "VALIDATION_ERROR", "Từ khóa tìm kiếm quá dài");
+        return value;
+    }
     private static String requiredHeader(HttpServletRequest req, String key) {
         String value = req.getHeader(key);
         if (value == null || value.isBlank() || value.length() > 100)
@@ -247,9 +255,7 @@ public final class DesignV2ApiController {
             String name = required(data, "hoTen"), phone = required(data, "soDienThoai");
             String email = optionalEmail(field(data, "email"));
             String cccd = required(data, "cccd"), license = required(data, "soGiayPhep");
-            LocalDate expiry = LocalDate.parse(required(data, "ngayHetHanGPLX"));
-            WebResponses.json(resp, 201, ADMIN.createDriver(c, username, password, name, phone, email, cccd, license,
-                    expiry)); return;
+            WebResponses.json(resp, 201, ADMIN.createDriver(c, username, password, name, phone, email, cccd, license)); return;
         }
         if (path.matches("/admin/drivers/[0-9a-fA-F-]{36}") && method.equals("PATCH")) {
             require(actor, "CHU_DOI_XE");
@@ -258,9 +264,12 @@ public final class DesignV2ApiController {
             String name = required(data, "hoTen"), phone = required(data, "soDienThoai");
             String email = optionalEmail(field(data, "email")), cccd = required(data, "cccd");
             String license = required(data, "soGiayPhep");
-            LocalDate expiry = LocalDate.parse(required(data, "ngayHetHanGPLX"));
-            WebResponses.json(resp, 200, ADMIN.updateDriver(c, id, name, phone, email, cccd, license,
-                    expiry)); return;
+            WebResponses.json(resp, 200, ADMIN.updateDriver(c, id, name, phone, email, cccd, license)); return;
+        }
+        if (path.matches("/admin/drivers/[0-9a-fA-F-]{36}/password") && method.equals("POST")) {
+            require(actor, "CHU_DOI_XE");
+            String id = UUID.fromString(path.split("/")[3]).toString();
+            WebResponses.json(resp, 200, ADMIN.resetDriverPassword(c, id, required(body(req), "matKhau"))); return;
         }
         if (path.matches("/admin/drivers/[0-9a-fA-F-]{36}/status") && method.equals("POST")) {
             require(actor, "CHU_DOI_XE");
@@ -284,7 +293,7 @@ public final class DesignV2ApiController {
             }
             if (page < 0 || page > 1_000_000 || size < 1 || size > 100)
                 throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang đơn khách hàng");
-            Map<String,Object> customer = ADMIN.findCustomerDetail(c, id, page, size);
+            Map<String,Object> customer = ADMIN.findCustomerDetail(c, id, adminSearch(req), page, size);
             if (customer == null) throw new Rejected(404, "RESOURCE_NOT_FOUND", "Không tìm thấy khách hàng");
             WebResponses.json(resp, 200, customer); return;
         }
@@ -293,6 +302,11 @@ public final class DesignV2ApiController {
             String id = UUID.fromString(path.split("/")[3]).toString();
             String action = required(body(req), "hanhDong");
             WebResponses.json(resp, 200, ADMIN.changeCustomerStatus(c, id, action)); return;
+        }
+        if (path.matches("/admin/customers/[0-9a-fA-F-]{36}/membership") && method.equals("POST")) {
+            require(actor, "CHU_DOI_XE");
+            String id = UUID.fromString(path.split("/")[3]).toString();
+            WebResponses.json(resp, 200, ADMIN.changeCustomerMembership(c, id, required(body(req), "maHang"))); return;
         }
         if (path.equals("/customers") && method.equals("GET")) {
             require(actor, "TONG_DAI", "CHU_DOI_XE");
@@ -359,7 +373,7 @@ public final class DesignV2ApiController {
             String status = req.getParameter("status");
             if (status != null && !Set.of("CHO_GAN", "DA_GAN", "DA_LAY_HANG", "DANG_GIAO", "HOAN_TAT", "DA_HUY").contains(status))
                 throw new Rejected(400, "VALIDATION_ERROR", "Trạng thái đơn không hợp lệ");
-            WebResponses.json(resp, 200, orderService.findAdminOrders(c, status, page, size));
+            WebResponses.json(resp, 200, orderService.findAdminOrders(c, status, adminSearch(req), page, size));
             return;
         }
         if (path.equals("/admin/overview") && method.equals("GET")) {
@@ -377,7 +391,7 @@ public final class DesignV2ApiController {
             }
             if (page < 0 || page > 1_000_000 || size < 1 || size > 100)
                 throw new Rejected(400, "VALIDATION_ERROR", "Sai phân trang sự cố");
-            DesignV2AdminService.Page result = ADMIN.findIncidents(c, page, size);
+            DesignV2AdminService.Page result = ADMIN.findIncidents(c, adminSearch(req), page, size);
             WebResponses.json(resp, 200, Map.of("items", result.items(), "total", result.total(), "page", page, "size", size)); return;
         }
         if (path.equals("/admin/payments") && method.equals("GET")) {
@@ -395,7 +409,7 @@ public final class DesignV2ApiController {
             if (status != null && !Set.of("CHO_XU_LY", "CHUA_RO_KET_QUA", "THANH_CONG", "KHONG_THU", "CAN_DOI_SOAT").contains(status))
                 throw new Rejected(400, "VALIDATION_ERROR", "Trạng thái giao dịch không hợp lệ");
             Map<String,Object> result = PAYMENTS.report(c);
-            DesignV2PaymentService.PaymentPage payments = PAYMENTS.findAdminPayments(c, status, page, size);
+            DesignV2PaymentService.PaymentPage payments = PAYMENTS.findAdminPayments(c, status, adminSearch(req), page, size);
             result.put("giao_dich_total", payments.total());
             result.put("giao_dich_page", page);
             result.put("giao_dich_size", size);
@@ -524,17 +538,6 @@ public final class DesignV2ApiController {
                 resp.getOutputStream().write(bytes);
             } else WebResponses.json(resp, 200, report);
             return;
-        }
-        if (path.equals("/policies") && method.equals("GET")) {
-            require(actor, "CHU_DOI_XE");
-            WebResponses.json(resp, 200, Map.of("items", ADMIN.findPolicyRows(c))); return;
-        }
-        if (path.equals("/policies") && method.equals("POST")) {
-            require(actor, "CHU_DOI_XE");
-            JsonNode data = body(req);
-            List<Map<String,Object>> updated = ADMIN.managePolicy(c, required(data, "hanhDong"), required(data, "loai"),
-                    field(data, "ma"), data.path("duLieu").isMissingNode() ? null : JSON.writeValueAsString(data.path("duLieu")), field(data, "den"));
-            WebResponses.json(resp, 200, Map.of("items", updated)); return;
         }
         if (path.equals("/vehicles") && method.equals("GET")) {
             require(actor, "CHU_DOI_XE", "TONG_DAI");

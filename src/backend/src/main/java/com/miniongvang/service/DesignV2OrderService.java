@@ -144,11 +144,11 @@ public final class DesignV2OrderService {
                 "totalPages", (result.total() + size - 1) / size, "page", page, "size", size);
     }
 
-    public Map<String, Object> findAdminOrders(Connection connection, String status, int page, int size) throws SQLException {
+    public Map<String, Object> findAdminOrders(Connection connection, String status, String search, int page, int size) throws SQLException {
         validatePage(page, size);
         if (status != null && !ORDER_STATUSES.contains(status))
             throw new DesignV2Problem(400, "VALIDATION_ERROR", "Trạng thái đơn không hợp lệ");
-        DesignV2OrderDAO.OrderPage result = orders.findAdminOrderPage(connection, status, page, size);
+        DesignV2OrderDAO.OrderPage result = orders.findAdminOrderPage(connection, status, search, page, size);
         addAssignments(connection, result.items());
         return Map.of("items", result.items(), "total", result.total(), "page", page, "size", size);
     }

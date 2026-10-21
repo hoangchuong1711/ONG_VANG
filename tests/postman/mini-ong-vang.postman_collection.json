@@ -2812,6 +2812,12 @@
                       "value": "CHO_GAN",
                       "disabled": true,
                       "description": ""
+                    },
+                    {
+                      "key": "q",
+                      "value": "",
+                      "disabled": true,
+                      "description": "Tìm theo mã đơn, người nhận hoặc địa chỉ"
                     }
                   ]
                 },
@@ -3191,7 +3197,7 @@
                 "description": "T?o t?i x?\n\nT?o t?i kho?n v? h? s? t?i x?. M?t kh?u kh?ng ???c tr? l?i trong response.\n\nStatus: implemented; UC: UC-12; roles: CHU_DOI_XE",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"username\": \"{{username}}\",\n  \"matKhau\": \"{{password}}\",\n  \"hoTen\": \"T?i x? m?i\",\n  \"soDienThoai\": \"0901234567\",\n  \"email\": null,\n  \"cccd\": \"012345678901\",\n  \"soGiayPhep\": \"B012345678\",\n  \"ngayHetHanGPLX\": \"2028-12-31\"\n}",
+                  "raw": "{\n  \"username\": \"{{username}}\",\n  \"matKhau\": \"{{password}}\",\n  \"hoTen\": \"T?i x? m?i\",\n  \"soDienThoai\": \"0901234567\",\n  \"email\": null,\n  \"cccd\": \"012345678901\",\n  \"soGiayPhep\": \"B012345678\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3263,7 +3269,7 @@
                 "description": "S?a h? s? t?i x?\n\nC?p nh?t th?ng tin h? s?; kh?ng ??i username ho?c m?t kh?u.\n\nStatus: implemented; UC: UC-12; roles: CHU_DOI_XE",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"hoTen\": \"T?i x? m?i\",\n  \"soDienThoai\": \"0901234567\",\n  \"email\": null,\n  \"cccd\": \"012345678901\",\n  \"soGiayPhep\": \"B012345678\",\n  \"ngayHetHanGPLX\": \"2028-12-31\"\n}",
+                  "raw": "{\n  \"hoTen\": \"T?i x? m?i\",\n  \"soDienThoai\": \"0901234567\",\n  \"email\": null,\n  \"cccd\": \"012345678901\",\n  \"soGiayPhep\": \"B012345678\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3462,10 +3468,89 @@
                       "value": "20",
                       "disabled": false,
                       "description": ""
+                    },
+                    {
+                      "key": "q",
+                      "value": "",
+                      "disabled": true,
+                      "description": "Tìm đơn hàng của khách theo mã hoặc trạng thái"
                     }
                   ]
                 },
                 "description": "Chi ti?t kh?ch h?ng\n\nH? s?, t?ng s? ??n v? trang ??n g?n ??y c?a kh?ch h?ng.\n\nStatus: implemented; UC: infrastructure; roles: CHU_DOI_XE"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: guarded request. Set runPlanned=true only with the required role, fixture, and isolated test database.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "setV2AdminCustomerMembership",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v2/admin/customers/{{customerId}}/membership",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v2",
+                    "admin",
+                    "customers",
+                    "{{customerId}}",
+                    "membership"
+                  ],
+                  "query": []
+                },
+                "description": "Gán hạng thành viên cho khách hàng\n\nChỉ chủ đội xe được gán hạng. Hạng ưu đãi có hiệu lực ngay, không tự hết hạn và cần một chính sách đang hiệu lực; hạng thường xóa thời hạn ưu đãi.\n\nStatus: implemented; UC: infrastructure; roles: CHU_DOI_XE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"maHang\": \"VANG\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
               },
               "event": [
                 {
@@ -3727,6 +3812,12 @@
                       "value": "20",
                       "disabled": false,
                       "description": ""
+                    },
+                    {
+                      "key": "q",
+                      "value": "",
+                      "disabled": true,
+                      "description": "Tìm theo mã đơn hoặc nội dung sự cố"
                     }
                   ]
                 },
@@ -3804,6 +3895,12 @@
                       "value": "CHO_XU_LY",
                       "disabled": true,
                       "description": ""
+                    },
+                    {
+                      "key": "q",
+                      "value": "",
+                      "disabled": true,
+                      "description": "Tìm theo mã giao dịch, tham chiếu hoặc tên tài xế"
                     }
                   ]
                 },
@@ -4025,131 +4122,6 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            },
-            {
-              "name": "listV2Policies",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v2/policies",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v2",
-                    "policies"
-                  ],
-                  "query": []
-                },
-                "description": "Danh s?ch ch?nh s?ch gi?\n\nC?c phi?n b?n bi?u ph?, h?ng th?nh vi?n v? ph? thu.\n\nStatus: implemented; UC: UC-03, UC-05; roles: CHU_DOI_XE"
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: guarded request. Set runPlanned=true only with the required role, fixture, and isolated test database.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
-                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                      "  const body = pm.response.json();",
-                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
-                      "}"
-                    ]
-                  }
-                }
-              ],
-              "response": []
-            },
-            {
-              "name": "manageV2Policies",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "X-CSRF-Token",
-                    "value": "{{csrfToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v2/policies",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v2",
-                    "policies"
-                  ],
-                  "query": []
-                },
-                "description": "Qu?n l? ch?nh s?ch gi?\n\nT?o/c?p nh?t b?n nh?p, c?ng b?, x?a b?n nh?p ho?c ??ng hi?u l?c.\n\nStatus: implemented; UC: UC-03, UC-05; roles: CHU_DOI_XE",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"hanhDong\": \"LUU_NHAP\",\n  \"loai\": \"CUOC\",\n  \"ma\": null,\n  \"duLieu\": {\n    \"ten\": \"Bi?u ph? m?i\",\n    \"cuoc_co_ban\": 25000,\n    \"don_gia_km\": 7000,\n    \"km_toi_thieu\": 1,\n    \"km_toi_da\": 30,\n    \"kg_bao_gom\": 1,\n    \"kg_toi_da\": 100,\n    \"don_gia_kg\": 1000,\n    \"hieu_luc_tu\": \"2026-12-01T00:00:00\"\n  }\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "if (pm.environment.get('runPlanned') !== 'true') {",
-                      "  console.warn('SKIPPED: guarded request. Set runPlanned=true only with the required role, fixture, and isolated test database.');",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
-                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
-                      "  const body = pm.response.json();",
-                      "  pm.test('Response has items', () => pm.expect(body).to.have.property('items'));",
-                      "}"
                     ]
                   }
                 }
@@ -5453,6 +5425,79 @@
                   "query": []
                 },
                 "description": "Tra c?u giao d?ch n?p ti?n\n\nG?i tra c?u VNPay cho giao d?ch ch?a ???c quy?t to?n; k?t qu? ch?a r? kh?ng ??ng ngh?a kh?ng thu.\n\nStatus: implemented; UC: UC-10; roles: TAI_XE"
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.environment.get('runPlanned') !== 'true') {",
+                      "  console.warn('SKIPPED: guarded request. Set runPlanned=true only with the required role, fixture, and isolated test database.');",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+                      "pm.test('JSON content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  const body = pm.response.json();",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "setV2AdminDriverPassword",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v2/admin/drivers/{{driverId}}/password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v2",
+                    "admin",
+                    "drivers",
+                    "{{driverId}}",
+                    "password"
+                  ],
+                  "query": []
+                },
+                "description": "Cấp mật khẩu mới cho tài xế\n\nQuản trị viên cấp mật khẩu mới và thu hồi các phiên đăng nhập cũ.\n\nStatus: implemented; UC: infrastructure; roles: CHU_DOI_XE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"matKhau\": \"{{password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
               },
               "event": [
                 {

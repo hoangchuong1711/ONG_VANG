@@ -1,7 +1,6 @@
 package com.miniongvang.dao;
 
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,16 +16,21 @@ public final class DesignV2AdminDAO {
     public record Page(List<Map<String, Object>> items, long total) {}
 
     public Map<String, Object> createDriver(Connection c, String username, String passwordHash, String name,
-            String phone, String email, String identityNumber, String licenseNumber, Date licenseExpiry) throws SQLException {
+            String phone, String email, String identityNumber, String licenseNumber) throws SQLException {
         Map<String, Object> created = one(c, "EXEC dbo.usp_admin_quan_ly_tai_xe ?,NULL,?,?,?,?,?,?,?,?",
-                "TAO", username, passwordHash, name, phone, email, identityNumber, licenseNumber, licenseExpiry);
+                "TAO", username, passwordHash, name, phone, email, identityNumber, licenseNumber, null);
         return findDriver(c, String.valueOf(created.get("ma_tx")));
     }
 
     public Map<String, Object> updateDriver(Connection c, String id, String name, String phone, String email,
-            String identityNumber, String licenseNumber, Date licenseExpiry) throws SQLException {
+            String identityNumber, String licenseNumber) throws SQLException {
         call(c, "EXEC dbo.usp_admin_quan_ly_tai_xe ?,?,?,?,?,?,?,?,?,?", "CAP_NHAT", id,
-                null, null, name, phone, email, identityNumber, licenseNumber, licenseExpiry);
+                null, null, name, phone, email, identityNumber, licenseNumber, null);
+        return findDriver(c, id);
+    }
+
+    public Map<String, Object> resetDriverPassword(Connection c, String id, String passwordHash) throws SQLException {
+        call(c, "EXEC dbo.usp_admin_dat_mat_khau_tai_xe ?,?", id, passwordHash);
         return findDriver(c, id);
     }
 
@@ -39,20 +43,26 @@ public final class DesignV2AdminDAO {
 
     public List<Map<String, Object>> findCustomers(Connection c) throws SQLException {
         return rows(c, "SELECT k.ma_kh,k.ma_tk,k.dia_chi_mac_dinh,k.ma_hang,k.thanh_vien_tu,k.thanh_vien_den,"
-                + "t.username,t.ho_ten,t.so_dien_thoai,t.email,t.trang_thai AS trang_thai_tai_khoan "
+                + "t.username,t.ho_ten,t.so_dien_thoai,t.email,t.ngay_tao AS tham_gia_tu,t.trang_thai AS trang_thai_tai_khoan "
                 + "FROM dbo.khach_hang k JOIN dbo.tai_khoan t ON t.ma_tk=k.ma_tk ORDER BY t.ho_ten");
     }
 
-    public Map<String, Object> findCustomerDetail(Connection c, String id, int page, int size) throws SQLException {
+    public Map<String, Object> findCustomerDetail(Connection c, String id, String search, int page, int size) throws SQLException {
         Map<String, Object> customer = one(c, "SELECT k.ma_kh,k.ma_tk,k.dia_chi_mac_dinh,k.ma_hang,k.thanh_vien_tu,k.thanh_vien_den,"
-                + "t.username,t.ho_ten,t.so_dien_thoai,t.email,t.trang_thai AS trang_thai_tai_khoan,t.auth_version "
+                + "t.username,t.ho_ten,t.so_dien_thoai,t.email,t.ngay_tao AS tham_gia_tu,t.trang_thai AS trang_thai_tai_khoan,t.auth_version "
                 + "FROM dbo.khach_hang k JOIN dbo.tai_khoan t ON t.ma_tk=k.ma_tk WHERE k.ma_kh=?", id);
         if (customer == null) return null;
         Map<String, Object> count = one(c, "SELECT COUNT_BIG(*) AS total FROM dbo.don_hang WHERE ma_kh=?", id);
         customer.put("tong_don", count.get("total"));
+        String pattern = "%" + (search == null ? "" : search) + "%";
+        String filter = " AND (?='' OR CONVERT(NVARCHAR(36),d.ma_don) LIKE ? OR d.trang_thai LIKE ?)";
+        Map<String, Object> filteredCount = one(c, "SELECT COUNT_BIG(*) AS total FROM dbo.don_hang d WHERE d.ma_kh=?" + filter,
+                id, search == null ? "" : search, pattern, pattern);
+        customer.put("don_hang_total", filteredCount.get("total"));
         customer.put("don_hang", rows(c, "SELECT d.ma_don,d.tao_luc,d.trang_thai,v.tong_cuoc FROM dbo.don_hang d "
-                + "JOIN dbo.v_cuoc_don v ON v.ma_don=d.ma_don WHERE d.ma_kh=? ORDER BY d.tao_luc DESC,d.ma_don "
-                + "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", id, (long) page * size, size));
+                + "JOIN dbo.v_cuoc_don v ON v.ma_don=d.ma_don WHERE d.ma_kh=?" + filter + " ORDER BY d.tao_luc DESC,d.ma_don "
+                + "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", id, search == null ? "" : search,
+                pattern, pattern, (long) page * size, size));
         customer.put("don_hang_page", page);
         customer.put("don_hang_size", size);
         return customer;
@@ -62,6 +72,11 @@ public final class DesignV2AdminDAO {
         call(c, "EXEC dbo.usp_admin_trang_thai_khach ?,?", id, action);
         return one(c, "SELECT k.ma_kh,t.trang_thai AS trang_thai_tai_khoan,t.auth_version "
                 + "FROM dbo.khach_hang k JOIN dbo.tai_khoan t ON t.ma_tk=k.ma_tk WHERE k.ma_kh=?", id);
+    }
+
+    public Map<String, Object> changeCustomerMembership(Connection c, String id, String tier) throws SQLException {
+        call(c, "EXEC dbo.usp_admin_gan_hang_khach ?,?", id, tier);
+        return one(c, "SELECT ma_kh,ma_hang,thanh_vien_tu,thanh_vien_den FROM dbo.khach_hang WHERE ma_kh=?", id);
     }
 
     public List<Map<String, Object>> findCustomerDirectory(Connection c) throws SQLException {
@@ -86,7 +101,7 @@ public final class DesignV2AdminDAO {
     }
 
     public List<Map<String, Object>> findStaff(Connection c) throws SQLException {
-        return rows(c, "SELECT ma_tk,username,ho_ten,so_dien_thoai,vai_tro,trang_thai,ngay_tao "
+        return rows(c, "SELECT ma_tk,username,ho_ten,so_dien_thoai,email,vai_tro,trang_thai,ngay_tao "
                 + "FROM dbo.tai_khoan WHERE vai_tro IN ('TONG_DAI','CHU_DOI_XE') ORDER BY vai_tro,ngay_tao");
     }
 
@@ -120,24 +135,6 @@ public final class DesignV2AdminDAO {
         return findStaffAccount(c, id);
     }
 
-    public List<Map<String, Object>> findPolicyRows(Connection c) throws SQLException {
-        return rows(c, "SELECT 'CUOC' loai,ma_bieu_phi ma,'CUOC' nhom,ten,hieu_luc_tu,hieu_luc_den,trang_thai,"
-                + "cuoc_co_ban,don_gia_km,km_toi_thieu,km_toi_da,kg_bao_gom,kg_toi_da,don_gia_kg,"
-                + "CAST(NULL AS DECIMAL(5,2)) ty_le_giam,CAST(NULL AS VARCHAR(30)) ma_loai,"
-                + "CAST(NULL AS DECIMAL(15,0)) so_tien,CAST(NULL AS BIT) bat_buoc FROM dbo.cau_hinh_cuoc "
-                + "UNION ALL SELECT 'THANH_VIEN',ma_chinh_sach,ma_hang,NULL,hieu_luc_tu,hieu_luc_den,trang_thai,"
-                + "NULL,NULL,NULL,NULL,NULL,NULL,NULL,ty_le_giam,NULL,NULL,NULL FROM dbo.chinh_sach_thanh_vien "
-                + "UNION ALL SELECT 'PHU_THU',ma_phu_thu,ma_loai,ten,hieu_luc_tu,hieu_luc_den,trang_thai,"
-                + "NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,ma_loai,so_tien,bat_buoc FROM dbo.cau_hinh_phu_thu "
-                + "ORDER BY loai,hieu_luc_tu DESC");
-    }
-
-    public List<Map<String, Object>> managePolicy(Connection c, String action, String type, String id,
-            String dataJson, String endsAt) throws SQLException {
-        call(c, "EXEC dbo.usp_quan_ly_chinh_sach ?,?,?,?,?", action, type, id, dataJson, endsAt);
-        return findPolicyRows(c);
-    }
-
     public Map<String, Object> findOverview(Connection c) throws SQLException {
         Map<String, Object> result = one(c, "SELECT COUNT_BIG(*) tong_don, "
                 + "SUM(CASE WHEN trang_thai='CHO_GAN' THEN 1 ELSE 0 END) cho_gan, "
@@ -156,12 +153,16 @@ public final class DesignV2AdminDAO {
         return result;
     }
 
-    public Page findIncidents(Connection c, int page, int size) throws SQLException {
-        Map<String, Object> count = one(c, "SELECT COUNT_BIG(*) AS total FROM dbo.nhat_ky_don_hang WHERE loai='SU_CO'");
+    public Page findIncidents(Connection c, String search, int page, int size) throws SQLException {
+        String filter = "n.loai='SU_CO' AND (?='' OR CONVERT(NVARCHAR(36),n.ma_don) LIKE ? OR n.ghi_chu LIKE ?)";
+        String pattern = "%" + (search == null ? "" : search) + "%";
+        Map<String, Object> count = one(c, "SELECT COUNT_BIG(*) AS total FROM dbo.nhat_ky_don_hang n WHERE " + filter,
+                search == null ? "" : search, pattern, pattern);
         List<Map<String, Object>> items = rows(c, "SELECT n.ma_su_kien,n.ma_don,n.thoi_gian,n.ghi_chu,d.trang_thai "
                 + "FROM dbo.nhat_ky_don_hang n JOIN dbo.don_hang d ON d.ma_don=n.ma_don "
-                + "WHERE n.loai='SU_CO' ORDER BY n.thoi_gian DESC,n.ma_su_kien DESC "
-                + "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", (long) page * size, size);
+                + "WHERE " + filter + " ORDER BY n.thoi_gian DESC,n.ma_su_kien DESC "
+                + "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", search == null ? "" : search,
+                pattern, pattern, (long) page * size, size);
         return new Page(List.copyOf(items), ((Number) count.get("total")).longValue());
     }
 

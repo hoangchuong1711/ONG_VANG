@@ -103,16 +103,20 @@ public final class DesignV2OrderDAO {
         }
     }
 
-    public OrderPage findAdminOrderPage(Connection connection, String status, int page, int size) throws SQLException {
-        String filter = status == null ? "" : " WHERE d.trang_thai=?";
-        Map<String, Object> count = status == null
-                ? one(connection, "SELECT COUNT_BIG(*) AS total FROM dbo.don_hang d")
-                : one(connection, "SELECT COUNT_BIG(*) AS total FROM dbo.don_hang d" + filter, status);
+    public OrderPage findAdminOrderPage(Connection connection, String status, String search, int page, int size) throws SQLException {
+        String filter = " WHERE (?='' OR d.trang_thai=?) AND (?='' OR "
+                + "CONVERT(NVARCHAR(36),d.ma_don) LIKE ? OR d.ten_nguoi_nhan LIKE ? "
+                + "OR d.diem_lay LIKE ? OR d.diem_giao LIKE ?)";
+        String pattern = "%" + (search == null ? "" : search) + "%";
+        Object[] filters = {status == null ? "" : status, status == null ? "" : status,
+                search == null ? "" : search, pattern, pattern, pattern, pattern};
+        Map<String, Object> count = one(connection, "SELECT COUNT_BIG(*) AS total FROM dbo.don_hang d" + filter, filters);
         String sql = "SELECT d.*,v.tong_cuoc FROM dbo.don_hang d JOIN dbo.v_cuoc_don v ON v.ma_don=d.ma_don"
                 + filter + " ORDER BY d.tao_luc DESC,d.ma_don OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
-        List<Map<String, Object>> items = status == null
-                ? rows(connection, sql, (long) page * size, size)
-                : rows(connection, sql, status, (long) page * size, size);
+        Object[] paging = java.util.Arrays.copyOf(filters, filters.length + 2);
+        paging[filters.length] = (long) page * size;
+        paging[filters.length + 1] = size;
+        List<Map<String, Object>> items = rows(connection, sql, paging);
         return new OrderPage(List.copyOf(items), ((Number) count.get("total")).longValue());
     }
 

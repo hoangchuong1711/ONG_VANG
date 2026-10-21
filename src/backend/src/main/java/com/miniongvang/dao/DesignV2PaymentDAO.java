@@ -62,14 +62,18 @@ public final class DesignV2PaymentDAO {
                 + "WHERE g.giai_quyet_luc IS NULL AND g.tao_luc<DATEADD(MINUTE,-15,SYSUTCDATETIME())");
     }
 
-    public PaymentPage findAdminPayments(Connection connection, String status, int page, int size) throws SQLException {
+    public PaymentPage findAdminPayments(Connection connection, String status, String search, int page, int size) throws SQLException {
         String reconciliation = "EXISTS(SELECT 1 FROM dbo.su_kien_thanh_toan x WHERE x.ma_giao_dich=g.ma_giao_dich "
                 + "AND x.ket_qua IN ('CAN_DOI_SOAT','KHONG_KHOP'))";
-        String filter = status == null ? "" : status.equals("CAN_DOI_SOAT")
-                ? " WHERE " + reconciliation : " WHERE g.trang_thai=?";
-        Map<String, Object> count = status == null || status.equals("CAN_DOI_SOAT")
-                ? one(connection, "SELECT COUNT_BIG(*) AS total FROM dbo.giao_dich_nop_tien g" + filter)
-                : one(connection, "SELECT COUNT_BIG(*) AS total FROM dbo.giao_dich_nop_tien g" + filter, status);
+        String filter = " WHERE (?='' OR ?='CAN_DOI_SOAT' AND " + reconciliation
+                + " OR g.trang_thai=?) AND (?='' OR g.ma_tham_chieu LIKE ? "
+                + "OR CONVERT(NVARCHAR(36),g.ma_giao_dich) LIKE ? OR k.ho_ten LIKE ?)";
+        String pattern = "%" + (search == null ? "" : search) + "%";
+        String selectedStatus = status == null ? "" : status;
+        Object[] filters = {selectedStatus, selectedStatus, selectedStatus,
+                search == null ? "" : search, pattern, pattern, pattern};
+        Map<String, Object> count = one(connection, "SELECT COUNT_BIG(*) AS total FROM dbo.giao_dich_nop_tien g "
+                + "JOIN dbo.tai_xe t ON t.ma_tx=g.ma_tx JOIN dbo.tai_khoan k ON k.ma_tk=t.ma_tk" + filter, filters);
         String sql = "SELECT g.ma_giao_dich,g.ma_tx,k.ho_ten,g.ma_tham_chieu,"
                 + "g.trang_thai,g.so_tien_yeu_cau,g.so_tien_thuc_nhan,g.tao_luc,g.giai_quyet_luc,"
                 + "g.so_don_dang_lien_ket,g.tong_khoan_lien_ket,e.nguon AS nguon_xac_minh,"
@@ -80,9 +84,10 @@ public final class DesignV2PaymentDAO {
                 + "(SELECT TOP (1) nguon,ket_qua,nhan_luc FROM dbo.su_kien_thanh_toan x "
                 + "WHERE x.ma_giao_dich=g.ma_giao_dich ORDER BY x.nhan_luc DESC,x.ma_su_kien DESC) e "
                 + filter + " ORDER BY g.tao_luc DESC,g.ma_giao_dich DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
-        List<Map<String, Object>> items = status == null || status.equals("CAN_DOI_SOAT")
-                ? rows(connection, sql, (long) page * size, size)
-                : rows(connection, sql, status, (long) page * size, size);
+        Object[] paging = java.util.Arrays.copyOf(filters, filters.length + 2);
+        paging[filters.length] = (long) page * size;
+        paging[filters.length + 1] = size;
+        List<Map<String, Object>> items = rows(connection, sql, paging);
         return new PaymentPage(List.copyOf(items), ((Number) count.get("total")).longValue());
     }
 
