@@ -477,7 +477,7 @@ public final class DesignV2ApiController {
             WebResponses.json(resp, 200, orderService.findOrder(c, path.substring(8))); return;
         }
         if (path.matches("/orders/[0-9a-fA-F-]{36}/assign") && method.equals("POST")) {
-            require(actor, "TONG_DAI", "CHU_DOI_XE");
+            require(actor, "TONG_DAI");
             String order = path.split("/")[2];
             orderService.assign(c, order, required(body(req), "maTx"));
             WebResponses.json(resp, 200, orderService.findOrder(c, order)); return;

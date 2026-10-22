@@ -17,6 +17,8 @@
 
 Backend tự chạy Flyway. Chọn `DESIGN_V2_DEMO=true` ngay lần cài đầu để nạp demo, hoặc `false` nếu chỉ cần schema và giá mặc định. Giữ nguyên lựa chọn này cho DB đã cài; không bật demo muộn trên DB đã chạy V10. Seed demo chỉ chấp nhận tên DB demo/test có trong script.
 
+Quyền phân công hiện tại: chỉ `TONG_DAI` được gọi `usp_phan_cong` và API phân công. Chủ đội xe vẫn xem đơn/lịch sử và hủy đơn theo quyền hiện có, nhưng không phân công. V7/V8 được sửa trực tiếp trước lần triển khai đầu tiên. Bộ Legacy giữ nguyên chính sách lịch sử; nếu sau này cần dùng DB Legacy, phải thêm migration thu hồi quyền SQL tương ứng, không sửa các file Legacy đã áp dụng.
+
 ## Database đã dùng V1–V26 cũ
 
 `PersistenceContext` đọc tên script V1 trong `dbo.flyway_schema_history` trước khi chọn bộ migration:

@@ -2,6 +2,8 @@
 
 Ngày kiểm tra: 22/10/2026 (Asia/Saigon).
 
+Thay đổi nghiệp vụ sau khi gộp: bộ mới chỉ cho Tổng đài phân công. Kiểm thử hiện loại trừ đúng quyền `EXECUTE usp_phan_cong` của chủ đội xe khỏi phép so sánh với Legacy, đồng thời kiểm tra bộ mới không cấp quyền đó và procedure từ chối actor chủ đội xe mà không ghi dữ liệu. Các mục “quyền khớp” bên dưới là kết quả trước thay đổi này; các quyền còn lại tiếp tục được đối chiếu.
+
 Môi trường: SQL Server 2022 Developer trong container tạm từ image `mcr.microsoft.com/mssql/server:2022-latest`, không mở cổng, không dùng volume dữ liệu của dự án. Container được xóa trong bước kết thúc của script, kể cả khi kiểm thử lỗi.
 
 ## Kết quả lượt cuối

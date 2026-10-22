@@ -7446,16 +7446,15 @@
         "tags": [
           "Admin V2"
         ],
-        "summary": "Ph?n c?ng t?i x?",
+        "summary": "Phân công tài xế",
         "operationId": "assignV2Driver",
-        "description": "Ph?n c?ng ??n ?ang ch?. G?i maTx c?a t?i x?; xung ??t tr? 409.",
+        "description": "Chỉ Tổng đài được phân công đơn đang chờ. Chủ đội xe và các vai trò khác nhận HTTP 403. Gửi maTx của tài xế; xung đột trả 409.",
         "x-implementation-status": "implemented",
         "x-uc": [
           "UC-12"
         ],
         "x-roles": [
-          "TONG_DAI",
-          "CHU_DOI_XE"
+          "TONG_DAI"
         ],
         "security": [
           {
