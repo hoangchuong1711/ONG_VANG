@@ -18,7 +18,6 @@ const INCIDENT_TYPES = [
   "Người nhận không nghe máy (đã gọi 3 cuộc)",
   "Khách hẹn đổi giờ giao sang thời điểm khác",
   "Sai địa chỉ giao hàng / Không tìm thấy số nhà",
-  "Người nhận từ chối nhận hàng do đổi ý",
   "Bưu kiện bị rách hoặc có dấu hiệu móp méo",
 ];
 
@@ -95,7 +94,6 @@ export default function DriverOrderExecutionPage() {
     try {
       await api(`/orders/${encodeURIComponent(order.id)}/incidents`, {
         method: "POST", body: JSON.stringify({
-          loaiSuCo: incidentType.includes("từ chối") ? "TU_CHOI_NHAN" : "KHONG_LIEN_LAC_DUOC",
           lyDo: `${incidentType}: ${incidentNote.trim() || "Không có ghi chú bổ sung"}`,
         }),
       });

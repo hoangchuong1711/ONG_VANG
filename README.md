@@ -24,6 +24,8 @@ Backend health: [http://localhost:8081/api/health](http://localhost:8081/api/hea
 
 Bàn điều phối đọc sự cố thật qua `GET /api/v2/dispatcher/incidents` (chỉ `TONG_DAI`) mỗi 15 giây. Mỗi đơn đang `DANG_GIAO` hiện báo cáo mới nhất, kèm liên kết chi tiết đơn và gọi tài xế. Toàn bộ báo cáo vẫn nằm trong nhật ký; khi đơn kết thúc, cảnh báo rời danh sách đơn đang giao. Chưa có thao tác đánh dấu xử lý sự cố riêng, thông báo đẩy hay tự hủy/đổi tài xế sau lấy hàng.
 
+Phạm vi báo sự cố hiện tại là ghi nhận để điều phối viên liên hệ hỗ trợ tiếp tục giao. Biểu mẫu không có lựa chọn người nhận từ chối nhận hàng; xử lý giao thất bại do từ chối nhận và hoàn hàng chưa được triển khai. Chỉ xác nhận hoàn tất khi thực tế đã giao hàng và thu đủ cước. Nhật ký sự cố cũ vẫn được giữ để tra cứu.
+
 Kiểm tra: tài xế đang giao gửi báo sự cố; mở bàn điều phối bằng tài khoản tổng đài và chờ tối đa một chu kỳ cập nhật (15 giây cộng thời gian tải). Kiểm tra số cảnh báo, nội dung, liên kết chi tiết và số điện thoại. Gửi báo cáo thứ hai cho cùng đơn: bàn điều phối vẫn đếm một đơn, hiển thị báo cáo mới nhất; trang tài xế giữ cả hai nhật ký. Hoàn tất đơn đúng điều kiện: cảnh báo không còn trong danh sách đang giao, lịch sử vẫn được giữ.
 Trong SSMS, dùng lại kết nối SQL Server `127.0.0.1,1433`, rồi chọn database
 `mini_ong_vang_design_v2_demo`.
