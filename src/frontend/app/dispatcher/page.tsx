@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { PhoneContact } from "@/components/ui/PhoneContact";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -265,10 +266,8 @@ export default function DispatcherLiveBoardPage() {
                         className="px-2.5 py-1.5 rounded-lg bg-amber-500 text-stone-900 text-xs font-bold">
                         Xem đơn và liên hệ
                       </Link>
-                      {inc.driverPhone && <a href={`tel:${inc.driverPhone}`}
-                        className="px-2.5 py-1.5 rounded-lg border border-stone-200 text-xs font-semibold">
-                        Gọi tài xế
-                      </a>}
+                      {inc.driverPhone && <PhoneContact phone={inc.driverPhone} label="Gọi tài xế"
+                        className="px-2.5 py-1.5 rounded-lg border border-stone-200 text-xs font-semibold" />}
                     </div>
                   </div>
                 ))}

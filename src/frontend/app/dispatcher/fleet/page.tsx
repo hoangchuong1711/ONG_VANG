@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { PhoneContact } from "@/components/ui/PhoneContact";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { api, type Driver } from "@/lib/live-orders";
 import { driverForView, type DispatchDriver } from "@/lib/dispatch-view";
@@ -206,12 +207,8 @@ export default function DispatcherFleetPage() {
                         <div className="text-xs text-stone-500 font-medium">Chưa có thống kê</div>
                       </td>
                       <td className="p-4 pr-6 text-right space-x-2">
-                        <a
-                          href={`tel:${d.phone}`}
-                          className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold inline-block transition-colors"
-                        >
-                          Gọi
-                        </a>
+                        <PhoneContact phone={d.phone} label="Gọi tài xế"
+                        className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold inline-block transition-colors" />
                         <button type="button"
                           onClick={() => { setEditing(d); setAddress(d.currentDistrict === "Chưa cấu hình vị trí demo" ? "" : d.currentDistrict); }}
                           className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-200">
