@@ -1,0 +1,4 @@
+# Local database volume; the original volume is preserved for recovery.
+volumes:
+  mini_ong_vang_mssqldata:
+    name: ong_vang_mssqldata_local_20261015

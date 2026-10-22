@@ -1,5 +1,7 @@
 # Thiết kế CSDL đề xuất — Mini Ong Vang / DBMS330284
 
+> Cấu trúc migration mới: ứng dụng đã gộp V1–V26 thành 10 file theo thành phần trong [designV2/sqlserver](../../src/backend/src/main/resources/db/designV2/sqlserver/README.md). Các số phiên bản V1–V26 bên dưới mô tả lịch sử trước khi gộp, hiện lưu ở `designV2Legacy`. Khi cài/chạy ứng dụng, ưu tiên hướng dẫn mới.
+
 > Trạng thái hiện tại sau V25–V26: biểu phí cước, ưu đãi thành viên và phụ thu được nạp sẵn bằng migration; admin không còn trang hay API quản lý chính sách giá. V26 xóa `usp_quan_ly_chinh_sach`, `usp_admin_dong_hieu_luc_hien_tai`, `v_phien_ban_chinh_sach` và ba trigger `tr_policy_*`. Các đoạn SQL cũ bên dưới là tài liệu baseline/migration lịch sử, không phải danh sách đối tượng còn tồn tại sau V26. Bảng cấu hình, hàm và view tính cước vẫn được giữ để tạo đơn và đọc lịch sử.
 
 > Lưu ý hiện hành: V9–V11 là migration lịch sử đã áp dụng, cần giữ nguyên checksum. V9 tạo tài khoản và các fixture đơn/giao dịch cũ; V20 chỉ xóa các fixture có ID và khóa yêu cầu cố định, giữ tài khoản, hồ sơ, cấu hình cùng dữ liệu người dùng. V21 thêm 3 đơn chờ gán cho mỗi khách demo. Các migration demo mới được đánh số sau schema V16 để không trùng phiên bản Flyway.

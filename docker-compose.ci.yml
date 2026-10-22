@@ -43,6 +43,7 @@ services:
       DB_URL: "jdbc:sqlserver://db-test:1433;databaseName=mini_ong_vang_design_v2_test;encrypt=true;trustServerCertificate=true"
       DB_USER: sa
       DB_PASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}
+      DESIGN_V2_DEMO: "true"
     ports:
       - "127.0.0.1:18081:8080"
     depends_on:
