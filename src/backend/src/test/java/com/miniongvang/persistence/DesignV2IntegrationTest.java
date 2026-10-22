@@ -46,9 +46,10 @@ class DesignV2IntegrationTest {
         try (var connection = persistence.dataSource().getConnection();
              var statement = connection.createStatement();
              var migration = statement.executeQuery(
-                     "SELECT COUNT(*) FROM dbo.flyway_schema_history WHERE version='26' AND success=1")) {
+                     "SELECT COUNT(*) FROM dbo.flyway_schema_history WHERE success=1 AND "
+                             + "(script='V10__default_pricing.sql' OR script='V26__remove_admin_pricing_management.sql')")) {
             assertTrue(migration.next());
-            assertEquals(1, migration.getInt(1), "DesignV2 V26 must be applied successfully");
+            assertEquals(1, migration.getInt(1), "The consolidated or legacy schema must be complete");
         }
 
         try (var connection = persistence.dataSource().getConnection();

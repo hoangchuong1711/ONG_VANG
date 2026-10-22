@@ -9,6 +9,7 @@ $env:TEST_DB_PASSWORD = 'Aa!' + [BitConverter]::ToString($bytes).Replace('-', ''
 $env:TEST_DB_URL = 'jdbc:sqlserver://127.0.0.1:15433;databaseName=mini_ong_vang_design_v2_test;encrypt=true;trustServerCertificate=true'
 $env:TEST_DB_USER = 'sa'
 $env:REQUIRE_TEST_DB = 'true'
+$env:DESIGN_V2_DEMO = 'true'
 $env:API_BASE_URL = 'http://127.0.0.1:18081'
 $env:API_EXPECTED_DATABASE = 'mini_ong_vang_design_v2_test'
 $env:V2_SMOKE_PASSWORD = '12345678'
@@ -34,15 +35,9 @@ try {
     Assert-Exit 'db-test startup'
     docker compose -f docker-compose.ci.yml up --no-deps --exit-code-from db-init-test db-init-test | Select-Object -Last 8
     Assert-Exit 'db migration'
-    mvn.cmd --batch-mode --no-transfer-progress -f src/backend/pom.xml verify | Select-Object -Last 22
+    mvn.cmd --batch-mode --no-transfer-progress -f src/backend/pom.xml clean verify | Select-Object -Last 22
     Assert-Exit 'Maven integration verify'
 
-    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V9__insert_demo_data.sql' '/tmp/designv2-V9.sql'
-    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V10__update_demo_credentials_and_positions.sql' '/tmp/designv2-V10.sql'
-    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V11__fix_demo_account_password_hash.sql' '/tmp/designv2-V11.sql'
-    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V17__restore_demo_password_hash.sql' '/tmp/designv2-V17.sql'
-    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V18__seed_demo_operating_config.sql' '/tmp/designv2-V18.sql'
-    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V19__change_demo_account_password.sql' '/tmp/designv2-V19.sql'
     docker compose -f docker-compose.ci.yml up --build --wait --wait-timeout 120 backend-test | Select-Object -Last 8
     Assert-Exit 'backend startup'
     $ready = $false
@@ -62,7 +57,6 @@ try {
     Assert-Exit 'DesignV2 admin operations smoke'
     python tools/api/design-v2-admin-finance-smoke.py --base $env:API_BASE_URL
     Assert-Exit 'DesignV2 finance report smoke'
-    Invoke-TestSql 'src/backend/src/main/resources/db/designV2/sqlserver/demo/V20__remove_legacy_demo_orders.sql' '/tmp/designv2-V20.sql'
 } catch {
     Write-Error "T20 verification failed: $_"
     exit 1

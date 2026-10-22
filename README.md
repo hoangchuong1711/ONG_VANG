@@ -1,5 +1,11 @@
 # Mini Ong Vang
 
+Bộ migration ứng dụng đã gom theo thành phần tại
+[db/designV2/sqlserver](src/backend/src/main/resources/db/designV2/sqlserver/README.md).
+DB mới chạy 10 file gộp; DB đã dùng V1–V26 được tự nhận diện và tiếp tục dùng lịch sử
+nguyên trạng trong `db/designV2Legacy/sqlserver/`, không xóa dữ liệu hay sửa checksum.
+Các file trong [design-v2-complete](docs/database/design-v2-complete/README.md) là bản xuất để báo cáo.
+
 Ứng dụng giao hàng dùng Next.js, Java Servlet và SQL Server 2022. Luồng đang chạy dùng
 [thiết kế CSDL](docs/database/csdl.md): khách trả cước trực tiếp cho tài xế; tài xế xác nhận
 đã giao và thu đủ; hệ thống ghi phần tài xế 80% và phần công ty 20%; tài xế nộp phần công ty qua VNPay Sandbox.
@@ -8,7 +14,7 @@
 
 1. Tạo `.env` từ [.env.example](.env.example) nếu chưa có. Đặt `MSSQL_SA_PASSWORD` và
    `MSSQL_DATABASE=mini_ong_vang_design_v2_demo`.
-2. Để `DESIGN_V2_DEMO=true` nếu muốn Flyway nạp 8 tài khoản demo, hồ sơ khách/tài xế và cấu hình tối thiểu để báo giá, tạo đơn, điều phối. V9 là seed lịch sử có 30 đơn và 3 giao dịch fixture; V20 dọn đúng các fixture đó, rồi V21 thêm 3 đơn `CHO_GAN` cho mỗi tài khoản khách demo. Với database
+2. Để `DESIGN_V2_DEMO=true` ngay lần cài đầu nếu muốn Flyway nạp 8 tài khoản demo, hồ sơ khách/tài xế, cấu hình và 9 đơn `CHO_GAN` bằng file V9 gộp. Với database
    không phải demo/test, đặt `DESIGN_V2_DEMO=false`; Flyway chỉ chạy phần schema.
 3. Chạy `docker compose up --build` trong thư mục gốc.
 4. Mở [http://localhost:3001](http://localhost:3001) và đăng nhập. Ứng dụng đưa mỗi vai trò
@@ -21,9 +27,9 @@ Trong SSMS, dùng lại kết nối SQL Server `127.0.0.1,1433`, rồi chọn da
 
 ### Tài khoản demo SQL
 
-Mật khẩu của 8 tài khoản demo SQL sau migration V19: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
+Mật khẩu của 8 tài khoản demo SQL: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
 tổng đài: `demo_dispatcher`; chủ đội xe: `demo_admin`; tài xế: `0800000001`,
-`0800000002`, `0800000003`. V9–V11 giữ nguyên để khớp lịch sử Flyway; V18 tạo cấu hình/xe cần cho demo, V19 đặt mật khẩu, V20 xóa 30 đơn và 3 giao dịch fixture theo ID cố định. V21 tạo 9 đơn demo mới ở trạng thái `CHO_GAN`, chưa có phân công hay giao dịch nộp tiền; quãng đường và thời gian là dữ liệu mô phỏng. DB đang dùng không cần tạo lại; hãy cập nhật mã nguồn rồi để Flyway chạy tiếp.
+`0800000002`, `0800000003`. DB mới dùng V9 gộp, tạo 9 đơn chờ chưa có phân công hay giao dịch nộp tiền; quãng đường/thời gian là dữ liệu mô phỏng. DB cũ tiếp tục chuỗi V1–V26 nguyên trạng trong `designV2Legacy`, gồm các lần sửa seed và dọn fixture. DB đang dùng không cần tạo lại; giữ nguyên lựa chọn `DESIGN_V2_DEMO` rồi để Flyway chạy tiếp.
 
 Trang `/admin/customers` cho chủ đội xe gán hạng khách hàng. Hạng ưu đãi có hiệu lực ngay, không tự hết hạn và cần một chính sách đang hiệu lực; chuyển về `THUONG` sẽ xóa thời hạn ưu đãi. Ngày “Thành viên từ” là ngày tạo tài khoản.
 
@@ -40,7 +46,7 @@ demo hiện bật tác vụ này để tự xử lý các giao dịch quá hạn
 ## Cấu trúc và kiểm tra
 
 - Migration schema: `src/backend/src/main/resources/db/designV2/sqlserver/schema/`.
-- Tài khoản demo và migration cleanup: `src/backend/src/main/resources/db/designV2/sqlserver/demo/`.
+- Tài khoản và đơn demo gộp: `src/backend/src/main/resources/db/designV2/sqlserver/demo/`.
 - [ERD 16 bảng designV2](docs/database/design-v2-erd.md).
 - API designV2: `src/backend/src/main/java/com/miniongvang/controller/DesignV2Servlet.java`.
 - Giao diện hiện tại theo từng vai trò dùng chung dữ liệu designV2 qua lớp adapter,
@@ -49,7 +55,7 @@ demo hiện bật tác vụ này để tự xử lý các giao dịch quá hạn
 Backend tự chạy Flyway trước khi phục vụ API. Các endpoint cũ không còn được phục vụ.
 
 Kiểm tra bản hiện tại bằng việc chạy ứng dụng với DB demo/test riêng, build backend bằng
-`mvn.cmd -f src/backend/pom.xml -DskipTests compile`, frontend bằng `npm.cmd run build`
+`mvn.cmd -f src/backend/pom.xml -DskipTests clean compile`, frontend bằng `npm.cmd run build`
 trong `src/frontend`, rồi thao tác đăng nhập, báo giá, tạo/gán/hoàn tất đơn và đối chiếu
 công nợ trên giao diện từng vai trò.
 

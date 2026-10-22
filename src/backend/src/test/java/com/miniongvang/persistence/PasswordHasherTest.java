@@ -25,11 +25,11 @@ class PasswordHasherTest {
     }
 
     @Test void restoredDemoHashMatchesDocumentedPassword() throws Exception {
-        String path = "/db/designV2/sqlserver/demo/V17__restore_demo_password_hash.sql";
+        String path = "/db/designV2/sqlserver/demo/V9__demo_data.sql";
         try (InputStream migration = getClass().getResourceAsStream(path)) {
             assertNotNull(migration);
             String sql = new String(migration.readAllBytes(), StandardCharsets.UTF_8);
-            var matcher = Pattern.compile("SET mat_khau_hash = N'([^']+)'").matcher(sql);
+            var matcher = Pattern.compile("@hash NVARCHAR\\(255\\)=N'([^']+)'").matcher(sql);
             assertTrue(matcher.find());
             assertTrue(PasswordHasher.verify("12345678", matcher.group(1)));
         }
