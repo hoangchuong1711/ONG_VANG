@@ -1,4 +1,4 @@
-import type { Driver as ApiDriver, Order as ApiOrder } from "./live-orders";
+import type { Driver as ApiDriver, Order as ApiOrder, OrderDetail } from "./live-orders";
 import type { DriverItem, OrderItem, OrderStatus } from "./types";
 
 export type DispatchDriver = DriverItem & {
@@ -21,10 +21,14 @@ export function driverForView(driver: ApiDriver): DispatchDriver {
   };
 }
 
-export function orderForView(order: ApiOrder, drivers: DispatchDriver[]): OrderItem {
+export function orderForView(order: ApiOrder & { nhatKy?: OrderDetail["nhatKy"] }, drivers: DispatchDriver[]): OrderItem {
   const driver = drivers.find(item => item.id === order.maTx);
   const created = Date.parse(order.thoiGianTao);
+  const incident = order.nhatKy?.filter(event => event.loaiSuKien === "SU_CO")
+    .sort((a, b) => b.thoiGian.localeCompare(a.thoiGian) || b.thuTu - a.thuTu)[0];
   return {
+    incident: incident ? { type: "Sự cố giao hàng", note: incident.ghiChu ?? "",
+      reportedAt: new Date(incident.thoiGian).toLocaleString("vi-VN") } : undefined,
     id: order.maDon,
     sender: { name: order.maKh, phone: "", street: order.diemLayHang, district: "", city: "" },
     receiver: { name: order.tenNguoiNhan ?? "—", phone: order.sdtNguoiNhan,

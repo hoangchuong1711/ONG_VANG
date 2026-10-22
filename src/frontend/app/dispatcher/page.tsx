@@ -2,16 +2,22 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { PhoneContact } from "@/components/ui/PhoneContact";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { IncidentItem, OrderItem } from "@/lib/types";
 import { allOrders, api, type Driver } from "@/lib/live-orders";
 import { driverForView, orderForView, type DispatchDriver } from "@/lib/dispatch-view";
+import { request } from "@/lib/api-client";
 import { formatVND } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 type Page<T> = { items: T[]; totalElements: number };
+type IncidentRow = {
+  ma_su_kien: number | string; ma_don: string; ma_tx: string | null;
+  ho_ten: string; so_dien_thoai: string | null; ghi_chu: string; thoi_gian: string;
+};
 
 export default function DispatcherLiveBoardPage() {
   const { showToast } = useToast();
@@ -23,19 +29,26 @@ export default function DispatcherLiveBoardPage() {
   const [suggestions, setSuggestions] = useState<DispatchDriver[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState("");
   const [assigning, setAssigning] = useState(false);
-  const incidents: IncidentItem[] = [];
+  const [incidents, setIncidents] = useState<IncidentItem[]>([]);
 
   const refresh = useCallback(async () => {
     try {
-      const [pending, assigned, picked, delivering, fleet] = await Promise.all([
+      const [pending, assigned, picked, delivering, fleet, alerts] = await Promise.all([
         allOrders("CHO_GAN"),
         allOrders("DA_GAN"),
         allOrders("DA_LAY_HANG"),
         allOrders("DANG_GIAO"),
         api<Page<Driver>>("/drivers?size=100"),
+        request<{ items: IncidentRow[] }>("/dispatcher/incidents"),
       ]);
       const roster = fleet.items.map(driverForView);
       setDrivers(roster);
+      setIncidents(alerts.items.map(item => ({
+        id: String(item.ma_su_kien), orderId: item.ma_don, driverId: item.ma_tx ?? "",
+        driverName: item.ho_ten, driverPhone: item.so_dien_thoai ?? "",
+        type: "SU_CO", note: item.ghi_chu,
+        reportedAt: new Date(item.thoi_gian).toLocaleString("vi-VN"), status: "CHO_XU_LY",
+      })));
       setOrders([...pending, ...assigned, ...picked, ...delivering]
         .map(order => orderForView(order, roster)));
       setPendingCount(pending.length);
@@ -78,21 +91,12 @@ export default function DispatcherLiveBoardPage() {
     } catch (cause) {
       const message = (cause as Error).message;
       showToast(message, "error");
-      await handleOpenAssignModal(assigningOrder);
+      // The order or driver may have been assigned by another dispatcher.
+      // Discard the stale selection instead of reopening and choosing another driver.
+      setAssigningOrder(null); setSuggestions([]); setSelectedDriverId("");
+      await refresh();
       setLoadError(message);
     } finally { setAssigning(false); }
-  };
-
-  const handleReassignIncidentOrder = (orderId: string) => {
-    showToast(`Đơn ${orderId} có sự cố cần xử lý trong chi tiết đơn.`, "info");
-  };
-  const handleCancelOrder = async (orderId: string, reason: string) => {
-    try {
-      await api(`/orders/${encodeURIComponent(orderId)}/cancel`, {
-        method: "POST", body: JSON.stringify({ lyDo: reason }),
-      });
-      await refresh();
-    } catch (cause) { showToast((cause as Error).message, "error"); }
   };
 
   return (
@@ -256,21 +260,14 @@ export default function DispatcherLiveBoardPage() {
                       <span className="text-[11px] text-stone-400 font-medium">{inc.reportedAt}</span>
                     </div>
                     <p className="text-stone-700 leading-relaxed font-medium">{inc.note}</p>
+                    <p className="text-stone-600">Tài xế: {inc.driverName}</p>
                     <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => handleReassignIncidentOrder(inc.orderId)}
-                        className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-900 text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Đổi tài xế khác
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCancelOrder(inc.orderId, inc.note)}
-                        className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-rose-100 text-rose-800 text-xs font-semibold border border-stone-200 transition-colors cursor-pointer"
-                      >
-                        Hủy đơn
-                      </button>
+                      <Link href={`/dispatcher/orders/${encodeURIComponent(inc.orderId)}`}
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-500 text-stone-900 text-xs font-bold">
+                        Xem đơn và liên hệ
+                      </Link>
+                      {inc.driverPhone && <PhoneContact phone={inc.driverPhone} label="Gọi tài xế"
+                        className="px-2.5 py-1.5 rounded-lg border border-stone-200 text-xs font-semibold" />}
                     </div>
                   </div>
                 ))}

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { PhoneContact } from "@/components/ui/PhoneContact";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -69,7 +70,13 @@ export default function DispatcherOrderDetailPage() {
       });
       setIsReassignModalOpen(false); await refresh();
       showToast(`Đã gán tài xế cho đơn ${order.id}.`, "success");
-    } catch (cause) { showToast((cause as Error).message, "error"); }
+    } catch (cause) {
+      const message = (cause as Error).message;
+      setIsReassignModalOpen(false); setSuggestions([]); setSelectedDriverId("");
+      showToast(message, "error");
+      await refresh();
+      setError(message);
+    }
   };
 
   if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><DispatcherNavbar /><main className="p-6">Đang tải đơn hàng...</main></div>;
@@ -127,23 +134,12 @@ export default function DispatcherOrderDetailPage() {
               {order.incident.note}
             </p>
 
-            <div className="pt-1 flex items-center gap-3">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsReassignModalOpen(true)}
-                className="text-xs font-bold shadow-sm"
-              >
-                Thu hồi & đổi tài xế khác
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsCancelModalOpen(true)}
-                className="border-rose-300 text-rose-700 hover:bg-rose-100 text-xs font-semibold"
-              >
-                Hủy đơn do sự cố
-              </Button>
+            <div className="pt-1 flex flex-wrap items-center gap-3">
+              {order.driver?.phone && <PhoneContact phone={order.driver.phone} label="Gọi tài xế"
+                        className="rounded-xl border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-800" />}
+              {order.receiver.phone && <PhoneContact phone={order.receiver.phone} label="Gọi người nhận"
+                        className="rounded-xl border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-800" />}
+              <p className="text-xs text-rose-900">Sự cố đã được ghi nhận. Không tự hủy hoặc đổi tài xế khi đơn đã lấy hàng.</p>
             </div>
           </div>
         )}
@@ -159,12 +155,8 @@ export default function DispatcherOrderDetailPage() {
                   <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
                     Điểm lấy hàng (Người gửi)
                   </span>
-                  <a
-                    href={`tel:${order.sender.phone}`}
-                    className="text-xs font-bold text-amber-800 hover:underline"
-                  >
-                    Gọi: {order.sender.phone}
-                  </a>
+                  <PhoneContact phone={order.sender.phone} label="Gọi người gửi"
+                        className="text-xs font-bold text-amber-800 hover:underline" />
                 </div>
                 <div className="space-y-1">
                   <div className="text-base font-extrabold text-stone-900">{order.sender.name}</div>
@@ -179,12 +171,8 @@ export default function DispatcherOrderDetailPage() {
                   <span className="text-xs font-bold uppercase tracking-wider text-amber-800">
                     Điểm giao hàng (Người nhận)
                   </span>
-                  <a
-                    href={`tel:${order.receiver.phone}`}
-                    className="text-xs font-bold text-amber-800 hover:underline"
-                  >
-                    Gọi: {order.receiver.phone}
-                  </a>
+                  <PhoneContact phone={order.receiver.phone} label="Gọi người nhận"
+                        className="text-xs font-bold text-amber-800 hover:underline" />
                 </div>
                 <div className="space-y-1">
                   <div className="text-base font-extrabold text-stone-900">{order.receiver.name}</div>
@@ -297,12 +285,8 @@ export default function DispatcherOrderDetailPage() {
                   </div>
 
                   <div className="pt-1">
-                    <a
-                      href={`tel:${order.driver.phone}`}
-                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-xs font-bold text-stone-800 transition-colors"
-                    >
-                      Gọi tài xế: {order.driver.phone}
-                    </a>
+                    <PhoneContact phone={order.driver.phone} label="Gọi tài xế"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-xs font-bold text-stone-800 transition-colors" />
                   </div>
                 </div>
               ) : (

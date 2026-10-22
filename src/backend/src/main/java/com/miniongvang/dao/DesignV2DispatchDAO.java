@@ -14,6 +14,18 @@ import java.util.UUID;
 
 /** JDBC persistence operations for DesignV2 driver dispatch and location data. */
 public final class DesignV2DispatchDAO {
+    public List<Map<String, Object>> findActiveIncidents(Connection connection) throws SQLException {
+        // Keep every report in the log; show only the latest alert per active order on the board.
+        return rows(connection, "WITH incidents AS (SELECT n.ma_su_kien,n.ma_don,n.thoi_gian,n.ghi_chu,n.ma_tk,"
+                + "ROW_NUMBER() OVER(PARTITION BY n.ma_don ORDER BY n.thoi_gian DESC,n.ma_su_kien DESC) rn "
+                + "FROM dbo.nhat_ky_don_hang n JOIN dbo.don_hang d ON d.ma_don=n.ma_don "
+                + "WHERE n.loai='SU_CO' AND d.trang_thai='DANG_GIAO') "
+                + "SELECT i.ma_su_kien,i.ma_don,i.thoi_gian,i.ghi_chu,t.ma_tx,k.ho_ten,k.so_dien_thoai "
+                + "FROM incidents i JOIN dbo.tai_khoan k ON k.ma_tk=i.ma_tk "
+                + "LEFT JOIN dbo.tai_xe t ON t.ma_tk=i.ma_tk "
+                + "WHERE i.rn=1 ORDER BY i.thoi_gian DESC,i.ma_su_kien DESC");
+    }
+
     public List<Map<String, Object>> findCompanyDrivers(Connection connection) throws SQLException {
         return rows(connection, "SELECT x.ma_tx,x.ma_tk,k.username,k.ho_ten,k.so_dien_thoai,k.email,"
                 + "k.trang_thai AS trang_thai_tai_khoan,k.auth_version,x.cccd,x.so_giay_phep,x.ngay_het_han_gplx,"

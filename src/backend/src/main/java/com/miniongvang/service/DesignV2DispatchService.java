@@ -1,16 +1,12 @@
 package com.miniongvang.service;
 
-import com.miniongvang.config.RouteConfiguration;
 import com.miniongvang.dao.DesignV2DispatchDAO;
-import com.miniongvang.dto.route.RouteDtos.Route;
 import com.miniongvang.integration.GoongRouteProvider;
-import com.miniongvang.integration.RouteFailure;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +19,9 @@ public final class DesignV2DispatchService {
     public DesignV2DispatchService(DesignV2DispatchDAO dispatch) { this.dispatch = dispatch; }
 
     public List<Map<String, Object>> findCompanyDrivers(Connection c) throws SQLException { return dispatch.findCompanyDrivers(c); }
+    public List<Map<String, Object>> findActiveIncidents(Connection c) throws SQLException {
+        return dispatch.findActiveIncidents(c);
+    }
     public List<Map<String, Object>> findDispatcherDrivers(Connection c) throws SQLException { return dispatch.findDispatcherDrivers(c); }
     public Map<String, Object> findDriverForAccount(Connection c, String id) throws SQLException {
         return dispatch.findDriverForAccount(c, id);
@@ -48,58 +47,8 @@ public final class DesignV2DispatchService {
         String pickup = dispatch.findOrderPickup(c, orderId);
         if (pickup == null) throw new DesignV2Problem(404, "RESOURCE_NOT_FOUND", "Không tìm thấy đơn hàng");
         List<Map<String, Object>> candidates = dispatch.findDriverSuggestionCandidates(c, orderId);
-        RouteService routes = RouteConfiguration.fromEnvironment();
-        Double pickupLat = null, pickupLng = null;
-        for (Map<String, Object> candidate : candidates) {
-            if (pickup.equalsIgnoreCase(String.valueOf(candidate.get("vi_tri_demo_dia_chi")))
-                    && number(candidate.get("vi_tri_demo_lat")) != null
-                    && number(candidate.get("vi_tri_demo_lng")) != null) {
-                pickupLat = number(candidate.get("vi_tri_demo_lat"));
-                pickupLng = number(candidate.get("vi_tri_demo_lng"));
-                break;
-            }
-        }
-        boolean routed = false;
-        for (Map<String, Object> candidate : candidates) {
-            String address = candidate.get("vi_tri_demo_dia_chi") == null
-                    ? null : String.valueOf(candidate.get("vi_tri_demo_dia_chi"));
-            if (address == null || address.isBlank()) {
-                candidate.put("km_den_diem_lay", null);
-                candidate.put("giay_den_diem_lay", null);
-                candidate.put("nguon_dinh_tuyen", "DU_PHONG_RANH_TU");
-                continue;
-            }
-            try {
-                if (address.strip().equalsIgnoreCase(pickup.strip())) {
-                    candidate.put("km_den_diem_lay", "0.00");
-                    candidate.put("giay_den_diem_lay", 0);
-                    candidate.put("nguon_dinh_tuyen", "GOONG");
-                } else {
-                    Route route = routes.estimate(address, pickup);
-                    candidate.put("km_den_diem_lay", route.quangDuongKm());
-                    candidate.put("giay_den_diem_lay", route.thoiGianDuKienGiay());
-                    candidate.put("nguon_dinh_tuyen", route.nguon());
-                }
-                routed = true;
-            } catch (RouteFailure | IllegalArgumentException failure) {
-                Double lat = number(candidate.get("vi_tri_demo_lat"));
-                Double lng = number(candidate.get("vi_tri_demo_lng"));
-                if (pickupLat != null && lat != null && lng != null) {
-                    candidate.put("km_den_diem_lay", straightLineKm(lat, lng, pickupLat, pickupLng));
-                    candidate.put("giay_den_diem_lay", null);
-                    candidate.put("nguon_dinh_tuyen", "DEMO_KHOANG_CACH");
-                    routed = true;
-                } else {
-                    candidate.put("km_den_diem_lay", null);
-                    candidate.put("giay_den_diem_lay", null);
-                    candidate.put("nguon_dinh_tuyen", "DU_PHONG_RANH_TU");
-                }
-            }
-        }
-        if (routed) candidates.sort(Comparator.comparing(
-                item -> item.get("km_den_diem_lay") == null
-                        ? new BigDecimal("999999") : new BigDecimal(String.valueOf(item.get("km_den_diem_lay")))));
-        else candidates.sort(Comparator.comparing(item -> String.valueOf(item.get("ranh_tu"))));
+        // Resolve the order pickup independently: no driver needs to share its address.
+        DriverSuggestionRouting.populate(pickup, candidates, goongProvider());
         return candidates;
     }
 
@@ -147,21 +96,6 @@ public final class DesignV2DispatchService {
         return new GoongRouteProvider(key, Duration.ofMillis(
                 Long.parseLong(System.getenv().getOrDefault("GOONG_TIMEOUT_MS", "5000"))),
                 System.getenv().getOrDefault("GOONG_VEHICLE", "car"));
-    }
-
-    private static String straightLineKm(double lat1, double lng1, double lat2, double lng2) {
-        double earthRadiusKm = 6371.0088;
-        double dLat = Math.toRadians(lat2 - lat1), dLng = Math.toRadians(lng2 - lng1);
-        double a = Math.pow(Math.sin(dLat / 2), 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.pow(Math.sin(dLng / 2), 2);
-        return BigDecimal.valueOf(earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))
-                .setScale(2, RoundingMode.HALF_UP).toPlainString();
-    }
-
-    private static Double number(Object value) {
-        if (value == null) return null;
-        try { return Double.valueOf(String.valueOf(value)); }
-        catch (NumberFormatException ignored) { return null; }
     }
 
     private static Map<String, Object> mapLeg(GoongRouteProvider.Geometry leg) {

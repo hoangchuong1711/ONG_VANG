@@ -114,7 +114,19 @@ public final class DesignV2ApiController {
         } catch (IllegalArgumentException failure) {
             WebResponses.error(resp, 400, "VALIDATION_ERROR", failure.getMessage());
         } catch (RouteFailure failure) {
-            WebResponses.error(resp, 503, failure.kind().name(), "Không thể tính tuyến đường lúc này");
+            int status = switch (failure.kind()) {
+                case ADDRESS_NOT_FOUND, OUT_OF_SERVICE_AREA, DISTANCE_INVALID -> 422;
+                default -> 503;
+            };
+            String message = switch (failure.kind()) {
+                case ADDRESS_NOT_FOUND -> "Không tìm thấy địa chỉ. Vui lòng nhập đầy đủ số nhà, đường, phường và thành phố.";
+                case OUT_OF_SERVICE_AREA -> "Tuyến đường vượt phạm vi phục vụ đã cấu hình. Vui lòng kiểm tra lại địa chỉ lấy và giao trên bản đồ.";
+                case DISTANCE_INVALID -> "Khoảng cách tuyến không hợp lệ. Vui lòng kiểm tra lại hai địa chỉ.";
+                case ROUTE_PROVIDER_QUOTA -> "Goong đang giới hạn lượt gọi. Vui lòng kiểm tra quota hoặc thử lại sau.";
+                case ROUTE_PROVIDER_TIMEOUT -> "Goong phản hồi quá chậm. Vui lòng thử lại.";
+                case ROUTE_PROVIDER_ERROR -> "Không kết nối được dịch vụ Goong hoặc dịch vụ trả lỗi. Vui lòng kiểm tra cấu hình và log backend.";
+            };
+            WebResponses.error(resp, status, failure.kind().name(), message);
         } catch (Exception failure) {
             servletContext.log("designV2 request failed", failure);
             WebResponses.error(resp, 500, "INTERNAL_ERROR");
@@ -380,6 +392,10 @@ public final class DesignV2ApiController {
             require(actor, "CHU_DOI_XE");
             WebResponses.json(resp, 200, ADMIN.findOverview(c)); return;
         }
+        if (path.equals("/dispatcher/incidents") && method.equals("GET")) {
+            require(actor, "TONG_DAI");
+            WebResponses.json(resp, 200, Map.of("items", DISPATCH.findActiveIncidents(c))); return;
+        }
         if (path.equals("/admin/incidents") && method.equals("GET")) {
             require(actor, "CHU_DOI_XE");
             int page, size;
@@ -460,7 +476,7 @@ public final class DesignV2ApiController {
             WebResponses.json(resp, 200, ADMIN.resetStaffPassword(c, id, password)); return;
         }
         if (path.matches("/orders/[0-9a-fA-F-]{36}/suggestions") && method.equals("GET")) {
-            require(actor, "TONG_DAI", "CHU_DOI_XE");
+            require(actor, "TONG_DAI");
             String order = path.split("/")[2];
             WebResponses.json(resp, 200, Map.of("items", DISPATCH.suggestDrivers(c, order))); return;
         }

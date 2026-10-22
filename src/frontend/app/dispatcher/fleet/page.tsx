@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { PhoneContact } from "@/components/ui/PhoneContact";
 import { DispatcherNavbar } from "@/components/layout/DispatcherNavbar";
 import { api, type Driver } from "@/lib/live-orders";
 import { driverForView, type DispatchDriver } from "@/lib/dispatch-view";
@@ -12,7 +13,6 @@ type FilterStatus = "ALL" | DriverStatus;
 export default function DispatcherFleetPage() {
   const [drivers, setDrivers] = useState<DispatchDriver[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("ALL");
-  const [searchDistrict, setSearchDistrict] = useState("ALL");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<DispatchDriver | null>(null);
   const [address, setAddress] = useState("");
@@ -31,8 +31,7 @@ export default function DispatcherFleetPage() {
   }, [refresh]);
 
   const filteredDrivers = drivers.filter(driver =>
-    (filter === "ALL" || driver.status === filter) &&
-    (searchDistrict === "ALL" || driver.currentDistrict.includes(searchDistrict)));
+    filter === "ALL" || driver.status === filter);
   const onlineIdleCount = drivers.filter(driver => driver.status === "ONLINE_IDLE").length;
   const onlineBusyCount = drivers.filter(driver => driver.status === "ONLINE_BUSY").length;
   const offlineCount = drivers.filter(driver => driver.status === "OFFLINE").length;
@@ -137,20 +136,6 @@ export default function DispatcherFleetPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-stone-500 font-bold">Khu vực:</span>
-            <select
-              value={searchDistrict}
-              onChange={(e) => setSearchDistrict(e.target.value)}
-              className="h-10 px-3.5 rounded-xl border border-stone-300 bg-white text-stone-800 text-xs font-semibold outline-none focus:border-amber-500"
-            >
-              <option value="ALL">Tất cả quận</option>
-              <option value="Quận 1">Quận 1</option>
-              <option value="Quận 3">Quận 3</option>
-              <option value="Quận 5">Quận 5</option>
-              <option value="Quận 7">Quận 7</option>
-            </select>
-          </div>
         </div>
 
         {/* BẢNG DANH SÁCH TÀI XẾ */}
@@ -206,12 +191,8 @@ export default function DispatcherFleetPage() {
                         <div className="text-xs text-stone-500 font-medium">Chưa có thống kê</div>
                       </td>
                       <td className="p-4 pr-6 text-right space-x-2">
-                        <a
-                          href={`tel:${d.phone}`}
-                          className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold inline-block transition-colors"
-                        >
-                          Gọi
-                        </a>
+                        <PhoneContact phone={d.phone} label="Gọi tài xế"
+                        className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold inline-block transition-colors" />
                         <button type="button"
                           onClick={() => { setEditing(d); setAddress(d.currentDistrict === "Chưa cấu hình vị trí demo" ? "" : d.currentDistrict); }}
                           className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-200">

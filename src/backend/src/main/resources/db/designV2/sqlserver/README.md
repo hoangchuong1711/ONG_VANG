@@ -14,6 +14,7 @@
 | schema/V8__roles_permissions.sql | Role/user và quyền |
 | demo/V9__demo_data.sql | 8 tài khoản, cấu hình và 9 đơn chờ |
 | schema/V10__default_pricing.sql | Giá mặc định khi không nạp demo |
+| demo/V11__add_demo_dispatcher.sql | Thêm tổng đài `demo_dispatcher_2`, mật khẩu mẫu `12345678` |
 
 Backend tự chạy Flyway. Chọn `DESIGN_V2_DEMO=true` ngay lần cài đầu để nạp demo, hoặc `false` nếu chỉ cần schema và giá mặc định. Giữ nguyên lựa chọn này cho DB đã cài; không bật demo muộn trên DB đã chạy V10. Seed demo chỉ chấp nhận tên DB demo/test có trong script.
 
@@ -37,3 +38,5 @@ Không xóa history, không sửa checksum, không xóa DB đang sử dụng. DB
 Các bản trong `docs/database/design-v2-complete/` là bản xuất để đọc/báo cáo. Chạy `node scripts/build-design-v2-baseline.mjs` để đồng bộ chúng từ bộ chính; `--check` kiểm tra đồng bộ.
 
 Kiểm thử đầy đủ ở thư mục gốc: `powershell -NoProfile -File scripts/verify-design-v2-baseline.ps1 -WithFlyway`. Cần Docker, image SQL Server/Maven và Maven cache đã tải thư viện. Script dùng container riêng, không mở cổng và tự xóa sau khi chạy.
+
+V11 chỉ chạy trong chế độ demo của bộ gộp `designV2`; DB đã chạy V9/V10 với demo bật sẽ nhận thêm tài khoản khi khởi động backend, không cần tạo lại. Bộ Legacy không nhận migration V11 này.

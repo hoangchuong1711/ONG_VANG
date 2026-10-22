@@ -91,11 +91,19 @@ public final class GoongRouteProvider implements RouteProvider {
     public record Geometry(String polyline, long meters, long seconds) {}
 
     private Location geocode(String address) {
-        JsonNode response = get("geocode?address=" + encode(address) + "&api_key=" + encode(apiKey));
-        JsonNode results = response.path("results");
-        if (!results.isArray() || results.isEmpty())
-            throw new RouteFailure(RouteFailure.Kind.ADDRESS_NOT_FOUND);
-        JsonNode first = results.get(0);
+        String query = disambiguateDemoAddress(address)
+                .replaceAll("(?iu)\\s+[0-9]{5,6}(?=\\s*(?:,\\s*Việt Nam)?\\s*$)", "")
+                .replaceAll("(?iu),?\\s*Việt Nam\\s*$", "").strip();
+        JsonNode first = findGeocode(query, query);
+        // New ward names and Google postal suffixes are not always indexed by Goong.
+        // Retry the same house/street and city, still validating both before accepting it.
+        String normalized = normalizeAddress(query);
+        if (first == null && query.contains(",")
+                && (normalized.contains("ho chi minh") || normalized.contains("tp.hcm"))) {
+            String simplified = query.split(",", 2)[0] + ", Thành phố Hồ Chí Minh";
+            if (!simplified.equalsIgnoreCase(query)) first = findGeocode(simplified, query);
+        }
+        if (first == null) throw new RouteFailure(RouteFailure.Kind.ADDRESS_NOT_FOUND);
         JsonNode position = first.path("geometry").path("location");
         String formatted = first.path("formatted_address").asText();
         if (formatted.isBlank() || formatted.length() > 255
@@ -106,6 +114,58 @@ public final class GoongRouteProvider implements RouteProvider {
         if (!Double.isFinite(lat) || !Double.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)
             throw new RouteFailure(RouteFailure.Kind.ROUTE_PROVIDER_ERROR);
         return new Location(formatted, lat + "," + lng);
+    }
+
+    private JsonNode findGeocode(String query, String requested) {
+        JsonNode response = get("geocode?address=" + encode(query) + "&api_key=" + encode(apiKey));
+        JsonNode results = response.path("results");
+        if (!results.isArray()) throw new RouteFailure(RouteFailure.Kind.ROUTE_PROVIDER_ERROR);
+        for (JsonNode result : results) {
+            if (matchesAddress(requested, result.path("formatted_address").asText())) return result;
+        }
+        return null;
+    }
+
+    // Only expand the two historical demo literals; never rewrite an arbitrary user's address.
+    private static String disambiguateDemoAddress(String address) {
+        String normalized = normalizeAddress(address).replaceAll("[ ,.]", "");
+        return switch (normalized) {
+            case "227nguyenvancutphcm", "227nguyenvancuthanhphohochiminh" ->
+                    "227 Nguyễn Văn Cừ, Quận 5, Thành phố Hồ Chí Minh";
+            case "268lythuongkiettphcm", "268lythuongkietthanhphohochiminh" ->
+                    "268 Lý Thường Kiệt, Quận 10, Thành phố Hồ Chí Minh";
+            default -> address;
+        };
+    }
+
+    private static String normalizeAddress(String address) {
+        return java.text.Normalizer.normalize(address.toLowerCase(java.util.Locale.ROOT),
+                java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "").replace('đ', 'd');
+    }
+
+    private static boolean matchesAddress(String requested, String resolved) {
+        String input = normalizeAddress(requested);
+        String normalizedResolved = normalizeAddress(resolved);
+        String output = " " + normalizedResolved.replaceAll("[^a-z0-9]+", " ") + " ";
+        if ((input.contains("tp.hcm") || input.contains("ho chi minh"))
+                && !(output.contains("ho chi minh") || output.contains("hcm"))) return false;
+        String street = input.split(",", 2)[0].strip();
+        // A numbered street address must not silently resolve to a different street/house.
+        var house = java.util.regex.Pattern.compile("^([0-9]+(?:\\s*/\\s*[0-9]+)*\\s*[a-z]?)\\s+(.+)$").matcher(street);
+        if (house.matches()) {
+            String houseNumber = house.group(1).replaceAll("\\s+", "");
+            // 162/4B and 162/4 B are the same house, but 162/4 and 162/4B are not.
+            String housePattern = java.util.regex.Pattern.quote(houseNumber)
+                    .replace("\\Q", "").replace("\\E", "").replace("/", "\\s*/\\s*");
+            housePattern = housePattern.replaceAll("([a-z])$", "\\\\s*$1");
+            if (!java.util.regex.Pattern.compile("(?<![a-z0-9/])" + housePattern + "(?![a-z0-9/])")
+                    .matcher(normalizedResolved).find()) return false;
+            for (String token : house.group(2).replaceAll("[^a-z0-9]+", " ").split(" +")) {
+                if (!token.isEmpty() && !token.equals("duong") && !output.contains(" " + token + " "))
+                    return false;
+            }
+        }
+        return !resolved.isBlank();
     }
 
     private JsonNode get(String pathAndQuery) {

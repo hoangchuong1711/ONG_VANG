@@ -2,7 +2,7 @@
 
 Bộ migration ứng dụng đã gom theo thành phần tại
 [db/designV2/sqlserver](src/backend/src/main/resources/db/designV2/sqlserver/README.md).
-DB mới chạy 10 file gộp; DB đã dùng V1–V26 được tự nhận diện và tiếp tục dùng lịch sử
+DB demo mới chạy 11 file migration; DB đã dùng V1–V26 được tự nhận diện và tiếp tục dùng lịch sử
 nguyên trạng trong `db/designV2Legacy/sqlserver/`, không xóa dữ liệu hay sửa checksum.
 Các file trong [design-v2-complete](docs/database/design-v2-complete/README.md) là bản xuất để báo cáo.
 
@@ -14,27 +14,35 @@ Các file trong [design-v2-complete](docs/database/design-v2-complete/README.md)
 
 1. Tạo `.env` từ [.env.example](.env.example) nếu chưa có. Đặt `MSSQL_SA_PASSWORD` và
    `MSSQL_DATABASE=mini_ong_vang_design_v2_demo`.
-2. Để `DESIGN_V2_DEMO=true` ngay lần cài đầu nếu muốn Flyway nạp 8 tài khoản demo, hồ sơ khách/tài xế, cấu hình và 9 đơn `CHO_GAN` bằng file V9 gộp. Với database
+2. Để `DESIGN_V2_DEMO=true` ngay lần cài đầu nếu muốn Flyway nạp 9 tài khoản demo (V9 tạo 8, V11 thêm một tổng đài), hồ sơ khách/tài xế, cấu hình và 9 đơn `CHO_GAN` bằng file V9 gộp. Với database
    không phải demo/test, đặt `DESIGN_V2_DEMO=false`; Flyway chỉ chạy phần schema.
 3. Chạy `docker compose up --build` trong thư mục gốc.
 4. Mở [http://localhost:3001](http://localhost:3001) và đăng nhập. Ứng dụng đưa mỗi vai trò
    về giao diện riêng: `/customer`, `/driver`, `/dispatcher` hoặc `/admin`.
 
 Backend health: [http://localhost:8081/api/health](http://localhost:8081/api/health).
+
+Bàn điều phối đọc sự cố thật qua `GET /api/v2/dispatcher/incidents` (chỉ `TONG_DAI`) mỗi 15 giây. Mỗi đơn đang `DANG_GIAO` hiện báo cáo mới nhất, kèm liên kết chi tiết đơn và gọi tài xế. Toàn bộ báo cáo vẫn nằm trong nhật ký; khi đơn kết thúc, cảnh báo rời danh sách đơn đang giao. Chưa có thao tác đánh dấu xử lý sự cố riêng, thông báo đẩy hay tự hủy/đổi tài xế sau lấy hàng.
+
+Phạm vi báo sự cố hiện tại là ghi nhận để điều phối viên liên hệ hỗ trợ tiếp tục giao. Biểu mẫu không có lựa chọn người nhận từ chối nhận hàng; xử lý giao thất bại do từ chối nhận và hoàn hàng chưa được triển khai. Chỉ xác nhận hoàn tất khi thực tế đã giao hàng và thu đủ cước. Nhật ký sự cố cũ vẫn được giữ để tra cứu.
+
+Kiểm tra: tài xế đang giao gửi báo sự cố; mở bàn điều phối bằng tài khoản tổng đài và chờ tối đa một chu kỳ cập nhật (15 giây cộng thời gian tải). Kiểm tra số cảnh báo, nội dung, liên kết chi tiết và số điện thoại. Gửi báo cáo thứ hai cho cùng đơn: bàn điều phối vẫn đếm một đơn, hiển thị báo cáo mới nhất; trang tài xế giữ cả hai nhật ký. Hoàn tất đơn đúng điều kiện: cảnh báo không còn trong danh sách đang giao, lịch sử vẫn được giữ.
 Trong SSMS, dùng lại kết nối SQL Server `127.0.0.1,1433`, rồi chọn database
 `mini_ong_vang_design_v2_demo`.
 `docker compose down` giữ dữ liệu SQL Server trong volume; không thêm `--volumes` nếu muốn giữ DB.
 
 ### Tài khoản demo SQL
 
-Mật khẩu của 8 tài khoản demo SQL: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
-tổng đài: `demo_dispatcher`; chủ đội xe: `demo_admin`; tài xế: `0800000001`,
+Mật khẩu của 9 tài khoản demo SQL: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
+tổng đài: `demo_dispatcher`, `demo_dispatcher_2`; chủ đội xe: `demo_admin`; tài xế: `0800000001`,
 `0800000002`, `0800000003`. DB mới dùng V9 gộp, tạo 9 đơn chờ chưa có phân công hay giao dịch nộp tiền; quãng đường/thời gian là dữ liệu mô phỏng. DB cũ tiếp tục chuỗi V1–V26 nguyên trạng trong `designV2Legacy`, gồm các lần sửa seed và dọn fixture. DB đang dùng không cần tạo lại; giữ nguyên lựa chọn `DESIGN_V2_DEMO` rồi để Flyway chạy tiếp.
 
 Trang `/admin/customers` cho chủ đội xe gán hạng khách hàng. Hạng ưu đãi có hiệu lực ngay, không tự hết hạn và cần một chính sách đang hiệu lực; chuyển về `THUONG` sẽ xóa thời hạn ưu đãi. Ngày “Thành viên từ” là ngày tạo tài khoản.
 
 `ROUTE_PROVIDER=fake` dùng tuyến cố định cho demo. Muốn dùng Goong, đặt `ROUTE_PROVIDER=goong`
 và `GOONG_API_KEY`; báo giá/tạo đơn cần quota Goong còn hiệu lực.
+
+Gợi ý tài xế dùng Goong (`GOONG_API_KEY`, `GOONG_TIMEOUT_MS`, `GOONG_VEHICLE`) để tra tọa độ điểm lấy của đơn, dùng tọa độ tài xế đã lưu khi cập nhật vị trí (chỉ tra địa chỉ khi chưa có tọa độ), rồi tính tuyến tài xế → điểm lấy. Không cần địa chỉ đơn trùng địa chỉ tài xế; áp dụng cả cho đơn mẫu V9. Thiếu key hoặc không tra được điểm lấy sẽ báo lỗi dịch vụ; không gắn nhãn Goong cho khoảng cách giả. Nếu tính tuyến của một tài xế lỗi nhưng đã có tọa độ, kết quả dự phòng là khoảng cách đường thẳng, xếp sau các tuyến Goong. Km/cước mô phỏng đã chốt của đơn mẫu không bị tính lại khi mở gợi ý.
 
 VNPay Sandbox chỉ dành cho giao dịch tài xế nộp tiền công ty. Cấu hình `VNPAY_TMN_CODE`,
 `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL` trong `.env`; IPN công khai cần trỏ đến
@@ -64,3 +72,5 @@ công nợ trên giao diện từng vai trò.
 `APP_DB_PASSWORD` dành cho runtime nếu đã cấp đủ quyền trên DB. Cần hoàn thiện quyền runtime
 theo mục 9 của thiết kế trước khi dùng với dữ liệu thật. Database demo/test nên được tách riêng với dữ liệu vận hành.
 Chế độ không demo từ chối khởi động nếu `APP_DB_USER=sa`.
+
+Định tuyến kiểm tra số nhà/tên đường và thành phố trên kết quả geocode thay vì mặc định lấy kết quả đầu tiên. Hai chuỗi địa chỉ demo cũ `227 Nguyễn Văn Cừ, TP.HCM` và `268 Lý Thường Kiệt, TP.HCM` được bổ sung Quận 5/Quận 10 khi tra cứu; không sửa đơn đã chốt. Response gợi ý có `diem_lay_dinh_tuyen` và `vi_tri_dinh_tuyen` (địa chỉ, lat, lng thực sự dùng). Sửa vị trí tài xế qua giao diện/API để địa chỉ và tọa độ được cập nhật cùng nhau, không chỉ UPDATE cột địa chỉ bằng SQL.
