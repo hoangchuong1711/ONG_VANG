@@ -5,16 +5,14 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { AdminDialog, AdminHeading } from "@/components/admin/AdminUI";
 import { AdminTableControls, useAdminTable } from "@/components/admin/AdminTableControls";
-import { amount, dateTime, orderStatus, type DriverRow, type OrderRow, useAdminResource } from "@/lib/admin-live";
+import { amount, dateTime, orderStatus, type OrderRow, useAdminResource } from "@/lib/admin-live";
 import { request } from "@/lib/api-client";
 
 export default function AdminOrderDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: order, error, loading, refresh } = useAdminResource<OrderRow>(`/orders/${id}`);
-  const { data: drivers } = useAdminResource<{ items: DriverRow[] }>("/drivers");
-  const [action, setAction] = useState<"assign" | "cancel" | null>(null);
-  const [driverId, setDriverId] = useState("");
+  const [action, setAction] = useState<"cancel" | null>(null);
   const [reason, setReason] = useState("");
   const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -26,9 +24,8 @@ export default function AdminOrderDetailPage() {
     if (!action) return;
     setSaving(true); setActionError("");
     try {
-      if (action === "assign") await request(`/orders/${id}/assign`, "POST", { maTx: driverId });
-      else await request(`/orders/${id}/cancel`, "POST", { lyDo: reason.trim() });
-      setAction(null); setDriverId(""); setReason(""); await refresh();
+      await request(`/orders/${id}/cancel`, "POST", { lyDo: reason.trim() });
+      setAction(null); setReason(""); await refresh();
     } catch (cause) { setActionError(cause instanceof Error ? cause.message : "Không lưu được thay đổi"); }
     finally { setSaving(false); }
   }
@@ -50,7 +47,6 @@ export default function AdminOrderDetailPage() {
         {order.ghi_chu && <p><strong>Ghi chú giao hàng:</strong> {order.ghi_chu}</p>}
         {order.ly_do_huy && <p><strong>Lý do hủy:</strong> {order.ly_do_huy}</p>}
         <div className="admin-inline-actions">
-          {order.trang_thai === "CHO_GAN" && <button className="admin-button primary" onClick={() => setAction("assign")}>Phân công tài xế</button>}
           {!["HOAN_TAT", "DA_HUY"].includes(order.trang_thai) && <button className="admin-button danger" onClick={() => setAction("cancel")}>Hủy đơn</button>}
         </div></div>
       </section>
@@ -73,13 +69,11 @@ export default function AdminOrderDetailPage() {
         </tbody></table></div> : <p className="admin-muted">Chưa có sự kiện.</p>}
       </section>
     </>}
-    {action && <AdminDialog title={action === "assign" ? "Phân công tài xế" : "Hủy đơn"}
+    {action && <AdminDialog title="Hủy đơn"
       description={`Đơn ${id}. Kết quả sẽ được lưu trong DB và nhật ký đơn.`}
       onClose={() => setAction(null)} onSubmit={() => void submit()} submitLabel={saving ? "Đang lưu..." : "Xác nhận"}
-      submitDisabled={saving || (action === "assign" ? !driverId : reason.trim().length < 8)} error={actionError} danger={action === "cancel"}>
-      {action === "assign" ? <div className="admin-field"><label htmlFor="assign-driver">Tài xế</label><select id="assign-driver" value={driverId} onChange={(event) => setDriverId(event.target.value)}><option value="">Chọn tài xế</option>
-        {drivers?.items.filter((driver) => driver.trang_thai === "ONLINE" && !driver.dang_ban_chuyen && driver.bien_so).map((driver) => <option key={driver.ma_tx} value={driver.ma_tx}>{driver.ho_ten} · {driver.bien_so}</option>)}
-      </select></div> : <div className="admin-field"><label htmlFor="cancel-reason">Lý do hủy</label><textarea id="cancel-reason" value={reason} onChange={(event) => setReason(event.target.value)} /></div>}
+      submitDisabled={saving || reason.trim().length < 8} error={actionError} danger>
+      <div className="admin-field"><label htmlFor="cancel-reason">Lý do hủy</label><textarea id="cancel-reason" value={reason} onChange={(event) => setReason(event.target.value)} /></div>
     </AdminDialog>}
   </>;
 }

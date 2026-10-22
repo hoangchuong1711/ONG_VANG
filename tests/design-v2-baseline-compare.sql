@@ -28,6 +28,12 @@ SELECT DB_NAME(),''membership'',CONCAT(USER_NAME(role_principal_id),''.'',USER_N
 ';
 EXEC mini_ong_vang_design_v2_demo.sys.sp_executesql @catalog;
 EXEC mini_ong_vang_design_v2_test.sys.sp_executesql @catalog;
+-- Intentional new policy: only dispatchers may assign orders in the fresh schema.
+IF EXISTS (SELECT 1 FROM #catalog WHERE db='mini_ong_vang_design_v2_test'
+ AND kind='permission' AND name='r_chu_doi_xe.OBJECT_OR_COLUMN.usp_phan_cong.0.EXECUTE')
+ THROW 52959,'Owner still has SQL assignment permission',1;
+DELETE FROM #catalog WHERE db='mini_ong_vang_design_v2_demo' AND kind='permission'
+ AND name='r_chu_doi_xe.OBJECT_OR_COLUMN.usp_phan_cong.0.EXECUTE';
 IF EXISTS (SELECT kind,name,value FROM #catalog WHERE db='mini_ong_vang_design_v2_demo'
  EXCEPT SELECT kind,name,value FROM #catalog WHERE db='mini_ong_vang_design_v2_test')
  OR EXISTS (SELECT kind,name,value FROM #catalog WHERE db='mini_ong_vang_design_v2_test'
@@ -39,7 +45,7 @@ BEGIN
  EXCEPT SELECT kind,name,value FROM #catalog WHERE db='mini_ong_vang_design_v2_demo';
  THROW 52950,'Consolidated catalog differs from original migrations',1;
 END;
-PRINT 'PASS: tables, columns, defaults, checks, foreign keys, indexes, object names and SQL permissions match';
+PRINT 'PASS: catalog matches legacy except intentional removal of owner assignment permission';
 IF (SELECT COUNT(*) FROM dbo.tai_khoan)<>8 OR (SELECT COUNT(*) FROM dbo.don_hang)<>9
  OR EXISTS(SELECT 1 FROM dbo.don_hang WHERE trang_thai<>'CHO_GAN')
  OR EXISTS(SELECT 1 FROM dbo.giao_dich_nop_tien)
@@ -64,6 +70,19 @@ DECLARE @actor uniqueidentifier=(SELECT ma_tk FROM dbo.tai_khoan WHERE username=
  @driver uniqueidentifier=(SELECT ma_tx FROM dbo.tai_xe WHERE ma_tk=(SELECT ma_tk FROM dbo.tai_khoan WHERE username='0800000001')),
  @order uniqueidentifier=(SELECT TOP(1) ma_don FROM dbo.don_hang ORDER BY ma_don),
  @second uniqueidentifier=(SELECT TOP(1) ma_don FROM dbo.don_hang ORDER BY ma_don DESC);
+DECLARE @owner uniqueidentifier=(SELECT ma_tk FROM dbo.tai_khoan WHERE username='demo_admin');
+EXEC sys.sp_set_session_context @key=N'ma_tk',@value=@owner;
+BEGIN TRY
+ EXEC dbo.usp_phan_cong @ma_don=@order,@ma_tx=@driver;
+ THROW 52960,'Owner was allowed to assign an order',1;
+END TRY
+BEGIN CATCH
+ IF ERROR_NUMBER()<>51201 THROW;
+END CATCH;
+IF (SELECT trang_thai FROM dbo.don_hang WHERE ma_don=@order)<>'CHO_GAN'
+ OR EXISTS(SELECT 1 FROM dbo.phan_cong_don_hang WHERE ma_don=@order)
+ THROW 52961,'Denied owner request changed assignment data',1;
+PRINT 'PASS: owner assignment denied with no data changes';
 EXEC sys.sp_set_session_context @key=N'ma_tk',@value=@actor;
 EXEC dbo.usp_phan_cong @ma_don=@order,@ma_tx=@driver;
 BEGIN TRY

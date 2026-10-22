@@ -40,7 +40,6 @@ GRANT EXECUTE ON dbo.usp_phan_cong TO r_tong_dai;
 GRANT EXECUTE ON dbo.usp_huy_don TO r_tong_dai;
 GRANT EXECUTE ON dbo.usp_doc_don TO r_tong_dai;
 GRANT EXECUTE ON dbo.usp_tao_don TO r_chu_doi_xe;
-GRANT EXECUTE ON dbo.usp_phan_cong TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_huy_don TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_quan_ly_phuong_tien TO r_chu_doi_xe;
 GRANT EXECUTE ON dbo.usp_doc_don TO r_chu_doi_xe;

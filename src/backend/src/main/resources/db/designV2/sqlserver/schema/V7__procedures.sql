@@ -113,7 +113,7 @@ BEGIN
   SET @role=NULL;
   SELECT @role=vai_tro FROM dbo.tai_khoan WHERE ma_tk=@actor AND trang_thai='HOAT_DONG';
   IF @role IS NULL THROW 51101,N'Phiên không hợp lệ hoặc tài khoản bị khóa',1;
-  IF @role NOT IN ('TONG_DAI','CHU_DOI_XE') THROW 51201,N'Không có quyền điều phối',1;
+  IF @role <> 'TONG_DAI' THROW 51201,N'Chỉ tổng đài có quyền phân công',1;
   EXEC @khoa_rc=sys.sp_getapplock @Resource=N'dieu-phoi',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
   IF @khoa_rc<0 THROW 51100,N'Không lấy được khóa nghiệp vụ; thử lại toàn bộ thao tác',1;
   IF NOT EXISTS(SELECT 1 FROM dbo.don_hang WITH(UPDLOCK,HOLDLOCK) WHERE ma_don=@ma_don AND trang_thai='CHO_GAN')

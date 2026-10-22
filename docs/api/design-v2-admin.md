@@ -8,8 +8,9 @@ Phạm vi này mô tả các endpoint mà giao diện `/admin` hiện dùng. T�
 | --- | --- | --- | --- |
 | Tổng quan | `/admin/overview` | GET | `CHU_DOI_XE` |
 | Đơn hàng | `/admin/orders?page=0&size=20&status=CHO_GAN` | GET | `CHU_DOI_XE` |
-| Chi tiết đơn | `/orders/{maDon}`, `/drivers` | GET | Chủ đội xe; tổng đài được đọc đơn theo quyền backend |
-| Phân công / hủy đơn | `/orders/{maDon}/assign`, `/orders/{maDon}/cancel` | POST | `CHU_DOI_XE` hoặc `TONG_DAI` theo endpoint |
+| Chi tiết đơn | `/orders/{maDon}` | GET | Chủ đội xe; tổng đài được đọc đơn theo quyền backend |
+| Phân công (giao diện tổng đài) | `/orders/{maDon}/assign` | POST | Chỉ `TONG_DAI`; chủ đội xe nhận 403 |
+| Hủy đơn | `/orders/{maDon}/cancel` | POST | `CHU_DOI_XE` hoặc `TONG_DAI`; khách được hủy theo điều kiện nghiệp vụ |
 | Khách hàng | `/admin/customers`, `/admin/customers/{maKh}?page=0&size=20` | GET | `CHU_DOI_XE` |
 | Khóa khách hàng | `/admin/customers/{maKh}/status` | POST | `CHU_DOI_XE` |
 | Tài xế | `/admin/drivers`; `/admin/drivers/{maTx}`; `/admin/drivers/{maTx}/status` | GET, POST, PATCH | `CHU_DOI_XE` |

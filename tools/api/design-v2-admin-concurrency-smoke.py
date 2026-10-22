@@ -58,11 +58,13 @@ def main():
     parser.add_argument("--base", default="http://localhost:8082")
     parser.add_argument("--expected-database", default="mini_ong_vang_design_v2_test_admin")
     parser.add_argument("--driver", required=True, help="Fresh driver created by the profile smoke")
+    parser.add_argument("--dispatcher", default="demo_dispatcher")
     args = parser.parse_args()
     owner_password = os.environ.get("V2_SMOKE_PASSWORD")
     driver_password = os.environ.get("V2_SMOKE_DRIVER_PASSWORD")
-    if not owner_password or not driver_password:
-        raise SystemExit("Set V2_SMOKE_PASSWORD and V2_SMOKE_DRIVER_PASSWORD for this process")
+    dispatcher_password = os.environ.get("V2_SMOKE_DISPATCHER_PASSWORD")
+    if not owner_password or not driver_password or not dispatcher_password:
+        raise SystemExit("Set V2_SMOKE_PASSWORD, V2_SMOKE_DRIVER_PASSWORD and V2_SMOKE_DISPATCHER_PASSWORD")
 
     base = args.base.rstrip("/")
     health = expect(client(base), "/api/health")
@@ -100,11 +102,13 @@ def main():
 
         driver_rows = expect(owner, "/api/v2/admin/drivers")["items"]
         selected = next(item for item in driver_rows if item["username"] == args.driver)
+        expect(owner, f"/api/v2/orders/{order_id}/assign", "POST",
+               {"maTx": selected["ma_tx"]}, owner_csrf, status=403)
         barrier = threading.Barrier(2)
 
         def assign_once():
-            call, session, csrf = login(base, "test_admin", owner_password)
-            assert session["vaiTro"] == "CHU_DOI_XE"
+            call, session, csrf = login(base, args.dispatcher, dispatcher_password)
+            assert session["vaiTro"] == "TONG_DAI"
             barrier.wait(timeout=10)
             return call(f"/api/v2/orders/{order_id}/assign", "POST",
                         {"maTx": selected["ma_tx"]}, csrf)[0]
@@ -132,7 +136,7 @@ def main():
         barrier = threading.Barrier(2)
 
         def assign_while_cancelling():
-            call, _, csrf = login(base, "test_admin", owner_password)
+            call, _, csrf = login(base, args.dispatcher, dispatcher_password)
             barrier.wait(timeout=10)
             return call(f"/api/v2/orders/{order_id}/assign", "POST",
                         {"maTx": selected["ma_tx"]}, csrf)

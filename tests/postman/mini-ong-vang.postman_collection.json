@@ -2996,7 +2996,7 @@
                   ],
                   "query": []
                 },
-                "description": "Ph?n c?ng t?i x?\n\nPh?n c?ng ??n ?ang ch?. G?i maTx c?a t?i x?; xung ??t tr? 409.\n\nStatus: implemented; UC: UC-12; roles: TONG_DAI, CHU_DOI_XE",
+                "description": "Phân công tài xế\n\nChỉ Tổng đài được phân công đơn đang chờ. Chủ đội xe và các vai trò khác nhận HTTP 403. Gửi maTx của tài xế; xung đột trả 409.\n\nStatus: implemented; UC: UC-12; roles: TONG_DAI",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"maTx\": \"{{driverId}}\"\n}",
