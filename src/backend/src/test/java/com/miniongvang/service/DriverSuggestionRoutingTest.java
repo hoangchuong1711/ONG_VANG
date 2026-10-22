@@ -15,11 +15,13 @@ class DriverSuggestionRoutingTest {
     @Test void routesUnrelatedAddressesAndSeparatesFallbackFromRoadDistance() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         AtomicInteger pickupLookups = new AtomicInteger();
+        AtomicInteger nearLookups = new AtomicInteger();
         AtomicInteger failure = new AtomicInteger();
         server.createContext("/geocode", e -> {
             String query = URLDecoder.decode(e.getRequestURI().getRawQuery(), StandardCharsets.UTF_8);
             int lat = query.contains("address=pickup") ? 10 : query.contains("address=near") ? 11 : 12;
             if (lat == 10) pickupLookups.incrementAndGet();
+            if (lat == 11) nearLookups.incrementAndGet();
             byte[] body = ("{\"results\":[{\"formatted_address\":\"resolved\",\"geometry\":{\"location\":{\"lat\":"
                     + lat + ",\"lng\":106}}}]}").getBytes(StandardCharsets.UTF_8);
             e.sendResponseHeaders(200, body.length); e.getResponseBody().write(body); e.close();
@@ -39,9 +41,12 @@ class DriverSuggestionRoutingTest {
                     "test-key", Duration.ofSeconds(2));
             var candidates = new ArrayList<Map<String,Object>>();
             candidates.add(new HashMap<>(Map.of("vi_tri_demo_dia_chi", "far", "ranh_tu", "2026-01-01")));
-            candidates.add(new HashMap<>(Map.of("vi_tri_demo_dia_chi", "near", "ranh_tu", "2026-01-02")));
+            candidates.add(new HashMap<>(Map.of("vi_tri_demo_dia_chi", "near", "ranh_tu", "2026-01-02",
+                    "vi_tri_demo_lat", "11.0", "vi_tri_demo_lng", "106.0")));
             DriverSuggestionRouting.populate("pickup", candidates, provider);
             assertEquals(1, pickupLookups.get());
+            assertEquals(0, nearLookups.get(), "Saved driver coordinates must not be geocoded again");
+            assertNotNull(candidates.get(0).get("diem_lay_dinh_tuyen"));
             assertEquals("near", candidates.get(0).get("vi_tri_demo_dia_chi"));
             assertEquals("1.50", candidates.get(0).get("km_den_diem_lay"));
             assertEquals("GOONG", candidates.get(0).get("nguon_dinh_tuyen"));

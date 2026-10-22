@@ -26,12 +26,20 @@ public final class DriverSuggestionRouting {
             if (address == null || address.toString().isBlank()) continue;
             GoongRouteProvider.GeocodedAddress origin;
             try {
-                // Resolve the current address, including positions edited directly in demo SQL.
-                origin = goong.geocodeAddress(address.toString());
+                // Positions saved through configurePosition already have confirmed Goong coordinates.
+                BigDecimal lat = coordinate(candidate.get("vi_tri_demo_lat"), 90);
+                BigDecimal lng = coordinate(candidate.get("vi_tri_demo_lng"), 180);
+                origin = lat != null && lng != null
+                        ? new GoongRouteProvider.GeocodedAddress(address.toString(), lat, lng)
+                        : goong.geocodeAddress(address.toString());
             } catch (RouteFailure failure) {
                 candidate.put("loi_dinh_tuyen", failure.kind().name());
                 continue;
             }
+            candidate.put("diem_lay_dinh_tuyen", Map.of("dia_chi", pickup.address(),
+                    "lat", pickup.latitude(), "lng", pickup.longitude()));
+            candidate.put("vi_tri_dinh_tuyen", Map.of("dia_chi", origin.address(),
+                    "lat", origin.latitude(), "lng", origin.longitude()));
             try {
                 if (origin.latitude().compareTo(pickup.latitude()) == 0
                         && origin.longitude().compareTo(pickup.longitude()) == 0) {
@@ -58,6 +66,14 @@ public final class DriverSuggestionRouting {
                 .thenComparing(item -> item.get("km_den_diem_lay") == null ? BigDecimal.ZERO
                         : new BigDecimal(item.get("km_den_diem_lay").toString()))
                 .thenComparing(item -> String.valueOf(item.get("ranh_tu"))));
+    }
+
+    private static BigDecimal coordinate(Object value, int limit) {
+        if (value == null) return null;
+        try {
+            BigDecimal number = new BigDecimal(value.toString());
+            return number.abs().compareTo(BigDecimal.valueOf(limit)) <= 0 ? number : null;
+        } catch (NumberFormatException failure) { return null; }
     }
 
     private static String straightLineKm(GoongRouteProvider.GeocodedAddress a,

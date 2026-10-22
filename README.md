@@ -36,7 +36,7 @@ Trang `/admin/customers` cho chủ đội xe gán hạng khách hàng. Hạng ư
 `ROUTE_PROVIDER=fake` dùng tuyến cố định cho demo. Muốn dùng Goong, đặt `ROUTE_PROVIDER=goong`
 và `GOONG_API_KEY`; báo giá/tạo đơn cần quota Goong còn hiệu lực.
 
-Gợi ý tài xế dùng Goong (`GOONG_API_KEY`, `GOONG_TIMEOUT_MS`, `GOONG_VEHICLE`) để tra tọa độ điểm lấy của đơn và địa chỉ hiện tại của từng tài xế, rồi tính tuyến tài xế → điểm lấy. Không cần địa chỉ đơn trùng địa chỉ tài xế; áp dụng cả cho đơn mẫu V9. Thiếu key hoặc không tra được điểm lấy sẽ báo lỗi dịch vụ; không gắn nhãn Goong cho khoảng cách giả. Nếu tính tuyến của một tài xế lỗi nhưng đã có tọa độ, kết quả dự phòng là khoảng cách đường thẳng, xếp sau các tuyến Goong. Km/cước mô phỏng đã chốt của đơn mẫu không bị tính lại khi mở gợi ý.
+Gợi ý tài xế dùng Goong (`GOONG_API_KEY`, `GOONG_TIMEOUT_MS`, `GOONG_VEHICLE`) để tra tọa độ điểm lấy của đơn, dùng tọa độ tài xế đã lưu khi cập nhật vị trí (chỉ tra địa chỉ khi chưa có tọa độ), rồi tính tuyến tài xế → điểm lấy. Không cần địa chỉ đơn trùng địa chỉ tài xế; áp dụng cả cho đơn mẫu V9. Thiếu key hoặc không tra được điểm lấy sẽ báo lỗi dịch vụ; không gắn nhãn Goong cho khoảng cách giả. Nếu tính tuyến của một tài xế lỗi nhưng đã có tọa độ, kết quả dự phòng là khoảng cách đường thẳng, xếp sau các tuyến Goong. Km/cước mô phỏng đã chốt của đơn mẫu không bị tính lại khi mở gợi ý.
 
 VNPay Sandbox chỉ dành cho giao dịch tài xế nộp tiền công ty. Cấu hình `VNPAY_TMN_CODE`,
 `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL` trong `.env`; IPN công khai cần trỏ đến
@@ -66,3 +66,5 @@ công nợ trên giao diện từng vai trò.
 `APP_DB_PASSWORD` dành cho runtime nếu đã cấp đủ quyền trên DB. Cần hoàn thiện quyền runtime
 theo mục 9 của thiết kế trước khi dùng với dữ liệu thật. Database demo/test nên được tách riêng với dữ liệu vận hành.
 Chế độ không demo từ chối khởi động nếu `APP_DB_USER=sa`.
+
+Định tuyến kiểm tra số nhà/tên đường và thành phố trên kết quả geocode thay vì mặc định lấy kết quả đầu tiên. Hai chuỗi địa chỉ demo cũ `227 Nguyễn Văn Cừ, TP.HCM` và `268 Lý Thường Kiệt, TP.HCM` được bổ sung Quận 5/Quận 10 khi tra cứu; không sửa đơn đã chốt. Response gợi ý có `diem_lay_dinh_tuyen` và `vi_tri_dinh_tuyen` (địa chỉ, lat, lng thực sự dùng). Sửa vị trí tài xế qua giao diện/API để địa chỉ và tọa độ được cập nhật cùng nhau, không chỉ UPDATE cột địa chỉ bằng SQL.
