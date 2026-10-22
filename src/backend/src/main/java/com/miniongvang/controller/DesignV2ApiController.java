@@ -460,7 +460,7 @@ public final class DesignV2ApiController {
             WebResponses.json(resp, 200, ADMIN.resetStaffPassword(c, id, password)); return;
         }
         if (path.matches("/orders/[0-9a-fA-F-]{36}/suggestions") && method.equals("GET")) {
-            require(actor, "TONG_DAI", "CHU_DOI_XE");
+            require(actor, "TONG_DAI");
             String order = path.split("/")[2];
             WebResponses.json(resp, 200, Map.of("items", DISPATCH.suggestDrivers(c, order))); return;
         }

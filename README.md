@@ -2,7 +2,7 @@
 
 Bộ migration ứng dụng đã gom theo thành phần tại
 [db/designV2/sqlserver](src/backend/src/main/resources/db/designV2/sqlserver/README.md).
-DB mới chạy 10 file gộp; DB đã dùng V1–V26 được tự nhận diện và tiếp tục dùng lịch sử
+DB demo mới chạy 11 file migration; DB đã dùng V1–V26 được tự nhận diện và tiếp tục dùng lịch sử
 nguyên trạng trong `db/designV2Legacy/sqlserver/`, không xóa dữ liệu hay sửa checksum.
 Các file trong [design-v2-complete](docs/database/design-v2-complete/README.md) là bản xuất để báo cáo.
 
@@ -14,7 +14,7 @@ Các file trong [design-v2-complete](docs/database/design-v2-complete/README.md)
 
 1. Tạo `.env` từ [.env.example](.env.example) nếu chưa có. Đặt `MSSQL_SA_PASSWORD` và
    `MSSQL_DATABASE=mini_ong_vang_design_v2_demo`.
-2. Để `DESIGN_V2_DEMO=true` ngay lần cài đầu nếu muốn Flyway nạp 8 tài khoản demo, hồ sơ khách/tài xế, cấu hình và 9 đơn `CHO_GAN` bằng file V9 gộp. Với database
+2. Để `DESIGN_V2_DEMO=true` ngay lần cài đầu nếu muốn Flyway nạp 9 tài khoản demo (V9 tạo 8, V11 thêm một tổng đài), hồ sơ khách/tài xế, cấu hình và 9 đơn `CHO_GAN` bằng file V9 gộp. Với database
    không phải demo/test, đặt `DESIGN_V2_DEMO=false`; Flyway chỉ chạy phần schema.
 3. Chạy `docker compose up --build` trong thư mục gốc.
 4. Mở [http://localhost:3001](http://localhost:3001) và đăng nhập. Ứng dụng đưa mỗi vai trò
@@ -27,8 +27,8 @@ Trong SSMS, dùng lại kết nối SQL Server `127.0.0.1,1433`, rồi chọn da
 
 ### Tài khoản demo SQL
 
-Mật khẩu của 8 tài khoản demo SQL: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
-tổng đài: `demo_dispatcher`; chủ đội xe: `demo_admin`; tài xế: `0800000001`,
+Mật khẩu của 9 tài khoản demo SQL: `12345678`. Tài khoản khách: `0900000001`, `0900000002`, `0900000003`;
+tổng đài: `demo_dispatcher`, `demo_dispatcher_2`; chủ đội xe: `demo_admin`; tài xế: `0800000001`,
 `0800000002`, `0800000003`. DB mới dùng V9 gộp, tạo 9 đơn chờ chưa có phân công hay giao dịch nộp tiền; quãng đường/thời gian là dữ liệu mô phỏng. DB cũ tiếp tục chuỗi V1–V26 nguyên trạng trong `designV2Legacy`, gồm các lần sửa seed và dọn fixture. DB đang dùng không cần tạo lại; giữ nguyên lựa chọn `DESIGN_V2_DEMO` rồi để Flyway chạy tiếp.
 
 Trang `/admin/customers` cho chủ đội xe gán hạng khách hàng. Hạng ưu đãi có hiệu lực ngay, không tự hết hạn và cần một chính sách đang hiệu lực; chuyển về `THUONG` sẽ xóa thời hạn ưu đãi. Ngày “Thành viên từ” là ngày tạo tài khoản.
