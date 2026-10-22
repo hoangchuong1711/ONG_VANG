@@ -78,7 +78,10 @@ export default function DispatcherLiveBoardPage() {
     } catch (cause) {
       const message = (cause as Error).message;
       showToast(message, "error");
-      await handleOpenAssignModal(assigningOrder);
+      // The order or driver may have been assigned by another dispatcher.
+      // Discard the stale selection instead of reopening and choosing another driver.
+      setAssigningOrder(null); setSuggestions([]); setSelectedDriverId("");
+      await refresh();
       setLoadError(message);
     } finally { setAssigning(false); }
   };

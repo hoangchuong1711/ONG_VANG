@@ -69,7 +69,13 @@ export default function DispatcherOrderDetailPage() {
       });
       setIsReassignModalOpen(false); await refresh();
       showToast(`Đã gán tài xế cho đơn ${order.id}.`, "success");
-    } catch (cause) { showToast((cause as Error).message, "error"); }
+    } catch (cause) {
+      const message = (cause as Error).message;
+      setIsReassignModalOpen(false); setSuggestions([]); setSelectedDriverId("");
+      showToast(message, "error");
+      await refresh();
+      setError(message);
+    }
   };
 
   if (!ready) return <div className="min-h-dvh bg-[#FAFAF9]"><DispatcherNavbar /><main className="p-6">Đang tải đơn hàng...</main></div>;
