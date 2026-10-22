@@ -36,6 +36,8 @@ Trang `/admin/customers` cho chủ đội xe gán hạng khách hàng. Hạng ư
 `ROUTE_PROVIDER=fake` dùng tuyến cố định cho demo. Muốn dùng Goong, đặt `ROUTE_PROVIDER=goong`
 và `GOONG_API_KEY`; báo giá/tạo đơn cần quota Goong còn hiệu lực.
 
+Gợi ý tài xế dùng Goong (`GOONG_API_KEY`, `GOONG_TIMEOUT_MS`, `GOONG_VEHICLE`) để tra tọa độ điểm lấy của đơn và địa chỉ hiện tại của từng tài xế, rồi tính tuyến tài xế → điểm lấy. Không cần địa chỉ đơn trùng địa chỉ tài xế; áp dụng cả cho đơn mẫu V9. Thiếu key hoặc không tra được điểm lấy sẽ báo lỗi dịch vụ; không gắn nhãn Goong cho khoảng cách giả. Nếu tính tuyến của một tài xế lỗi nhưng đã có tọa độ, kết quả dự phòng là khoảng cách đường thẳng, xếp sau các tuyến Goong. Km/cước mô phỏng đã chốt của đơn mẫu không bị tính lại khi mở gợi ý.
+
 VNPay Sandbox chỉ dành cho giao dịch tài xế nộp tiền công ty. Cấu hình `VNPAY_TMN_CODE`,
 `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL` trong `.env`; IPN công khai cần trỏ đến
 `/api/v2/payments/vnpay/ipn` (URL cũ `/api/payments/vnpay/ipn` cũng được tiếp nhận). Return đưa tài xế về màn thu nhập; IPN hoặc kết quả tra cứu có
