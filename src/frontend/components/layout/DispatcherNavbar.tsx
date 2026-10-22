@@ -4,15 +4,32 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { request } from "@/lib/api-client";
 
 interface DispatcherNavbarProps {
   pendingCount?: number;
   incidentCount?: number;
 }
 
-export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: DispatcherNavbarProps) {
+export function DispatcherNavbar({ pendingCount, incidentCount }: DispatcherNavbarProps) {
   const pathname = usePathname();
   const [currentTime, setCurrentTime] = useState<string>("");
+  const [loadedIncidentCount, setLoadedIncidentCount] = useState<number | null>(null);
+  const activeIncidentCount = incidentCount ?? loadedIncidentCount ?? 0;
+
+  useEffect(() => {
+    if (incidentCount !== undefined) return;
+    let active = true;
+    const load = async () => {
+      try {
+        const result = await request<{ items: unknown[] }>("/dispatcher/incidents");
+        if (active) setLoadedIncidentCount(result.items.length);
+      } catch { if (active) setLoadedIncidentCount(null); }
+    };
+    void load();
+    const timer = setInterval(() => { void load(); }, 15000);
+    return () => { active = false; clearInterval(timer); };
+  }, [incidentCount]);
 
   useEffect(() => {
     const updateClock = () => {
@@ -96,12 +113,12 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 text-xs transition-colors whitespace-nowrap shrink-0"
             title="Đơn hàng chờ gán tài xế"
           >
-            <span className="text-amber-800 font-medium">Hàng đợi:</span>
-            <span className="font-extrabold text-amber-900">{pendingCount}</span>
+            <span className="text-amber-800 font-medium">Hàng đợi{pendingCount !== undefined ? ":" : ""}</span>
+            {pendingCount !== undefined && <span className="font-extrabold text-amber-900">{pendingCount}</span>}
           </Link>
 
           {/* Active Incident Counter */}
-          {incidentCount > 0 && (
+          {activeIncidentCount > 0 && (
             <Link
               href="/dispatcher"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold hover:bg-rose-100 transition-colors whitespace-nowrap shrink-0"
@@ -109,7 +126,7 @@ export function DispatcherNavbar({ pendingCount = 2, incidentCount = 1 }: Dispat
             >
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
               <span>Sự cố:</span>
-              <span className="text-rose-900 font-extrabold">{incidentCount}</span>
+              <span className="text-rose-900 font-extrabold">{activeIncidentCount}</span>
             </Link>
           )}
 

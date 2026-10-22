@@ -133,23 +133,12 @@ export default function DispatcherOrderDetailPage() {
               {order.incident.note}
             </p>
 
-            <div className="pt-1 flex items-center gap-3">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsReassignModalOpen(true)}
-                className="text-xs font-bold shadow-sm"
-              >
-                Thu hồi & đổi tài xế khác
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsCancelModalOpen(true)}
-                className="border-rose-300 text-rose-700 hover:bg-rose-100 text-xs font-semibold"
-              >
-                Hủy đơn do sự cố
-              </Button>
+            <div className="pt-1 flex flex-wrap items-center gap-3">
+              {order.driver?.phone && <a href={`tel:${order.driver.phone}`}
+                className="rounded-xl border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-800">Gọi tài xế</a>}
+              {order.receiver.phone && <a href={`tel:${order.receiver.phone}`}
+                className="rounded-xl border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-800">Gọi người nhận</a>}
+              <p className="text-xs text-rose-900">Sự cố đã được ghi nhận. Không tự hủy hoặc đổi tài xế khi đơn đã lấy hàng.</p>
             </div>
           </div>
         )}

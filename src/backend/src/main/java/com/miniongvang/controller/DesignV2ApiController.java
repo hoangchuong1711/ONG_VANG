@@ -392,6 +392,10 @@ public final class DesignV2ApiController {
             require(actor, "CHU_DOI_XE");
             WebResponses.json(resp, 200, ADMIN.findOverview(c)); return;
         }
+        if (path.equals("/dispatcher/incidents") && method.equals("GET")) {
+            require(actor, "TONG_DAI");
+            WebResponses.json(resp, 200, Map.of("items", DISPATCH.findActiveIncidents(c))); return;
+        }
         if (path.equals("/admin/incidents") && method.equals("GET")) {
             require(actor, "CHU_DOI_XE");
             int page, size;

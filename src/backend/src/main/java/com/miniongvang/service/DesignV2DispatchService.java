@@ -19,6 +19,9 @@ public final class DesignV2DispatchService {
     public DesignV2DispatchService(DesignV2DispatchDAO dispatch) { this.dispatch = dispatch; }
 
     public List<Map<String, Object>> findCompanyDrivers(Connection c) throws SQLException { return dispatch.findCompanyDrivers(c); }
+    public List<Map<String, Object>> findActiveIncidents(Connection c) throws SQLException {
+        return dispatch.findActiveIncidents(c);
+    }
     public List<Map<String, Object>> findDispatcherDrivers(Connection c) throws SQLException { return dispatch.findDispatcherDrivers(c); }
     public Map<String, Object> findDriverForAccount(Connection c, String id) throws SQLException {
         return dispatch.findDriverForAccount(c, id);

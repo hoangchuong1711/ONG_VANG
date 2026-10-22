@@ -96,7 +96,7 @@ export default function DriverOrderExecutionPage() {
       await api(`/orders/${encodeURIComponent(order.id)}/incidents`, {
         method: "POST", body: JSON.stringify({
           loaiSuCo: incidentType.includes("từ chối") ? "TU_CHOI_NHAN" : "KHONG_LIEN_LAC_DUOC",
-          lyDo: `${incidentType}: ${incidentNote.trim() || "Đã báo tổng đài"}`,
+          lyDo: `${incidentType}: ${incidentNote.trim() || "Không có ghi chú bổ sung"}`,
         }),
       });
       setIsIncidentModalOpen(false); setIncidentNote(""); await refresh();
