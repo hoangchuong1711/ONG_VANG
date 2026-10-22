@@ -13,7 +13,6 @@ type FilterStatus = "ALL" | DriverStatus;
 export default function DispatcherFleetPage() {
   const [drivers, setDrivers] = useState<DispatchDriver[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("ALL");
-  const [searchDistrict, setSearchDistrict] = useState("ALL");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<DispatchDriver | null>(null);
   const [address, setAddress] = useState("");
@@ -32,8 +31,7 @@ export default function DispatcherFleetPage() {
   }, [refresh]);
 
   const filteredDrivers = drivers.filter(driver =>
-    (filter === "ALL" || driver.status === filter) &&
-    (searchDistrict === "ALL" || driver.currentDistrict.includes(searchDistrict)));
+    filter === "ALL" || driver.status === filter);
   const onlineIdleCount = drivers.filter(driver => driver.status === "ONLINE_IDLE").length;
   const onlineBusyCount = drivers.filter(driver => driver.status === "ONLINE_BUSY").length;
   const offlineCount = drivers.filter(driver => driver.status === "OFFLINE").length;
@@ -138,20 +136,6 @@ export default function DispatcherFleetPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-stone-500 font-bold">Khu vực:</span>
-            <select
-              value={searchDistrict}
-              onChange={(e) => setSearchDistrict(e.target.value)}
-              className="h-10 px-3.5 rounded-xl border border-stone-300 bg-white text-stone-800 text-xs font-semibold outline-none focus:border-amber-500"
-            >
-              <option value="ALL">Tất cả quận</option>
-              <option value="Quận 1">Quận 1</option>
-              <option value="Quận 3">Quận 3</option>
-              <option value="Quận 5">Quận 5</option>
-              <option value="Quận 7">Quận 7</option>
-            </select>
-          </div>
         </div>
 
         {/* BẢNG DANH SÁCH TÀI XẾ */}
